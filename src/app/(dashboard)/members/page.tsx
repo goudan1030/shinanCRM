@@ -571,13 +571,13 @@ export default function MembersPage() {
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">升级类型</label>
-              <Select value={upgradeType} onValueChange={(value: 'ONE_TIME' | 'ANNUAL') => setUpgradeType(value)}>
+              <Select value={upgradeType} onValueChange={(value: 'ONE_TIME' | 'ANNUAL') => setUpgradeType(value)} disabled={selectedMemberType === 'ONE_TIME'}>
                 <SelectTrigger>
                   <SelectValue placeholder="请选择升级类型" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ONE_TIME">一次性会员</SelectItem>
-                  <SelectItem value="ANNUAL">年费会员</SelectItem>
+                  {selectedMemberType === 'NORMAL' && <SelectItem value="ONE_TIME">一次性会员</SelectItem>}
+                  {selectedMemberType !== 'ANNUAL' && <SelectItem value="ANNUAL">年费会员</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -747,10 +747,11 @@ export default function MembersPage() {
                                 size="sm"
                                 className="h-[26px] text-[13px]"
                                 onClick={() => {
-                                  if (member.type === 'NORMAL') {
-                                    setUpgradeDialogOpen(true);
+                                  if (member.type === 'NORMAL' || member.type === 'ONE_TIME') {
                                     setSelectedMemberId(member.id);
                                     setSelectedMemberType(member.type);
+                                    setUpgradeType(member.type === 'ONE_TIME' ? 'ANNUAL' : 'ONE_TIME');
+                                    setUpgradeDialogOpen(true);
                                   }
                                 }}
                               >

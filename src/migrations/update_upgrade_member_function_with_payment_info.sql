@@ -1,12 +1,4 @@
--- 更新年费会员的剩余匹配次数设置
-
--- 1. 更新现有年费会员的剩余匹配次数为1
-UPDATE members
-SET remaining_matches = 1
-WHERE type = 'ANNUAL';
-
--- 2. 修改会员升级函数，设置年费会员的初始匹配次数为1
-DROP FUNCTION IF EXISTS upgrade_member(UUID, VARCHAR, TIMESTAMP, TIMESTAMP, TEXT);
+-- 更新会员升级函数，将支付信息存储到对应的表中
 DROP FUNCTION IF EXISTS upgrade_member(UUID, VARCHAR, TIMESTAMP WITH TIME ZONE, TIMESTAMP WITH TIME ZONE, TEXT);
 
 CREATE OR REPLACE FUNCTION upgrade_member(
@@ -35,17 +27,15 @@ BEGIN
     RAISE EXCEPTION '只能升级激活状态的会员';
   END IF;
 
-  -- 如果会员类型与目标类型相同，抛出异常
-  IF v_old_type = p_type THEN
-    RAISE EXCEPTION '会员已经是该类型';
+  -- 如果会员类型与目标类型相同，或者是从年费会员降级到一次性会员，抛出异常
+  IF v_old_type = p_type OR (v_old_type = 'ANNUAL' AND p_type = 'ONE_TIME') THEN
+    RAISE EXCEPTION '不允许的会员类型变更';
   END IF;
 
   -- 更新会员类型和相关信息
   UPDATE members
   SET 
     type = p_type,
-    payment_time = p_payment_time,
-    expiry_time = p_expiry_time,
     remaining_matches = CASE 
       WHEN p_type = 'ONE_TIME' THEN 3
       WHEN p_type = 'ANNUAL' THEN 1
@@ -53,6 +43,27 @@ BEGIN
     END,
     updated_at = NOW()
   WHERE id = p_member_id;
+
+  -- 根据会员类型存储支付信息
+  IF p_type = 'ONE_TIME' THEN
+    INSERT INTO member_one_time_info (
+      member_id,
+      payment_time
+    ) VALUES (
+      p_member_id,
+      p_payment_time
+    );
+  ELSIF p_type = 'ANNUAL' THEN
+    INSERT INTO member_annual_info (
+      member_id,
+      payment_time,
+      expiry_time
+    ) VALUES (
+      p_member_id,
+      p_payment_time,
+      p_expiry_time
+    );
+  END IF;
 
   -- 记录类型变更
   INSERT INTO member_type_logs (
@@ -76,25 +87,3 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql;
-
--- 3. 创建每日重置年费会员匹配次数的函数
-CREATE OR REPLACE FUNCTION reset_annual_member_matches()
-RETURNS void AS $$
-BEGIN
-  UPDATE members
-  SET 
-    remaining_matches = 1,
-    updated_at = NOW()
-  WHERE type = 'ANNUAL';
-END;
-$$ LANGUAGE plpgsql;
-
--- 4. 创建并启用 cron 扩展
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-
--- 5. 创建每日0点触发的定时任务
-SELECT cron.schedule(
-  'reset-annual-member-matches',  -- 任务名称
-  '0 0 * * *',                   -- 每天0点执行
-  $$SELECT reset_annual_member_matches()$$
-);

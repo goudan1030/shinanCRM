@@ -4,14 +4,24 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, FileText, Settings, User, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, User, ChevronDown, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
 
 const navigation = [
   { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
   { name: '会员管理', href: '/members', icon: Users },
-  { name: '订单管理', href: '/orders', icon: FileText },
+  {
+    name: '收支管理',
+    href: '/finance',
+    icon: Wallet,
+    matchPaths: ['/finance', '/finance/income', '/finance/expense', '/finance/settlement'],
+    children: [
+      { name: '收入管理', href: '/finance/income', icon: ArrowDownCircle },
+      { name: '支出管理', href: '/finance/expense', icon: ArrowUpCircle },
+      { name: '结算管理', href: '/finance/settlement', icon: Calculator }
+    ]
+  },
   {
     name: '系统设置',
     href: '/settings',
