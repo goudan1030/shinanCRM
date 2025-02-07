@@ -65,7 +65,8 @@ const availableColumns = [
   { key: 'marriage_history', label: '婚史' },
   { key: 'sexual_orientation', label: '性取向' },
   { key: 'remaining_matches', label: '剩余匹配次数' },
-  { key: 'created_at', label: '创建时间' }
+  { key: 'created_at', label: '创建时间' },
+  { key: 'actions', label: '操作' }
 ];
 
 export default function MembersPage() {
@@ -80,7 +81,8 @@ export default function MembersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedColumns, setSelectedColumns] = useState(['member_no', 'wechat', 'phone', 'type', 'status']);
+  const [selectedColumns, setSelectedColumns] = useState(['member_no', 'wechat', 'phone', 'type', 'status', 'actions']);
+  const [tableWidth, setTableWidth] = useState('100%');
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
   const pageSize = 25;
 
@@ -101,7 +103,13 @@ export default function MembersPage() {
       // 至少保留一个字段
       return;
     }
-    setSelectedColumns(columns);
+    // 确保操作列始终在最后
+    const columnsWithoutActions = columns.filter(col => col !== 'actions');
+    if (columns.includes('actions')) {
+      setSelectedColumns([...columnsWithoutActions, 'actions']);
+    } else {
+      setSelectedColumns(columnsWithoutActions);
+    }
   };
 
   useEffect(() => {
@@ -174,8 +182,136 @@ export default function MembersPage() {
     return gender === 'male' ? '男' : '女';
   };
 
+  const getHouseCarText = (houseCar: string) => {
+    switch (houseCar) {
+      case 'NEITHER':
+        return '无房无车';
+      case 'HOUSE_ONLY':
+        return '有房无车';
+      case 'CAR_ONLY':
+        return '无房有车';
+      case 'BOTH':
+        return '有房有车';
+      default:
+        return '未知';
+    }
+  };
+
+  const getChildrenPlanText = (childrenPlan: string) => {
+    switch (childrenPlan) {
+      case 'BOTH':
+        return '一起要';
+      case 'SEPARATE':
+        return '各自要';
+      case 'NEGOTIATE':
+        return '互相协商';
+      case 'NONE':
+        return '不要孩子';
+      default:
+        return '未知';
+    }
+  };
+
+  const getMarriageCertText = (marriageCert: string) => {
+    switch (marriageCert) {
+      case 'WANT':
+        return '要';
+      case 'DONT_WANT':
+        return '不要';
+      case 'NEGOTIATE':
+        return '互相协商';
+      default:
+        return '未知';
+    }
+  };
+
+  const getMarriageHistoryText = (marriageHistory: string) => {
+    switch (marriageHistory) {
+      case 'YES':
+        return '有婚史';
+      case 'NO':
+        return '无婚史';
+      default:
+        return '未知';
+    }
+  };
+
+  const getEducationText = (education: string) => {
+    switch (education) {
+      case 'HIGH_SCHOOL':
+        return '高中';
+      case 'COLLEGE':
+        return '大专';
+      case 'BACHELOR':
+        return '本科';
+      case 'MASTER':
+        return '硕士';
+      case 'PHD':
+        return '博士';
+      default:
+        return '未知';
+    }
+  };
+
+  const getSexualOrientationText = (sexualOrientation: string) => {
+    switch (sexualOrientation) {
+      case 'STRAIGHT_MALE':
+        return '直男';
+      case 'STRAIGHT_FEMALE':
+        return '直女';
+      case 'LES':
+        return 'LES';
+      case 'GAY':
+        return 'GAY';
+      case 'ASEXUAL':
+        return '无性恋';
+      default:
+        return '未知';
+    }
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const getColumnWidth = (key: string) => {
+    switch (key) {
+      case 'member_no':
+      case 'phone':
+        return 'min-w-[120px]';
+      case 'wechat':
+        return 'min-w-[150px]';
+      case 'type':
+      case 'status':
+      case 'gender':
+        return 'min-w-[100px]';
+      case 'birth_year':
+      case 'height':
+      case 'weight':
+        return 'min-w-[80px]';
+      case 'education':
+      case 'occupation':
+      case 'house_car':
+      case 'children_plan':
+      case 'marriage_cert':
+      case 'marriage_history':
+      case 'sexual_orientation':
+        return 'min-w-[120px]';
+      case 'province':
+      case 'city':
+      case 'district':
+      case 'hukou_province':
+      case 'hukou_city':
+        return 'min-w-[100px]';
+      case 'target_area':
+      case 'self_description':
+      case 'partner_requirement':
+        return 'min-w-[200px]';
+      case 'actions':
+        return 'min-w-[180px]';
+      default:
+        return 'min-w-[120px]';
+    }
   };
 
   if (isLoading) {
@@ -245,36 +381,111 @@ export default function MembersPage() {
         ) : (
           <>
             <div className="overflow-auto flex-1 mt-[40px] pb-10">
-              <table className="w-full">
-                <thead className="sticky top-0 bg-[#f2f2f2] z-40">
-                  <tr className="border-b">
-                    {selectedColumns.map((columnKey) => {
-                      const column = availableColumns.find(col => col.key === columnKey);
-                      return column ? (
-                        <th key={column.key} className="py-3 px-4 text-left text-[13px]">{column.label}</th>
-                      ) : null;
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {members.map((member) => (
-                    <tr key={member.id} className="border-b hover:bg-gray-50 h-10">
-                      {selectedColumns.map((columnKey) => (
-                        <td key={columnKey} className="py-3 px-4 text-[13px]">
-                          {columnKey === 'type' ? getMemberTypeText(member[columnKey]) :
-                           columnKey === 'gender' ? getGenderText(member[columnKey]) :
-                           columnKey === 'status' ? (
-                            <span className={`px-2 py-1 rounded-full text-[13px] ${member.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : member.status === 'REVOKED' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-                              {member.status === 'ACTIVE' ? '激活' : member.status === 'REVOKED' ? '撤销' : '成功'}
-                            </span>
-                           ) :
-                           member[columnKey]}
-                        </td>
-                      ))}
+              <div className="relative">
+                <table className="w-full min-w-[1200px]">
+                  <thead className="sticky top-0 bg-[#f2f2f2] z-40">
+                    <tr className="border-b">
+                      {selectedColumns.map((columnKey) => {
+                        const column = availableColumns.find(col => col.key === columnKey);
+                        const getColumnWidth = (key: string) => {
+                          switch (key) {
+                            case 'member_no':
+                            case 'phone':
+                              return 'min-w-[120px]';
+                            case 'wechat':
+                              return 'min-w-[150px]';
+                            case 'type':
+                            case 'status':
+                            case 'gender':
+                              return 'min-w-[100px]';
+                            case 'birth_year':
+                            case 'height':
+                            case 'weight':
+                              return 'min-w-[80px]';
+                            case 'education':
+                            case 'occupation':
+                            case 'house_car':
+                            case 'children_plan':
+                            case 'marriage_cert':
+                            case 'marriage_history':
+                            case 'sexual_orientation':
+                              return 'min-w-[120px]';
+                            case 'province':
+                            case 'city':
+                            case 'district':
+                            case 'hukou_province':
+                            case 'hukou_city':
+                              return 'min-w-[100px]';
+                            case 'target_area':
+                            case 'self_description':
+                            case 'partner_requirement':
+                              return 'min-w-[200px]';
+                            default:
+                              return 'min-w-[120px]';
+                          }
+                        };
+                        return column ? (
+                          <th key={column.key} className={`py-3 px-4 text-left text-[13px] whitespace-nowrap ${getColumnWidth(column.key)} ${columnKey === 'actions' ? 'sticky right-0 bg-[#f2f2f2] shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)]' : ''}`}>{column.label}</th>
+                        ) : null;
+                      })}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {members.map((member) => (
+                      <tr key={member.id} className="border-b hover:bg-gray-50 h-10">
+                        {selectedColumns.map((columnKey) => (
+                          <td key={columnKey} className={`py-3 px-4 text-[13px] whitespace-nowrap ${getColumnWidth(columnKey)} ${columnKey === 'actions' ? 'sticky right-0 bg-white shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)]' : ''}`}>
+                            {columnKey === 'type' ? getMemberTypeText(member[columnKey]) :
+                             columnKey === 'gender' ? getGenderText(member[columnKey]) :
+                             columnKey === 'house_car' ? getHouseCarText(member[columnKey]) :
+                             columnKey === 'children_plan' ? getChildrenPlanText(member[columnKey]) :
+                             columnKey === 'marriage_cert' ? getMarriageCertText(member[columnKey]) :
+                             columnKey === 'marriage_history' ? getMarriageHistoryText(member[columnKey]) :
+                             columnKey === 'sexual_orientation' ? getSexualOrientationText(member[columnKey]) :
+                             columnKey === 'education' ? getEducationText(member[columnKey]) :
+                             columnKey === 'status' ? (
+                              <span className={`px-2 py-1 rounded-full text-[13px] ${member.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : member.status === 'REVOKED' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                                {member.status === 'ACTIVE' ? '激活' : member.status === 'REVOKED' ? '撤销' : '成功'}
+                              </span>
+                             ) :
+                             columnKey === 'actions' ? (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-[26px] text-[13px]"
+                                  onClick={() => router.push(`/members/${member.id}`)}
+                                >
+                                  查看
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-[26px] text-[13px]"
+                                  onClick={() => router.push(`/members/${member.id}/edit`)}
+                                >
+                                  编辑
+                                </Button>
+                                {member.status === 'ACTIVE' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-[26px] text-[13px] text-red-500 hover:text-red-500"
+                                    onClick={() => handleRevoke(member.id)}
+                                  >
+                                    撤销
+                                  </Button>
+                                )}
+                              </div>
+                             ) :
+                             member[columnKey]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[294px] right-0 bg-white z-50 px-4">
