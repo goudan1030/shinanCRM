@@ -6,9 +6,12 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface Member {
   id: string;
@@ -70,10 +73,17 @@ const availableColumns = [
 ];
 
 export default function MembersPage() {
+  const { toast } = useToast();
   const { session, isLoading } = useAuth();
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [members, setMembers] = useState<Member[]>([]);
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [selectedMemberType, setSelectedMemberType] = useState<string | null>(null);
+  const [upgradeType, setUpgradeType] = useState<'ONE_TIME' | 'ANNUAL'>('ONE_TIME');
+  const [upgradeDate, setUpgradeDate] = useState<Date>(new Date());
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -81,7 +91,11 @@ export default function MembersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedColumns, setSelectedColumns] = useState(['member_no', 'wechat', 'phone', 'type', 'status', 'actions']);
+  const [selectedColumns, setSelectedColumns] = useState(['member_no', 'wechat', 'phone', 'type', 'status', 'remaining_matches', 'actions']);
+  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [matchReason, setMatchReason] = useState('');
+  const [matchTargetId, setMatchTargetId] = useState<string | null>(null);
   const [tableWidth, setTableWidth] = useState('100%');
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
   const pageSize = 25;
@@ -165,12 +179,12 @@ export default function MembersPage() {
     }
   };
 
-  const getMemberTypeText = (type: string) => {
+  const getMemberTypeText = (type: string, remainingMatches?: number) => {
     switch (type) {
       case 'NORMAL':
         return '普通会员';
       case 'ONE_TIME':
-        return '一次性会员';
+        return `一次性会员${remainingMatches !== undefined ? ` (${remainingMatches}次)` : ''}`;
       case 'ANNUAL':
         return '年费会员';
       default:
@@ -314,12 +328,304 @@ export default function MembersPage() {
     }
   };
 
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [revokeReason, setRevokeReason] = useState('');
+  const [revokeLoading, setRevokeLoading] = useState(false);
+
+  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+  const [activateReason, setActivateReason] = useState('');
+  const [activateLoading, setActivateLoading] = useState(false);
+
+  const [targetMemberNo, setTargetMemberNo] = useState('');
+
+  const handleMatch = async (memberId: string) => {
+    if (!targetMemberNo.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '匹配失败',
+        description: '请输入目标会员编号'
+      });
+      return;
+    }
+
+    setMatchLoading(true);
+    try {
+      const { error } = await supabase.rpc('match_members', {
+        p_member_id: memberId,
+        p_target_member_no: targetMemberNo,
+        p_matched_by: session?.user?.id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: '会员匹配成功',
+        description: '已成功匹配会员'
+      });
+
+      setMatchDialogOpen(false);
+      setTargetMemberNo('');
+      fetchMembers();
+    } catch (error) {
+      console.error('会员匹配失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '会员匹配失败',
+        description: error instanceof Error ? error.message : (error as { message?: string })?.message || '操作失败，请重试'
+      });
+    } finally {
+      setMatchLoading(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center p-4">加载中...</div>;
   }
 
+  const handleActivate = async (memberId: string) => {
+    if (!activateReason.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '激活失败',
+        description: '请输入激活原因'
+      });
+      return;
+    }
+
+    setActivateLoading(true);
+    try {
+      const { error } = await supabase.rpc('activate_member', {
+        p_member_id: memberId,
+        p_reason: activateReason,
+        p_activated_by: session?.user?.id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: '会员激活成功',
+        description: '已将会员状态更新为激活'
+      });
+
+      setActivateDialogOpen(false);
+      setActivateReason('');
+      fetchMembers();
+    } catch (error) {
+      console.error('会员激活失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '会员激活失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
+    } finally {
+      setActivateLoading(false);
+    }
+  };
+
+  const handleRevoke = async (memberId: string) => {
+    if (!revokeReason.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '撤销失败',
+        description: '请输入撤销原因'
+      });
+      return;
+    }
+
+    setRevokeLoading(true);
+    try {
+      // 开启事务
+      const { error } = await supabase.rpc('revoke_member', {
+        p_member_id: memberId,
+        p_reason: revokeReason,
+        p_revoked_by: session?.user?.id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: '会员撤销成功',
+        description: '已将会员状态更新为撤销'
+      });
+
+      setRevokeDialogOpen(false);
+      setRevokeReason('');
+      fetchMembers();
+    } catch (error) {
+      console.error('会员撤销失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '会员撤销失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
+    } finally {
+      setRevokeLoading(false);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    if (!selectedMemberId || !upgradeType) return;
+    
+    setUpgradeLoading(true);
+    try {
+      const paymentTime = upgradeDate.toISOString();
+      const expiryTime = upgradeType === 'ANNUAL' 
+        ? new Date(upgradeDate.getFullYear() + 1, upgradeDate.getMonth(), upgradeDate.getDate() - 1).toISOString()
+        : null;
+      
+      // 开启事务
+      const { error: transactionError } = await supabase.rpc('upgrade_member', {
+        p_member_id: selectedMemberId,
+        p_type: upgradeType,
+        p_payment_time: paymentTime,
+        p_expiry_time: expiryTime,
+        p_notes: `${session?.user?.user_metadata?.name || session?.user?.email} 在 ${new Date().toLocaleString('zh-CN')} 将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
+      });
+
+      if (transactionError) throw transactionError;
+
+      toast({
+        title: '会员升级成功',
+        description: `已将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
+      });
+
+      setUpgradeDialogOpen(false);
+      fetchMembers();
+    } catch (error) {
+      console.error('会员升级失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '会员升级失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      <Dialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>激活会员</DialogTitle>
+            <DialogDescription>
+              请输入激活原因
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">激活原因</label>
+              <Input
+                value={activateReason}
+                onChange={(e) => setActivateReason(e.target.value)}
+                placeholder="请输入激活原因"
+                className="w-full"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActivateDialogOpen(false)}>取消</Button>
+            <Button onClick={() => handleActivate(selectedMemberId!)} disabled={activateLoading}>
+              {activateLoading ? '激活中...' : '确认激活'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>撤销会员</DialogTitle>
+            <DialogDescription>
+              请输入撤销原因
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">撤销原因</label>
+              <Input
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+                placeholder="请输入撤销原因"
+                className="w-full"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeDialogOpen(false)}>取消</Button>
+            <Button onClick={() => handleRevoke(selectedMemberId!)} disabled={revokeLoading}>
+              {revokeLoading ? '撤销中...' : '确认撤销'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>会员升级</DialogTitle>
+            <DialogDescription>
+              请选择要升级的会员类型
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">升级类型</label>
+              <Select value={upgradeType} onValueChange={(value: 'ONE_TIME' | 'ANNUAL') => setUpgradeType(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择升级类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ONE_TIME">一次性会员</SelectItem>
+                  <SelectItem value="ANNUAL">年费会员</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">升级时间</label>
+              <Input
+                type="date"
+                value={upgradeDate.toISOString().split('T')[0]}
+                onChange={(e) => setUpgradeDate(new Date(e.target.value))}
+                className="w-full"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUpgradeDialogOpen(false)}>取消</Button>
+            <Button onClick={handleUpgrade} disabled={upgradeLoading}>
+              {upgradeLoading ? '升级中...' : '确认升级'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={matchDialogOpen} onOpenChange={setMatchDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>匹配会员</DialogTitle>
+            <DialogDescription>
+              请输入目标会员编号
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">目标会员编号</label>
+              <Input
+                value={targetMemberNo}
+                onChange={(e) => setTargetMemberNo(e.target.value)}
+                placeholder="请输入目标会员编号"
+                className="w-full"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMatchDialogOpen(false)}>取消</Button>
+            <Button onClick={() => handleMatch(selectedMemberId!)} disabled={matchLoading}>
+              {matchLoading ? '匹配中...' : '确认匹配'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[294px] z-50">
           <div className="relative column-selector">
@@ -435,7 +741,22 @@ export default function MembersPage() {
                       <tr key={member.id} className="border-b hover:bg-gray-50 h-10">
                         {selectedColumns.map((columnKey) => (
                           <td key={columnKey} className={`py-3 px-4 text-[13px] whitespace-nowrap ${getColumnWidth(columnKey)} ${columnKey === 'actions' ? 'sticky right-0 bg-white shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)]' : ''}`}>
-                            {columnKey === 'type' ? getMemberTypeText(member[columnKey]) :
+                            {columnKey === 'type' ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-[26px] text-[13px]"
+                                onClick={() => {
+                                  if (member.type === 'NORMAL') {
+                                    setUpgradeDialogOpen(true);
+                                    setSelectedMemberId(member.id);
+                                    setSelectedMemberType(member.type);
+                                  }
+                                }}
+                              >
+                                {getMemberTypeText(member[columnKey], member.remaining_matches)}
+                              </Button>
+                            ) :
                              columnKey === 'gender' ? getGenderText(member[columnKey]) :
                              columnKey === 'house_car' ? getHouseCarText(member[columnKey]) :
                              columnKey === 'children_plan' ? getChildrenPlanText(member[columnKey]) :
@@ -467,13 +788,53 @@ export default function MembersPage() {
                                   编辑
                                 </Button>
                                 {member.status === 'ACTIVE' && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-[26px] text-[13px] text-blue-500 hover:text-blue-500"
+                                      onClick={() => {
+                                        if (member.remaining_matches <= 0) {
+                                          toast({
+                                            variant: 'destructive',
+                                            title: '匹配失败',
+                                            description: '该用户匹配次数为0，无法匹配'
+                                          });
+                                          return;
+                                        }
+                                        setSelectedMemberId(member.id);
+                                        setMatchDialogOpen(true);
+                                      }}
+                                      disabled={loading || member.status !== 'ACTIVE'}
+                                    >
+                                      匹配
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-[26px] text-[13px] text-red-500 hover:text-red-500"
+                                      onClick={() => {
+                                        setSelectedMemberId(member.id);
+                                        setRevokeReason('');
+                                        setRevokeDialogOpen(true);
+                                      }}
+                                    >
+                                      撤销
+                                    </Button>
+                                  </>
+                                )}
+                                {member.status === 'REVOKED' && (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-[26px] text-[13px] text-red-500 hover:text-red-500"
-                                    onClick={() => handleRevoke(member.id)}
+                                    className="h-[26px] text-[13px] text-green-500 hover:text-green-500"
+                                    onClick={() => {
+                                      setSelectedMemberId(member.id);
+                                      setActivateReason('');
+                                      setActivateDialogOpen(true);
+                                    }}
                                   >
-                                    撤销
+                                    激活
                                   </Button>
                                 )}
                               </div>

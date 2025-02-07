@@ -1,0 +1,2 @@
+-- 删除旧的会员升级函数
+DROP FUNCTION IF EXISTS upgrade_member(UUID, VARCHAR, TIMESTAMP, TIMESTAMP, TEXT);
