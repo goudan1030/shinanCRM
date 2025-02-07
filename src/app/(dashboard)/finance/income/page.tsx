@@ -57,7 +57,7 @@ export default function IncomePage() {
     }
   }, [isLoading, session, router]);
 
-  const [monthFilter, setMonthFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
 
   useEffect(() => {
@@ -278,7 +278,7 @@ export default function IncomePage() {
             </Button>
           </div>
           
-          <div className="space-y-6 h-[calc(100vh-88px)] overflow-auto mt-[18px]">
+          <div className="space-y-6 h-[calc(100vh-88px)] overflow-auto mt-[38px]">
             {totalPages > 1 && (
               <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[534px] right-0 bg-white z-50 px-4">
                 <div className="text-sm text-gray-500">
@@ -500,6 +500,63 @@ export default function IncomePage() {
               disabled={newIncomeLoading}
             >
               {newIncomeLoading ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除确认</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-500">确定要删除这条收入记录吗？此操作不可撤销。</p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteLoading}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!selectedRecordId) return;
+
+                setDeleteLoading(true);
+                try {
+                  const { error } = await supabase
+                    .from('income_records')
+                    .delete()
+                    .eq('id', selectedRecordId);
+
+                  if (error) throw error;
+
+                  toast({
+                    title: '删除成功',
+                    description: '收入记录已删除'
+                  });
+
+                  setDeleteDialogOpen(false);
+                  setSelectedRecordId(null);
+                  fetchRecords();
+                } catch (error) {
+                  console.error('删除收入记录失败:', error);
+                  toast({
+                    variant: 'destructive',
+                    title: '删除失败',
+                    description: error instanceof Error ? error.message : '操作失败，请重试'
+                  });
+                } finally {
+                  setDeleteLoading(false);
+                }
+              }}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? '删除中...' : '删除'}
             </Button>
           </DialogFooter>
         </DialogContent>
