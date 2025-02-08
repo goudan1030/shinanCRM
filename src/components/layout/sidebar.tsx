@@ -4,9 +4,16 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, FileText, Settings, User, ChevronDown, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, User, ChevronDown, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navigation = [
   { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
@@ -38,6 +45,7 @@ export function Sidebar() {
   const router = useRouter();
   const { session } = useAuth();
   const [activeParent, setActiveParent] = useState<string | null>(null);
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
     // 根据当前路径设置活动的父菜单
@@ -50,6 +58,15 @@ export function Sidebar() {
   const currentParentItem = navigation.find(item => 
     item.children?.some(child => child.href === pathname) || item.href === pathname
   );
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('退出登录失败:', error);
+    }
+  };
 
   return (
     <>
@@ -79,9 +96,6 @@ export function Sidebar() {
                   </div>
                   <div className="w-0 group-hover:w-auto overflow-hidden transition-all duration-300 flex items-center justify-between flex-1">
                     <span className="whitespace-nowrap group-hover:ml-2 text-[13px]">{item.name}</span>
-                    {hasChildren && (
-                      <ChevronDown className="h-4 w-4 opacity-50 mr-2" />
-                    )}
                   </div>
                 </Link>
               </div>
@@ -89,32 +103,43 @@ export function Sidebar() {
           })}
         </nav>
         <div className="px-2 h-[48px] flex items-center border-t">
-          <Link
-            href="/settings/profile"
-            className={cn(
-              'flex items-center rounded-md',
-              pathname === '/settings/profile' ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-50'
-            )}
-          >
-            <div className="w-[40px] h-[40px] flex items-center justify-center flex-shrink-0">
-              {session?.user?.user_metadata?.avatar_url ? (
-                <Image
-                  src={session.user.user_metadata.avatar_url}
-                  alt="Avatar"
-                  width={16}
-                  height={16}
-                  className="rounded-full"
-                />
-              ) : (
-                <User className="h-4 w-4 text-gray-500" />
-              )}
-            </div>
-            <div className="w-0 group-hover:w-auto overflow-hidden transition-all duration-300">
-              <p className="whitespace-nowrap group-hover:ml-2 text-[13px] font-medium truncate">
-                {session?.user?.user_metadata?.name || session?.user?.email}
-              </p>
-            </div>
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="w-full outline-none">
+              <div className={cn(
+                'flex items-center rounded-md',
+                pathname === '/settings/profile' ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-50'
+              )}>
+                <div className="w-[40px] h-[40px] flex items-center justify-center flex-shrink-0">
+                  {session?.user?.user_metadata?.avatar_url ? (
+                    <Image
+                      src={session.user.user_metadata.avatar_url}
+                      alt="Avatar"
+                      width={16}
+                      height={16}
+                      className="rounded-full"
+                    />
+                  ) : (
+                    <User className="h-4 w-4 text-gray-500" />
+                  )}
+                </div>
+                <div className="w-0 group-hover:w-auto overflow-hidden transition-all duration-300">
+                  <p className="whitespace-nowrap group-hover:ml-2 text-[13px] font-medium truncate">
+                    {session?.user?.user_metadata?.name || session?.user?.email}
+                  </p>
+                </div>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuItem onClick={() => router.push('/settings/profile')}>
+                <User className="mr-2 h-4 w-4" />
+                <span>个人信息</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>退出登录</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
