@@ -74,8 +74,6 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-2xl font-bold mb-6">个人信息设置</h1>
-
       <div className="grid gap-6">
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-4">基本信息</h2>

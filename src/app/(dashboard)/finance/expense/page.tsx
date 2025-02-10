@@ -30,6 +30,7 @@ export default function ExpensePage() {
   const [records, setRecords] = useState<ExpenseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -46,6 +47,14 @@ export default function ExpensePage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editExpenseData, setEditExpenseData] = useState({
+    expense_date: '',
+    amount: '',
+    notes: ''
+  });
+  const [editLoading, setEditLoading] = useState(false);
+
   useEffect(() => {
     if (!isLoading && !session) {
       router.push('/login');
@@ -59,7 +68,7 @@ export default function ExpensePage() {
     if (session) {
       fetchRecords();
     }
-  }, [session, searchKeyword, monthFilter, yearFilter, currentPage]);
+  }, [session, searchKeyword, paymentMethodFilter, monthFilter, yearFilter, currentPage]);
 
   const fetchRecords = async () => {
     try {
@@ -82,6 +91,7 @@ export default function ExpensePage() {
         const endDate = new Date(year, month, 0).toISOString();
         query = query.gte('expense_date', startDate).lte('expense_date', endDate);
       } else {
+        // 当月份选择"全部"时，仍然按照年份筛选
         const year = parseInt(yearFilter);
         const startDate = new Date(year, 0, 1).toISOString();
         const endDate = new Date(year, 11, 31).toISOString();
@@ -90,10 +100,13 @@ export default function ExpensePage() {
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase查询错误:', error);
+        throw error;
+      }
 
       setRecords(data || []);
-      if (count) {
+      if (count !== null) {
         setTotalCount(count);
         setTotalPages(Math.ceil(count / pageSize));
       }
@@ -109,6 +122,23 @@ export default function ExpensePage() {
     }
   };
 
+  const getPaymentMethodText = (method: string) => {
+    switch (method) {
+      case 'ALIPAY':
+        return '支付宝';
+      case 'WECHAT_WANG':
+        return '微信王';
+      case 'WECHAT_ZHANG':
+        return '微信张';
+      case 'ICBC_QR':
+        return '工商二维码';
+      case 'CORPORATE':
+        return '对公账户';
+      default:
+        return '未知';
+    }
+  };
+
   if (isLoading || loading) {
     return (
       <div className="flex flex-col h-screen overflow-hidden">
@@ -121,13 +151,13 @@ export default function ExpensePage() {
             <div className="space-y-1 p-2">
               <Link
                 href="/finance/income"
-                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
+                className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
               >
                 <span className="text-[13px]">收入管理</span>
               </Link>
               <Link
                 href="/finance/expense"
-                className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
+                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
               >
                 <span className="text-[13px]">支出管理</span>
               </Link>
@@ -183,11 +213,27 @@ export default function ExpensePage() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">搜索</label>
               <Input
-                placeholder="搜索备注"
+                placeholder="搜索会员编号或备注"
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 className="w-full"
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">支付方式筛选</label>
+              <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="支付方式" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部</SelectItem>
+                  <SelectItem value="ALIPAY">支付宝</SelectItem>
+                  <SelectItem value="WECHAT_WANG">微信王</SelectItem>
+                  <SelectItem value="WECHAT_ZHANG">微信张</SelectItem>
+                  <SelectItem value="ICBC_QR">工商二维码</SelectItem>
+                  <SelectItem value="CORPORATE">对公账户</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">年份筛选</label>
@@ -264,13 +310,13 @@ export default function ExpensePage() {
                   <tbody className="divide-y divide-gray-200">
                     {loading ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">
+                        <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
                           加载中...
                         </td>
                       </tr>
                     ) : records.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">
+                        <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
                           暂无数据
                         </td>
                       </tr>
@@ -289,7 +335,15 @@ export default function ExpensePage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => router.push(`/finance/expense/edit/${record.id}`)}
+                              onClick={() => {
+                                setSelectedRecordId(record.id);
+                                setEditExpenseData({
+                                  expense_date: record.expense_date.split('T')[0],
+                                  amount: record.amount.toString(),
+                                  notes: record.notes || ''
+                                });
+                                setEditDialogOpen(true);
+                              }}
                               className="h-8 px-2 text-primary"
                             >
                               编辑
@@ -359,14 +413,6 @@ export default function ExpensePage() {
             </Button>
             <Button
               onClick={async () => {
-                if (!newExpenseData.expense_date) {
-                  toast({
-                    variant: 'destructive',
-                    title: '创建失败',
-                    description: '请输入支出日期'
-                  });
-                  return;
-                }
                 if (!newExpenseData.amount || parseFloat(newExpenseData.amount) <= 0) {
                   toast({
                     variant: 'destructive',
@@ -391,7 +437,7 @@ export default function ExpensePage() {
 
                   toast({
                     title: '创建成功',
-                    description: '支出记录已保存'
+                    description: '收入记录已保存'
                   });
 
                   setNewExpenseDialogOpen(false);
@@ -402,7 +448,7 @@ export default function ExpensePage() {
                   });
                   fetchRecords();
                 } catch (error) {
-                  console.error('创建支出记录失败:', error);
+                  console.error('创建收入记录失败:', error);
                   toast({
                     variant: 'destructive',
                     title: '创建失败',
@@ -426,7 +472,7 @@ export default function ExpensePage() {
             <DialogTitle>删除确认</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-gray-500">确定要删除这条支出记录吗？此操作不可撤销。</p>
+            <p className="text-sm text-gray-500">确定要删除这条收入记录吗？此操作不可撤销。</p>
           </div>
           <DialogFooter>
             <Button
@@ -459,7 +505,7 @@ export default function ExpensePage() {
                   setSelectedRecordId(null);
                   fetchRecords();
                 } catch (error) {
-                  console.error('删除支出记录失败:', error);
+                  console.error('删除收入记录失败:', error);
                   toast({
                     variant: 'destructive',
                     title: '删除失败',
@@ -472,6 +518,97 @@ export default function ExpensePage() {
               disabled={deleteLoading}
             >
               {deleteLoading ? '删除中...' : '删除'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑支出</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">支出日期</label>
+              <Input
+                type="date"
+                value={editExpenseData.expense_date}
+                onChange={(e) => setEditExpenseData({ ...editExpenseData, expense_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">金额</label>
+              <Input
+                type="number"
+                value={editExpenseData.amount}
+                onChange={(e) => setEditExpenseData({ ...editExpenseData, amount: e.target.value })}
+                placeholder="请输入金额"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">备注</label>
+              <Input
+                value={editExpenseData.notes}
+                onChange={(e) => setEditExpenseData({ ...editExpenseData, notes: e.target.value })}
+                placeholder="请输入备注"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              disabled={editLoading}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!editExpenseData.amount || parseFloat(editExpenseData.amount) <= 0) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请输入有效的金额'
+                  });
+                  return;
+                }
+
+                setEditLoading(true);
+                try {
+                  const { error } = await supabase
+                    .from('expense_records')
+                    .update({
+                      expense_date: editExpenseData.expense_date,
+                      amount: parseFloat(editExpenseData.amount),
+                      notes: editExpenseData.notes || null
+                    })
+                    .eq('id', selectedRecordId);
+
+                  if (error) throw error;
+
+                  toast({
+                    title: '更新成功',
+                    description: '支出记录已更新'
+                  });
+
+                  setEditDialogOpen(false);
+                  setSelectedRecordId(null);
+                  fetchRecords();
+                } catch (error) {
+                  console.error('更新支出记录失败:', error);
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: error instanceof Error ? error.message : '操作失败，请重试'
+                  });
+                } finally {
+                  setEditLoading(false);
+                }
+              }}
+              disabled={editLoading}
+            >
+              {editLoading ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>

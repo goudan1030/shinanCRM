@@ -27,8 +27,8 @@ export default function DashboardLayout({
         </div>
       </header>
       <Sidebar />
-      <div className="md:pl-[297px] pt-[48px] h-screen overflow-hidden bg-white">
-        <main className="h-full overflow-auto">
+      <div className="md:pl-[57px] pt-[48px] h-screen overflow-hidden bg-white">
+        <main className="h-full overflow-auto max-w-[1200px] mx-auto">
           <div>{children}</div>
         </main>
       </div>

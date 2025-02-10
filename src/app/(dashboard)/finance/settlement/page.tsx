@@ -55,6 +55,14 @@ export default function ExpensePage() {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [editSettlementDialogOpen, setEditSettlementDialogOpen] = useState(false);
+  const [editSettlementData, setEditSettlementData] = useState({
+    settlement_date: '',
+    amount: '',
+    remaining_amount: '',
+    notes: ''
+  });
+  const [editSettlementLoading, setEditSettlementLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -299,7 +307,16 @@ export default function ExpensePage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => router.push(`/finance/settlement/edit/${record.id}`)}
+                              onClick={() => {
+                                setSelectedRecordId(record.id);
+                                setEditSettlementData({
+                                  settlement_date: record.settlement_date.split('T')[0],
+                                  amount: record.amount.toString(),
+                                  remaining_amount: record.remaining_amount.toString(),
+                                  notes: record.notes || ''
+                                });
+                                setEditSettlementDialogOpen(true);
+                              }}
                               className="h-8 px-2 text-primary"
                             >
                               编辑
@@ -440,6 +457,114 @@ export default function ExpensePage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={editSettlementDialogOpen} onOpenChange={setEditSettlementDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑结算</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">结算日期</label>
+              <Input
+                type="date"
+                value={editSettlementData.settlement_date}
+                onChange={(e) => setEditSettlementData({ ...editSettlementData, settlement_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">结算金额</label>
+              <Input
+                type="number"
+                value={editSettlementData.amount}
+                onChange={(e) => setEditSettlementData({ ...editSettlementData, amount: e.target.value })}
+                placeholder="请输入结算金额"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">剩余金额</label>
+              <Input
+                type="number"
+                value={editSettlementData.remaining_amount}
+                onChange={(e) => setEditSettlementData({ ...editSettlementData, remaining_amount: e.target.value })}
+                placeholder="请输入剩余金额"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditSettlementDialogOpen(false)}
+              disabled={editSettlementLoading}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!editSettlementData.settlement_date) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请输入结算日期'
+                  });
+                  return;
+                }
+                if (!editSettlementData.amount || parseFloat(editSettlementData.amount) <= 0) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请输入有效的结算金额'
+                  });
+                  return;
+                }
+                if (!editSettlementData.remaining_amount || parseFloat(editSettlementData.remaining_amount) < 0) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请输入有效的剩余金额'
+                  });
+                  return;
+                }
+
+                setEditSettlementLoading(true);
+                try {
+                  const { error } = await supabase
+                    .from('settlement_records')
+                    .update({
+                      settlement_date: editSettlementData.settlement_date,
+                      amount: parseFloat(editSettlementData.amount),
+                      remaining_amount: parseFloat(editSettlementData.remaining_amount)
+                    })
+                    .eq('id', selectedRecordId);
+
+                  if (error) throw error;
+
+                  toast({
+                    title: '更新成功',
+                    description: '结算记录已更新'
+                  });
+
+                  setEditSettlementDialogOpen(false);
+                  setSelectedRecordId(null);
+                  fetchRecords();
+                } catch (error) {
+                  console.error('更新结算记录失败:', error);
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: error instanceof Error ? error.message : '操作失败，请重试'
+                  });
+                } finally {
+                  setEditSettlementLoading(false);
+                }
+              }}
+              disabled={editSettlementLoading}
+            >
+              {editSettlementLoading ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -492,6 +617,115 @@ export default function ExpensePage() {
               disabled={deleteLoading}
             >
               {deleteLoading ? '删除中...' : '删除'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editSettlementDialogOpen} onOpenChange={setEditSettlementDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑结算</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">结算日期</label>
+              <Input
+                type="date"
+                value={editSettlementData.settlement_date}
+                onChange={(e) => setEditSettlementData({ ...editSettlementData, settlement_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">结算金额</label>
+              <Input
+                type="number"
+                value={editSettlementData.amount}
+                onChange={(e) => setEditSettlementData({ ...editSettlementData, amount: e.target.value })}
+                placeholder="请输入结算金额"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">剩余金额</label>
+              <Input
+                type="number"
+                value={editSettlementData.remaining_amount}
+                onChange={(e) => setEditSettlementData({ ...editSettlementData, remaining_amount: e.target.value })}
+                placeholder="请输入剩余金额"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditSettlementDialogOpen(false)}
+              disabled={editSettlementLoading}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!editSettlementData.settlement_date) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请输入结算日期'
+                  });
+                  return;
+                }
+                if (!editSettlementData.amount || parseFloat(editSettlementData.amount) <= 0) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请输入有效的结算金额'
+                  });
+                  return;
+                }
+                if (!editSettlementData.remaining_amount || parseFloat(editSettlementData.remaining_amount) < 0) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请输入有效的剩余金额'
+                  });
+                  return;
+                }
+
+                setEditSettlementLoading(true);
+                try {
+                  const { error } = await supabase
+                    .from('settlement_records')
+                    .update({
+                      settlement_date: editSettlementData.settlement_date,
+                      amount: parseFloat(editSettlementData.amount),
+                      remaining_amount: parseFloat(editSettlementData.remaining_amount),
+                      notes: editSettlementData.notes || null
+                    })
+                    .eq('id', selectedRecordId);
+
+                  if (error) throw error;
+
+                  toast({
+                    title: '更新成功',
+                    description: '结算记录已更新'
+                  });
+
+                  setEditSettlementDialogOpen(false);
+                  setSelectedRecordId(null);
+                  fetchRecords();
+                } catch (error) {
+                  console.error('更新结算记录失败:', error);
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: error instanceof Error ? error.message : '操作失败，请重试'
+                  });
+                } finally {
+                  setEditSettlementLoading(false);
+                }
+              }}
+              disabled={editSettlementLoading}
+            >
+              {editSettlementLoading ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>

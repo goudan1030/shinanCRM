@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, FileText, Settings, User, ChevronDown, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, User, ChevronDown, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -27,6 +27,25 @@ const navigation = [
       { name: '收入管理', href: '/finance/income', icon: ArrowDownCircle },
       { name: '支出管理', href: '/finance/expense', icon: ArrowUpCircle },
       { name: '结算管理', href: '/finance/settlement', icon: Calculator }
+    ]
+  },
+  {
+    name: '小程序管理',
+    href: '/miniapp',
+    icon: Smartphone,
+    matchPaths: ['/miniapp', '/miniapp/config', '/miniapp/review'],
+    children: [
+      { name: '基本配置', href: '/miniapp/config' },
+      { name: '审核管理', href: '/miniapp/review' }
+    ]
+  },
+  {
+    name: '企业微信管理',
+    href: '/wecom',
+    icon: Building2,
+    matchPaths: ['/wecom', '/wecom/config'],
+    children: [
+      { name: '基本配置', href: '/wecom/config' }
     ]
   },
   {
@@ -146,7 +165,10 @@ export function Sidebar() {
       {/* 独立的二级菜单区域 */}
       {currentParentItem?.children && (
         <div className="hidden md:block fixed left-[57px] top-0 h-[calc(100vh-0px)] w-[240px] bg-white border-r z-[5]">
-          <div className="space-y-1 p-2 mt-[48px]">
+          <div className="h-[48px] flex items-center px-4 border-b">
+            <h2 className="text-2xl font-bold">{currentParentItem.name}</h2>
+          </div>
+          <div className="space-y-1 p-2">
             {currentParentItem.children.map((child) => (
               <Link
                 key={child.name}
