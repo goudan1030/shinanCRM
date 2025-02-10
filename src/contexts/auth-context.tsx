@@ -8,6 +8,7 @@ const initialState: AuthState = {
   session: null,
   isLoading: true,
   error: null,
+  operatorId: null,
 };
 
 const AuthContext = createContext<AuthState>(initialState);
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         session: session as Session,
         isLoading: false,
+        operatorId: session?.user?.id || null,
       }));
     });
 
@@ -41,4 +43,12 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+export const useOperatorId = () => {
+  const { operatorId } = useAuth();
+  if (!operatorId) {
+    throw new Error('No operator ID found. Please ensure user is logged in.');
+  }
+  return operatorId;
 };

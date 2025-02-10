@@ -8,6 +8,9 @@ CREATE OR REPLACE FUNCTION activate_member(
 DECLARE
   v_old_status VARCHAR;
 BEGIN
+  -- 设置当前用户ID到会话变量
+  PERFORM set_config('app.current_user_id', p_activated_by::text, FALSE);
+
   -- 获取当前会员状态
   SELECT status INTO v_old_status
   FROM members

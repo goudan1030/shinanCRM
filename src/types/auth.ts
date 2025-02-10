@@ -18,4 +18,5 @@ export interface AuthState {
   session: Session | null;
   isLoading: boolean;
   error: Error | null;
+  operatorId: string | null;
 }

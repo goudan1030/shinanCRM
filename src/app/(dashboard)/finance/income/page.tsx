@@ -51,6 +51,16 @@ export default function IncomePage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editIncomeData, setEditIncomeData] = useState({
+    member_no: '',
+    payment_date: '',
+    payment_method: '',
+    amount: '',
+    notes: ''
+  });
+  const [editLoading, setEditLoading] = useState(false);
+
   useEffect(() => {
     if (!isLoading && !session) {
       router.push('/login');
@@ -336,7 +346,17 @@ export default function IncomePage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => router.push(`/finance/income/edit/${record.id}`)}
+                              onClick={() => {
+                                setSelectedRecordId(record.id);
+                                setEditIncomeData({
+                                  member_no: record.member_no,
+                                  payment_date: record.payment_date.split('T')[0],
+                                  payment_method: record.payment_method,
+                                  amount: record.amount.toString(),
+                                  notes: record.notes || ''
+                                });
+                                setEditDialogOpen(true);
+                              }}
                               className="h-8 px-2 text-primary"
                             >
                               编辑
@@ -557,6 +577,141 @@ export default function IncomePage() {
               disabled={deleteLoading}
             >
               {deleteLoading ? '删除中...' : '删除'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑收入</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">会员编号</label>
+              <Input
+                value={editIncomeData.member_no}
+                onChange={(e) => setEditIncomeData({ ...editIncomeData, member_no: e.target.value })}
+                placeholder="请输入会员编号"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">支付日期</label>
+              <Input
+                type="date"
+                value={editIncomeData.payment_date}
+                onChange={(e) => setEditIncomeData({ ...editIncomeData, payment_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">支付方式</label>
+              <Select
+                value={editIncomeData.payment_method}
+                onValueChange={(value) => setEditIncomeData({ ...editIncomeData, payment_method: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择支付方式" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALIPAY">支付宝</SelectItem>
+                  <SelectItem value="WECHAT_WANG">微信王</SelectItem>
+                  <SelectItem value="WECHAT_ZHANG">微信张</SelectItem>
+                  <SelectItem value="ICBC_QR">工商二维码</SelectItem>
+                  <SelectItem value="CORPORATE">对公账户</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">金额</label>
+              <Input
+                type="number"
+                value={editIncomeData.amount}
+                onChange={(e) => setEditIncomeData({ ...editIncomeData, amount: e.target.value })}
+                placeholder="请输入金额"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">备注</label>
+              <Input
+                value={editIncomeData.notes}
+                onChange={(e) => setEditIncomeData({ ...editIncomeData, notes: e.target.value })}
+                placeholder="请输入备注"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              disabled={editLoading}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!editIncomeData.member_no) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请输入会员编号'
+                  });
+                  return;
+                }
+                if (!editIncomeData.payment_method) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请选择支付方式'
+                  });
+                  return;
+                }
+                if (!editIncomeData.amount || parseFloat(editIncomeData.amount) <= 0) {
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: '请输入有效的金额'
+                  });
+                  return;
+                }
+
+                setEditLoading(true);
+                try {
+                  const { error } = await supabase
+                    .from('income_records')
+                    .update({
+                      member_no: editIncomeData.member_no,
+                      payment_date: editIncomeData.payment_date,
+                      payment_method: editIncomeData.payment_method,
+                      amount: parseFloat(editIncomeData.amount),
+                      notes: editIncomeData.notes || null
+                    })
+                    .eq('id', selectedRecordId);
+
+                  if (error) throw error;
+
+                  toast({
+                    title: '更新成功',
+                    description: '收入记录已更新'
+                  });
+
+                  setEditDialogOpen(false);
+                  setSelectedRecordId(null);
+                  fetchRecords();
+                } catch (error) {
+                  console.error('更新收入记录失败:', error);
+                  toast({
+                    variant: 'destructive',
+                    title: '更新失败',
+                    description: error instanceof Error ? error.message : '操作失败，请重试'
+                  });
+                } finally {
+                  setEditLoading(false);
+                }
+              }}
+              disabled={editLoading}
+            >
+              {editLoading ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>

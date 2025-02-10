@@ -8,6 +8,9 @@ CREATE OR REPLACE FUNCTION revoke_member(
 DECLARE
   v_old_status VARCHAR;
 BEGIN
+  -- 设置当前用户ID
+  PERFORM set_config('app.current_user_id', p_revoked_by::TEXT, FALSE);
+
   -- 获取当前会员状态
   SELECT status INTO v_old_status
   FROM members
