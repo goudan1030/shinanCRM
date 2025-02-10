@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/auth-context';
@@ -8,7 +8,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
@@ -36,6 +35,63 @@ export default function ExpensePage() {
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 25;
 
+  const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
+  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
+
+  const fetchRecords = useCallback(async () => {
+    try {
+      let query = supabase
+        .from('expense_records')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range((currentPage - 1) * pageSize, (currentPage * pageSize) - 1);
+    
+      if (searchKeyword) {
+        query = query.or(
+          `notes.ilike.%${searchKeyword}%`
+        );
+      }
+    
+      if (monthFilter && monthFilter !== 'all') {
+        const year = parseInt(yearFilter);
+        const month = parseInt(monthFilter);
+        const startDate = new Date(year, month - 1, 1).toISOString();
+        const endDate = new Date(year, month, 0).toISOString();
+        query = query.gte('expense_date', startDate).lte('expense_date', endDate);
+      } else {
+        const year = parseInt(yearFilter);
+        const startDate = new Date(year, 0, 1).toISOString();
+        const endDate = new Date(year, 11, 31).toISOString();
+        query = query.gte('expense_date', startDate).lte('expense_date', endDate);
+      }
+    
+      const { data, error, count } = await query;
+    
+      if (error) throw error;
+    
+      setRecords(data || []);
+      if (count !== null) {
+        setTotalCount(count);
+        setTotalPages(Math.ceil(count / pageSize));
+      }
+    } catch (error) {
+      console.error('获取支出记录失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '获取支出记录失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, monthFilter, pageSize, searchKeyword, supabase, toast, yearFilter, paymentMethodFilter]);
+
+  useEffect(() => {
+    if (session) {
+      fetchRecords();
+    }
+  }, [session, fetchRecords]);
+
   const [newExpenseDialogOpen, setNewExpenseDialogOpen] = useState(false);
   const [newExpenseData, setNewExpenseData] = useState({
     expense_date: new Date().toISOString().split('T')[0],
@@ -56,72 +112,10 @@ export default function ExpensePage() {
   const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !session) {
-      router.push('/login');
-    }
-  }, [isLoading, session, router]);
-
-  const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
-  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
-
-  useEffect(() => {
     if (session) {
       fetchRecords();
     }
-  }, [session, searchKeyword, paymentMethodFilter, monthFilter, yearFilter, currentPage]);
-
-  const fetchRecords = async () => {
-    try {
-      let query = supabase
-        .from('expense_records')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * pageSize, (currentPage * pageSize) - 1);
-
-      if (searchKeyword) {
-        query = query.or(
-          `notes.ilike.%${searchKeyword}%`
-        );
-      }
-
-      if (monthFilter && monthFilter !== 'all') {
-        const year = parseInt(yearFilter);
-        const month = parseInt(monthFilter);
-        const startDate = new Date(year, month - 1, 1).toISOString();
-        const endDate = new Date(year, month, 0).toISOString();
-        query = query.gte('expense_date', startDate).lte('expense_date', endDate);
-      } else {
-        // 当月份选择"全部"时，仍然按照年份筛选
-        const year = parseInt(yearFilter);
-        const startDate = new Date(year, 0, 1).toISOString();
-        const endDate = new Date(year, 11, 31).toISOString();
-        query = query.gte('expense_date', startDate).lte('expense_date', endDate);
-      }
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error('Supabase查询错误:', error);
-        throw error;
-      }
-
-      setRecords(data || []);
-      if (count !== null) {
-        setTotalCount(count);
-        setTotalPages(Math.ceil(count / pageSize));
-      }
-    } catch (error) {
-      console.error('获取支出记录失败:', error);
-      toast({
-        variant: 'destructive',
-        title: '获取支出记录失败',
-        description: error instanceof Error ? error.message : '操作失败，请重试'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  }, [session, fetchRecords]);
   const getPaymentMethodText = (method: string) => {
     switch (method) {
       case 'ALIPAY':

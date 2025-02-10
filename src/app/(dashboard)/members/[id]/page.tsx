@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Card } from '@/components/ui/card';
@@ -42,12 +42,16 @@ interface Member {
   phone: string;
 }
 
+interface MemberValues {
+  [key: string]: string | number | null;
+}
+
 interface MemberOperationLog {
   id: string;
   member_id: string;
   operation_type: string;
-  old_values: any;
-  new_values: any;
+  old_values: MemberValues;
+  new_values: MemberValues;
   reason: string | null;
   created_at: string;
   operator_id: string;
@@ -63,20 +67,7 @@ export default function MemberDetailPage({ params }: { params: { id: string } })
   const [operationLogs, setOperationLogs] = useState<MemberOperationLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!isLoading && !session) {
-      router.push('/login');
-    }
-  }, [isLoading, session, router]);
-
-  useEffect(() => {
-    if (session) {
-      fetchMemberDetails();
-      fetchMemberOperationLogs();
-    }
-  }, [session, id]);
-
-  const fetchMemberDetails = async () => {
+  const fetchMemberDetails = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('members')
@@ -96,9 +87,9 @@ export default function MemberDetailPage({ params }: { params: { id: string } })
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, supabase, toast]);
 
-  const fetchMemberOperationLogs = async () => {
+  const fetchMemberOperationLogs = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('member_operation_logs')
@@ -116,7 +107,20 @@ export default function MemberDetailPage({ params }: { params: { id: string } })
         description: '无法加载操作记录，请重试'
       });
     }
-  };
+  }, [id, supabase, toast]);
+
+  useEffect(() => {
+    if (!isLoading && !session) {
+      router.push('/login');
+    }
+  }, [isLoading, session, router]);
+
+  useEffect(() => {
+    if (session) {
+      fetchMemberDetails();
+      fetchMemberOperationLogs();
+    }
+  }, [session, fetchMemberDetails, fetchMemberOperationLogs]);
 
   if (loading) {
     return <div>加载中...</div>;

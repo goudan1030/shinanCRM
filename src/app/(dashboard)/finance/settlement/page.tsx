@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/auth-context';
@@ -8,25 +8,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
 
-interface SettlementRecord {
+interface ExpenseRecord {
   id: string;
-  settlement_date: string;
+  expense_date: string;
   amount: number;
-  remaining_amount: number;
-  operator_id: string;
-  created_at: string;
-}
-
-interface SettlementRecord {
-  id: string;
-  settlement_date: string;
-  amount: number;
-  remaining_amount: number;
+  notes: string;
   operator_id: string;
   created_at: string;
 }
@@ -36,94 +26,110 @@ export default function ExpensePage() {
   const { session, isLoading } = useAuth();
   const router = useRouter();
   const supabase = createClientComponentClient();
-  const [records, setRecords] = useState<SettlementRecord[]>([]);
+  const [records, setRecords] = useState<ExpenseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 25;
 
-  const [newSettlementDialogOpen, setNewSettlementDialogOpen] = useState(false);
-  const [newSettlementData, setNewSettlementData] = useState({
-    settlement_date: new Date().toISOString().split('T')[0],
-    amount: '',
-    remaining_amount: '',
-    notes: ''
-  });
-  const [newSettlementLoading, setNewSettlementLoading] = useState(false);
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [editSettlementDialogOpen, setEditSettlementDialogOpen] = useState(false);
-  const [editSettlementData, setEditSettlementData] = useState({
-    settlement_date: '',
-    amount: '',
-    remaining_amount: '',
-    notes: ''
-  });
-  const [editSettlementLoading, setEditSettlementLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading && !session) {
-      router.push('/login');
-    }
-  }, [isLoading, session, router]);
-
   const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
 
-  useEffect(() => {
-    if (session) {
-      fetchRecords();
-    }
-  }, [session, searchKeyword, monthFilter, yearFilter, currentPage]);
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     try {
       let query = supabase
-        .from('settlement_records')
+        .from('expense_records')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range((currentPage - 1) * pageSize, (currentPage * pageSize) - 1);
-
+    
       if (searchKeyword) {
         query = query.or(
           `notes.ilike.%${searchKeyword}%`
         );
       }
-
+    
       if (monthFilter && monthFilter !== 'all') {
         const year = parseInt(yearFilter);
         const month = parseInt(monthFilter);
         const startDate = new Date(year, month - 1, 1).toISOString();
         const endDate = new Date(year, month, 0).toISOString();
-        query = query.gte('settlement_date', startDate).lte('settlement_date', endDate);
+        query = query.gte('expense_date', startDate).lte('expense_date', endDate);
       } else {
         const year = parseInt(yearFilter);
         const startDate = new Date(year, 0, 1).toISOString();
         const endDate = new Date(year, 11, 31).toISOString();
-        query = query.gte('settlement_date', startDate).lte('settlement_date', endDate);
+        query = query.gte('expense_date', startDate).lte('expense_date', endDate);
       }
-
+    
       const { data, error, count } = await query;
-
+    
       if (error) throw error;
-
+    
       setRecords(data || []);
-      if (count) {
+      if (count !== null) {
         setTotalCount(count);
         setTotalPages(Math.ceil(count / pageSize));
       }
     } catch (error) {
-      console.error('获取结算记录失败:', error);
+      console.error('获取支出记录失败:', error);
       toast({
         variant: 'destructive',
-        title: '获取结算记录失败',
+        title: '获取支出记录失败',
         description: error instanceof Error ? error.message : '操作失败，请重试'
       });
     } finally {
       setLoading(false);
+    }
+  }, [currentPage, monthFilter, pageSize, searchKeyword, supabase, toast, yearFilter, paymentMethodFilter]);
+
+  useEffect(() => {
+    if (session) {
+      fetchRecords();
+    }
+  }, [session, fetchRecords]);
+
+  const [newExpenseDialogOpen, setNewExpenseDialogOpen] = useState(false);
+  const [newExpenseData, setNewExpenseData] = useState({
+    expense_date: new Date().toISOString().split('T')[0],
+    amount: '',
+    notes: ''
+  });
+  const [newExpenseLoading, setNewExpenseLoading] = useState(false);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editExpenseData, setEditExpenseData] = useState({
+    expense_date: '',
+    amount: '',
+    notes: ''
+  });
+  const [editLoading, setEditLoading] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      fetchRecords();
+    }
+  }, [session, fetchRecords]);
+  const getPaymentMethodText = (method: string) => {
+    switch (method) {
+      case 'ALIPAY':
+        return '支付宝';
+      case 'WECHAT_WANG':
+        return '微信王';
+      case 'WECHAT_ZHANG':
+        return '微信张';
+      case 'ICBC_QR':
+        return '工商二维码';
+      case 'CORPORATE':
+        return '对公账户';
+      default:
+        return '未知';
     }
   };
 
@@ -139,13 +145,13 @@ export default function ExpensePage() {
             <div className="space-y-1 p-2">
               <Link
                 href="/finance/income"
-                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
+                className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
               >
                 <span className="text-[13px]">收入管理</span>
               </Link>
               <Link
                 href="/finance/expense"
-                className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
+                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
               >
                 <span className="text-[13px]">支出管理</span>
               </Link>
@@ -182,13 +188,13 @@ export default function ExpensePage() {
             </Link>
             <Link
               href="/finance/expense"
-              className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
+              className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
             >
               <span className="text-[13px]">支出管理</span>
             </Link>
             <Link
               href="/finance/settlement"
-              className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
+              className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
             >
               <span className="text-[13px]">结算管理</span>
             </Link>
@@ -201,11 +207,27 @@ export default function ExpensePage() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">搜索</label>
               <Input
-                placeholder="搜索备注"
+                placeholder="搜索会员编号或备注"
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 className="w-full"
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">支付方式筛选</label>
+              <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="支付方式" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部</SelectItem>
+                  <SelectItem value="ALIPAY">支付宝</SelectItem>
+                  <SelectItem value="WECHAT_WANG">微信王</SelectItem>
+                  <SelectItem value="WECHAT_ZHANG">微信张</SelectItem>
+                  <SelectItem value="ICBC_QR">工商二维码</SelectItem>
+                  <SelectItem value="CORPORATE">对公账户</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">年份筛选</label>
@@ -245,11 +267,11 @@ export default function ExpensePage() {
           {/* 固定在顶部的操作区域 */}
           <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[534px] z-50">
             <Button
-              onClick={() => setNewSettlementDialogOpen(true)}
+              onClick={() => setNewExpenseDialogOpen(true)}
               size="sm"
               className="h-[28px]"
             >
-              新增结算
+              新增支出
             </Button>
           </div>
           
@@ -272,9 +294,9 @@ export default function ExpensePage() {
                 <table className="w-full">
                   <thead>
                     <tr className="sticky top-0 bg-[#f2f2f2] z-40">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">结算日期</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">结算金额</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">剩余金额</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">支出日期</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">金额</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">备注</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">创建时间</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
                     </tr>
@@ -282,13 +304,13 @@ export default function ExpensePage() {
                   <tbody className="divide-y divide-gray-200">
                     {loading ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">
+                        <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
                           加载中...
                         </td>
                       </tr>
                     ) : records.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">
+                        <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
                           暂无数据
                         </td>
                       </tr>
@@ -296,10 +318,10 @@ export default function ExpensePage() {
                       records.map((record) => (
                         <tr key={record.id} className="hover:bg-gray-50 h-[48px]">
                           <td className="px-4 py-2 text-sm text-gray-900">
-                            {new Date(record.settlement_date).toLocaleDateString('zh-CN')}
+                            {new Date(record.expense_date).toLocaleDateString('zh-CN')}
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-900">¥{record.amount.toLocaleString()}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">¥{record.remaining_amount.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900">{record.notes || '-'}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">
                             {new Date(record.created_at).toLocaleString('zh-CN')}
                           </td>
@@ -309,13 +331,12 @@ export default function ExpensePage() {
                               size="sm"
                               onClick={() => {
                                 setSelectedRecordId(record.id);
-                                setEditSettlementData({
-                                  settlement_date: record.settlement_date.split('T')[0],
+                                setEditExpenseData({
+                                  expense_date: record.expense_date.split('T')[0],
                                   amount: record.amount.toString(),
-                                  remaining_amount: record.remaining_amount.toString(),
                                   notes: record.notes || ''
                                 });
-                                setEditSettlementDialogOpen(true);
+                                setEditDialogOpen(true);
                               }}
                               className="h-8 px-2 text-primary"
                             >
@@ -344,82 +365,65 @@ export default function ExpensePage() {
         </div>
       </div>
 
-      <Dialog open={newSettlementDialogOpen} onOpenChange={setNewSettlementDialogOpen}>
+      <Dialog open={newExpenseDialogOpen} onOpenChange={setNewExpenseDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新增结算</DialogTitle>
+            <DialogTitle>新增支出</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">结算日期</label>
+              <label className="text-sm font-medium">支出日期</label>
               <Input
                 type="date"
-                value={newSettlementData.settlement_date}
-                onChange={(e) => setNewSettlementData({ ...newSettlementData, settlement_date: e.target.value })}
+                value={newExpenseData.expense_date}
+                onChange={(e) => setNewExpenseData({ ...newExpenseData, expense_date: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">结算金额</label>
+              <label className="text-sm font-medium">金额</label>
               <Input
                 type="number"
-                value={newSettlementData.amount}
-                onChange={(e) => setNewSettlementData({ ...newSettlementData, amount: e.target.value })}
-                placeholder="请输入结算金额"
+                value={newExpenseData.amount}
+                onChange={(e) => setNewExpenseData({ ...newExpenseData, amount: e.target.value })}
+                placeholder="请输入金额"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">剩余金额</label>
+              <label className="text-sm font-medium">备注</label>
               <Input
-                type="number"
-                value={newSettlementData.remaining_amount}
-                onChange={(e) => setNewSettlementData({ ...newSettlementData, remaining_amount: e.target.value })}
-                placeholder="请输入剩余金额"
+                value={newExpenseData.notes}
+                onChange={(e) => setNewExpenseData({ ...newExpenseData, notes: e.target.value })}
+                placeholder="请输入备注"
               />
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setNewSettlementDialogOpen(false)}
-              disabled={newSettlementLoading}
+              onClick={() => setNewExpenseDialogOpen(false)}
+              disabled={newExpenseLoading}
             >
               取消
             </Button>
             <Button
               onClick={async () => {
-                if (!newSettlementData.settlement_date) {
+                if (!newExpenseData.amount || parseFloat(newExpenseData.amount) <= 0) {
                   toast({
                     variant: 'destructive',
                     title: '创建失败',
-                    description: '请输入结算日期'
-                  });
-                  return;
-                }
-                if (!newSettlementData.amount || parseFloat(newSettlementData.amount) <= 0) {
-                  toast({
-                    variant: 'destructive',
-                    title: '创建失败',
-                    description: '请输入有效的结算金额'
-                  });
-                  return;
-                }
-                if (!newSettlementData.remaining_amount || parseFloat(newSettlementData.remaining_amount) < 0) {
-                  toast({
-                    variant: 'destructive',
-                    title: '创建失败',
-                    description: '请输入有效的剩余金额'
+                    description: '请输入有效的金额'
                   });
                   return;
                 }
 
-                setNewSettlementLoading(true);
+                setNewExpenseLoading(true);
                 try {
                   const { error } = await supabase
-                    .from('settlement_records')
+                    .from('expense_records')
                     .insert([{
-                      settlement_date: newSettlementData.settlement_date,
-                      amount: parseFloat(newSettlementData.amount),
-                      remaining_amount: parseFloat(newSettlementData.remaining_amount),
+                      expense_date: newExpenseData.expense_date,
+                      amount: parseFloat(newExpenseData.amount),
+                      notes: newExpenseData.notes || null,
                       operator_id: session?.user?.id
                     }]);
 
@@ -427,139 +431,30 @@ export default function ExpensePage() {
 
                   toast({
                     title: '创建成功',
-                    description: '结算记录已保存'
+                    description: '收入记录已保存'
                   });
 
-                  setNewSettlementDialogOpen(false);
-                  setNewSettlementData({
-                    settlement_date: new Date().toISOString().split('T')[0],
+                  setNewExpenseDialogOpen(false);
+                  setNewExpenseData({
+                    expense_date: new Date().toISOString().split('T')[0],
                     amount: '',
-                    remaining_amount: '',
                     notes: ''
                   });
                   fetchRecords();
                 } catch (error) {
-                  console.error('创建结算记录失败:', error);
+                  console.error('创建收入记录失败:', error);
                   toast({
                     variant: 'destructive',
                     title: '创建失败',
                     description: error instanceof Error ? error.message : '操作失败，请重试'
                   });
                 } finally {
-                  setNewSettlementLoading(false);
+                  setNewExpenseLoading(false);
                 }
               }}
-              disabled={newSettlementLoading}
+              disabled={newExpenseLoading}
             >
-              {newSettlementLoading ? '保存中...' : '保存'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={editSettlementDialogOpen} onOpenChange={setEditSettlementDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>编辑结算</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">结算日期</label>
-              <Input
-                type="date"
-                value={editSettlementData.settlement_date}
-                onChange={(e) => setEditSettlementData({ ...editSettlementData, settlement_date: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">结算金额</label>
-              <Input
-                type="number"
-                value={editSettlementData.amount}
-                onChange={(e) => setEditSettlementData({ ...editSettlementData, amount: e.target.value })}
-                placeholder="请输入结算金额"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">剩余金额</label>
-              <Input
-                type="number"
-                value={editSettlementData.remaining_amount}
-                onChange={(e) => setEditSettlementData({ ...editSettlementData, remaining_amount: e.target.value })}
-                placeholder="请输入剩余金额"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditSettlementDialogOpen(false)}
-              disabled={editSettlementLoading}
-            >
-              取消
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!editSettlementData.settlement_date) {
-                  toast({
-                    variant: 'destructive',
-                    title: '更新失败',
-                    description: '请输入结算日期'
-                  });
-                  return;
-                }
-                if (!editSettlementData.amount || parseFloat(editSettlementData.amount) <= 0) {
-                  toast({
-                    variant: 'destructive',
-                    title: '更新失败',
-                    description: '请输入有效的结算金额'
-                  });
-                  return;
-                }
-                if (!editSettlementData.remaining_amount || parseFloat(editSettlementData.remaining_amount) < 0) {
-                  toast({
-                    variant: 'destructive',
-                    title: '更新失败',
-                    description: '请输入有效的剩余金额'
-                  });
-                  return;
-                }
-
-                setEditSettlementLoading(true);
-                try {
-                  const { error } = await supabase
-                    .from('settlement_records')
-                    .update({
-                      settlement_date: editSettlementData.settlement_date,
-                      amount: parseFloat(editSettlementData.amount),
-                      remaining_amount: parseFloat(editSettlementData.remaining_amount)
-                    })
-                    .eq('id', selectedRecordId);
-
-                  if (error) throw error;
-
-                  toast({
-                    title: '更新成功',
-                    description: '结算记录已更新'
-                  });
-
-                  setEditSettlementDialogOpen(false);
-                  setSelectedRecordId(null);
-                  fetchRecords();
-                } catch (error) {
-                  console.error('更新结算记录失败:', error);
-                  toast({
-                    variant: 'destructive',
-                    title: '更新失败',
-                    description: error instanceof Error ? error.message : '操作失败，请重试'
-                  });
-                } finally {
-                  setEditSettlementLoading(false);
-                }
-              }}
-              disabled={editSettlementLoading}
-            >
-              {editSettlementLoading ? '保存中...' : '保存'}
+              {newExpenseLoading ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -571,7 +466,7 @@ export default function ExpensePage() {
             <DialogTitle>删除确认</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-gray-500">确定要删除这条结算记录吗？此操作不可撤销。</p>
+            <p className="text-sm text-gray-500">确定要删除这条收入记录吗？此操作不可撤销。</p>
           </div>
           <DialogFooter>
             <Button
@@ -589,7 +484,7 @@ export default function ExpensePage() {
                 setDeleteLoading(true);
                 try {
                   const { error } = await supabase
-                    .from('settlement_records')
+                    .from('expense_records')
                     .delete()
                     .eq('id', selectedRecordId);
 
@@ -597,14 +492,14 @@ export default function ExpensePage() {
 
                   toast({
                     title: '删除成功',
-                    description: '结算记录已删除'
+                    description: '支出记录已删除'
                   });
 
                   setDeleteDialogOpen(false);
                   setSelectedRecordId(null);
                   fetchRecords();
                 } catch (error) {
-                  console.error('删除结算记录失败:', error);
+                  console.error('删除收入记录失败:', error);
                   toast({
                     variant: 'destructive',
                     title: '删除失败',
@@ -622,83 +517,65 @@ export default function ExpensePage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editSettlementDialogOpen} onOpenChange={setEditSettlementDialogOpen}>
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑结算</DialogTitle>
+            <DialogTitle>编辑支出</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">结算日期</label>
+              <label className="text-sm font-medium">支出日期</label>
               <Input
                 type="date"
-                value={editSettlementData.settlement_date}
-                onChange={(e) => setEditSettlementData({ ...editSettlementData, settlement_date: e.target.value })}
+                value={editExpenseData.expense_date}
+                onChange={(e) => setEditExpenseData({ ...editExpenseData, expense_date: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">结算金额</label>
+              <label className="text-sm font-medium">金额</label>
               <Input
                 type="number"
-                value={editSettlementData.amount}
-                onChange={(e) => setEditSettlementData({ ...editSettlementData, amount: e.target.value })}
-                placeholder="请输入结算金额"
+                value={editExpenseData.amount}
+                onChange={(e) => setEditExpenseData({ ...editExpenseData, amount: e.target.value })}
+                placeholder="请输入金额"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">剩余金额</label>
+              <label className="text-sm font-medium">备注</label>
               <Input
-                type="number"
-                value={editSettlementData.remaining_amount}
-                onChange={(e) => setEditSettlementData({ ...editSettlementData, remaining_amount: e.target.value })}
-                placeholder="请输入剩余金额"
+                value={editExpenseData.notes}
+                onChange={(e) => setEditExpenseData({ ...editExpenseData, notes: e.target.value })}
+                placeholder="请输入备注"
               />
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setEditSettlementDialogOpen(false)}
-              disabled={editSettlementLoading}
+              onClick={() => setEditDialogOpen(false)}
+              disabled={editLoading}
             >
               取消
             </Button>
             <Button
               onClick={async () => {
-                if (!editSettlementData.settlement_date) {
+                if (!editExpenseData.amount || parseFloat(editExpenseData.amount) <= 0) {
                   toast({
                     variant: 'destructive',
                     title: '更新失败',
-                    description: '请输入结算日期'
-                  });
-                  return;
-                }
-                if (!editSettlementData.amount || parseFloat(editSettlementData.amount) <= 0) {
-                  toast({
-                    variant: 'destructive',
-                    title: '更新失败',
-                    description: '请输入有效的结算金额'
-                  });
-                  return;
-                }
-                if (!editSettlementData.remaining_amount || parseFloat(editSettlementData.remaining_amount) < 0) {
-                  toast({
-                    variant: 'destructive',
-                    title: '更新失败',
-                    description: '请输入有效的剩余金额'
+                    description: '请输入有效的金额'
                   });
                   return;
                 }
 
-                setEditSettlementLoading(true);
+                setEditLoading(true);
                 try {
                   const { error } = await supabase
-                    .from('settlement_records')
+                    .from('expense_records')
                     .update({
-                      settlement_date: editSettlementData.settlement_date,
-                      amount: parseFloat(editSettlementData.amount),
-                      remaining_amount: parseFloat(editSettlementData.remaining_amount),
-                      notes: editSettlementData.notes || null
+                      expense_date: editExpenseData.expense_date,
+                      amount: parseFloat(editExpenseData.amount),
+                      notes: editExpenseData.notes || null
                     })
                     .eq('id', selectedRecordId);
 
@@ -706,26 +583,26 @@ export default function ExpensePage() {
 
                   toast({
                     title: '更新成功',
-                    description: '结算记录已更新'
+                    description: '支出记录已更新'
                   });
 
-                  setEditSettlementDialogOpen(false);
+                  setEditDialogOpen(false);
                   setSelectedRecordId(null);
                   fetchRecords();
                 } catch (error) {
-                  console.error('更新结算记录失败:', error);
+                  console.error('更新支出记录失败:', error);
                   toast({
                     variant: 'destructive',
                     title: '更新失败',
                     description: error instanceof Error ? error.message : '操作失败，请重试'
                   });
                 } finally {
-                  setEditSettlementLoading(false);
+                  setEditLoading(false);
                 }
               }}
-              disabled={editSettlementLoading}
+              disabled={editLoading}
             >
-              {editSettlementLoading ? '保存中...' : '保存'}
+              {editLoading ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>

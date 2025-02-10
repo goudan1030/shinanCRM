@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/auth-context';
@@ -8,7 +8,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
@@ -70,13 +69,7 @@ export default function IncomePage() {
   const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
 
-  useEffect(() => {
-    if (session) {
-      fetchRecords();
-    }
-  }, [session, searchKeyword, paymentMethodFilter, monthFilter, yearFilter, currentPage]);
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     try {
       let query = supabase
         .from('income_records')
@@ -127,7 +120,13 @@ export default function IncomePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, monthFilter, pageSize, paymentMethodFilter, searchKeyword, supabase, toast, yearFilter]);
+
+  useEffect(() => {
+    if (session) {
+      fetchRecords();
+    }
+  }, [session, fetchRecords]);
 
   const getPaymentMethodText = (method: string) => {
     switch (method) {

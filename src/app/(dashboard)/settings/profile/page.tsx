@@ -30,16 +30,16 @@ export default function ProfilePage() {
     setSuccess(null);
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { error: updateError } = await supabase.auth.updateUser({
         data: {
           name: formData.name,
           avatar_url: formData.avatar_url
         }
       });
 
-      if (error) throw error;
+      if (updateError) throw updateError;
       setSuccess('个人信息更新成功');
-    } catch (error) {
+    } catch (err) {
       setError('更新失败，请重试');
     } finally {
       setLoading(false);
@@ -58,14 +58,14 @@ export default function ProfilePage() {
     setSuccess(null);
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { error: updateError } = await supabase.auth.updateUser({
         password: password.new
       });
 
-      if (error) throw error;
+      if (updateError) throw updateError;
       setSuccess('密码更新成功');
       setPassword({ current: '', new: '', confirm: '' });
-    } catch (error) {
+    } catch (err) {
       setError('密码更新失败，请重试');
     } finally {
       setLoading(false);

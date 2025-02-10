@@ -101,15 +101,14 @@ export default function NewMemberPage() {
         return acc;
       }, {});
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('members')
         .insert([{
           ...submitData,
           type: 'NORMAL',
           status: 'ACTIVE',
           remaining_matches: 10
-        }])
-        .select();
+        }]);
 
       if (error) {
         // 根据不同的错误类型显示相应的提示信息

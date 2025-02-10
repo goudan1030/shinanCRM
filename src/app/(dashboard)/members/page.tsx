@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface Member {
   id: string;
@@ -94,9 +92,6 @@ export default function MembersPage() {
   const [selectedColumns, setSelectedColumns] = useState(['member_no', 'wechat', 'phone', 'type', 'status', 'remaining_matches', 'actions']);
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
-  const [matchReason, setMatchReason] = useState('');
-  const [matchTargetId, setMatchTargetId] = useState<string | null>(null);
-  const [tableWidth, setTableWidth] = useState('100%');
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
   const pageSize = 25;
 
@@ -132,13 +127,7 @@ export default function MembersPage() {
     }
   }, [isLoading, session, router]);
 
-  useEffect(() => {
-    if (session) {
-      fetchMembers();
-    }
-  }, [session, searchKeyword, typeFilter, statusFilter, currentPage]);
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       let query = supabase
         .from('members')
@@ -148,18 +137,15 @@ export default function MembersPage() {
 
       if (searchKeyword) {
         query = query.or(
-          `member_no.ilike.%${searchKeyword}%,` +
-          `wechat.ilike.%${searchKeyword}%,` +
-          `phone.ilike.%${searchKeyword}%,` +
-          `self_description.ilike.%${searchKeyword}%`
+          `member_no.ilike.%${searchKeyword}%,wechat.ilike.%${searchKeyword}%,phone.ilike.%${searchKeyword}%`
         );
       }
 
-      if (typeFilter && typeFilter !== 'all') {
+      if (typeFilter) {
         query = query.eq('type', typeFilter);
       }
 
-      if (statusFilter && statusFilter !== 'all') {
+      if (statusFilter) {
         query = query.eq('status', statusFilter);
       }
 
@@ -174,10 +160,21 @@ export default function MembersPage() {
       }
     } catch (error) {
       console.error('获取会员列表失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '获取会员列表失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchKeyword, statusFilter, supabase, toast, typeFilter]);
+
+  useEffect(() => {
+    if (session) {
+      fetchMembers();
+    }
+  }, [session, fetchMembers]);
 
   const getMemberTypeText = (type: string, remainingMatches?: number) => {
     switch (type) {
