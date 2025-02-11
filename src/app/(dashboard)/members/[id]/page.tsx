@@ -13,7 +13,7 @@ interface PageProps {
 }
 
 export default function MemberDetailPage({ params }: PageProps) {
-  const { id } = params;
-  
-  return <MemberDetail id={id} />;
+  return (
+    <MemberDetail id={params.id} />
+  );
 }
