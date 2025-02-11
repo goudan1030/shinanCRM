@@ -42,6 +42,7 @@ interface Member {
   updated_at: string;
   wechat: string;
   phone: string;
+  self_description: string | null;
 }
 
 interface MemberValues {
@@ -164,7 +165,9 @@ export default function MemberDetail({ id }: MemberDetailProps) {
             <div><span className="font-semibold">饮酒情况：</span>{member.drinking}</div>
             <div><span className="font-semibold">微信号：</span>{member.wechat}</div>
             <div><span className="font-semibold">手机号：</span>{member.phone}</div>
-            <div><span className="font-semibold">个人说明：</span>{member.self_description}</div>
+            {member.self_description && (
+              <div><span className="font-semibold">个人说明：</span>{member.self_description}</div>
+            )}
             <div><span className="font-semibold">择偶要求：</span>{member.partner_requirement}</div>
             <div><span className="font-semibold">创建时间：</span>{new Date(member.created_at).toLocaleString()}</div>
             <div><span className="font-semibold">更新时间：</span>{new Date(member.updated_at).toLocaleString()}</div>
