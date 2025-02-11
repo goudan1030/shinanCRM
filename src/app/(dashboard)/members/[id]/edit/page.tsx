@@ -38,6 +38,10 @@ interface FormData {
   [key: string]: string;  // 添加索引签名
 }
 
+interface SubmitData {
+  [key: string]: string | null;
+}
+
 export default function EditMemberPage() {
   const router = useRouter();
   const params = useParams();
@@ -180,7 +184,7 @@ export default function EditMemberPage() {
 
     try {
       // 处理提交数据，将空字符串转换为null
-      const submitData = Object.entries(formData).reduce((acc, [key, value]) => {
+      const submitData = Object.entries(formData).reduce<SubmitData>((acc, [key, value]) => {
         acc[key] = value === '' ? null : value;
         return acc;
       }, {});
