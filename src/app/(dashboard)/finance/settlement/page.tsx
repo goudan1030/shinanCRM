@@ -11,6 +11,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { Pagination } from '@/components/ui/pagination';
 import { SearchFilter } from '@/components/ui/settlement';
 import { LoadingRow, EmptyRow, SettlementRow } from '@/components/ui/settlement';
+import { User, UserMetadata } from '@supabase/supabase-js';
+import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface SettlementRecord {
   id: string;
@@ -23,7 +25,7 @@ interface SettlementRecord {
 
 export default function SettlementPage() {
   const { toast } = useToast();
-  const { session, isLoading } = useAuth();
+  const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
   const supabase = createClientComponentClient();
   const [records, setRecords] = useState<SettlementRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,9 @@ export default function SettlementPage() {
 
   const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
+
+  // 如果有使用 user_metadata，使用类型断言
+  const operatorName = (session?.user?.user_metadata as UserMetadata)?.name || session?.user?.email;
 
   const fetchRecords = useCallback(async () => {
     try {

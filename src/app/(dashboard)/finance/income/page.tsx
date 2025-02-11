@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
+import { User, UserMetadata } from '@supabase/supabase-js';
+import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface IncomeRecord {
   id: string;
@@ -25,7 +27,7 @@ interface IncomeRecord {
 
 export default function IncomePage() {
   const { toast } = useToast();
-  const { session, isLoading } = useAuth();
+  const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [records, setRecords] = useState<IncomeRecord[]>([]);
@@ -59,6 +61,9 @@ export default function IncomePage() {
     notes: ''
   });
   const [editLoading, setEditLoading] = useState(false);
+
+  // 如果有使用 user_metadata，使用类型断言
+  const operatorName = (session?.user?.user_metadata as UserMetadata)?.name || session?.user?.email;
 
   useEffect(() => {
     if (!isLoading && !session) {

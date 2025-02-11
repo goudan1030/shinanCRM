@@ -10,17 +10,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { User } from '@supabase/supabase-js';
-
-interface ExtendedUser extends User {
-  user_metadata?: {
-    name?: string;
-  };
-}
-
-interface ExtendedSession {
-  user: ExtendedUser;
-}
+import { User, UserMetadata } from '@supabase/supabase-js';
+import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface Member {
   id: string;
@@ -83,7 +74,7 @@ const availableColumns = [
 
 export default function MembersPage() {
   const { toast } = useToast();
-  const { session, isLoading } = useAuth() as { session: ExtendedSession | null, isLoading: boolean };
+  const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [members, setMembers] = useState<Member[]>([]);
@@ -481,12 +472,14 @@ export default function MembersPage() {
         ? new Date(upgradeDate.getFullYear() + 1, upgradeDate.getMonth(), upgradeDate.getDate() - 1).toISOString()
         : null;
       
+      const operatorName = (session?.user?.user_metadata as UserMetadata)?.name || session?.user?.email;
+      
       const { error: transactionError } = await supabase.rpc('upgrade_member', {
         p_member_id: selectedMemberId,
         p_type: upgradeType,
         p_payment_time: paymentTime,
         p_expiry_time: expiryTime,
-        p_notes: `${session?.user?.user_metadata?.name || session?.user?.email} 在 ${new Date().toLocaleString('zh-CN')} 将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
+        p_notes: `${operatorName} 在 ${new Date().toLocaleString('zh-CN')} 将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
       });
 
       if (transactionError) throw transactionError;
