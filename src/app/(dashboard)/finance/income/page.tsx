@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -11,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
-import { UserMetadata } from '@supabase/supabase-js';
 import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface IncomeRecord {
@@ -28,7 +26,6 @@ interface IncomeRecord {
 export default function IncomePage() {
   const { toast } = useToast();
   const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
-  const router = useRouter();
   const supabase = createClientComponentClient();
   const [records, setRecords] = useState<IncomeRecord[]>([]);
   const [loading, setLoading] = useState(true);

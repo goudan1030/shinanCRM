@@ -10,7 +10,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { UserMetadata } from '@supabase/supabase-js';
 import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface Member {

@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/auth-context';
 import { Pagination } from '@/components/ui/pagination';
 import { SearchFilter } from '@/components/ui/settlement';
 import { LoadingRow, EmptyRow, SettlementRow } from '@/components/ui/settlement';
-import { UserMetadata } from '@supabase/supabase-js';
 import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface SettlementRecord {

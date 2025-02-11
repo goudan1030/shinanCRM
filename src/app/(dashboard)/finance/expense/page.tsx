@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
-import { UserMetadata } from '@supabase/supabase-js';
 import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface ExpenseRecord {
