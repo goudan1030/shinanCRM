@@ -41,6 +41,13 @@ interface Member {
   status: string;
   remaining_matches: number;
   created_at: string;
+  house_car: string;
+  hukou_province: string;
+  hukou_city: string;
+  children_plan: string;
+  marriage_cert: string;
+  marriage_history: string;
+  sexual_orientation: string;
 }
 
 const availableColumns = [
@@ -756,11 +763,11 @@ export default function MembersPage() {
                               </Button>
                             ) :
                              columnKey === 'gender' ? getGenderText(member[columnKey]) :
-                             columnKey === 'house_car' ? getHouseCarText(member[columnKey]) :
-                             columnKey === 'children_plan' ? getChildrenPlanText(member[columnKey]) :
-                             columnKey === 'marriage_cert' ? getMarriageCertText(member[columnKey]) :
-                             columnKey === 'marriage_history' ? getMarriageHistoryText(member[columnKey]) :
-                             columnKey === 'sexual_orientation' ? getSexualOrientationText(member[columnKey]) :
+                             columnKey === 'house_car' ? getHouseCarText(member.house_car) :
+                             columnKey === 'children_plan' ? getChildrenPlanText(member.children_plan) :
+                             columnKey === 'marriage_cert' ? getMarriageCertText(member.marriage_cert) :
+                             columnKey === 'marriage_history' ? getMarriageHistoryText(member.marriage_history) :
+                             columnKey === 'sexual_orientation' ? getSexualOrientationText(member.sexual_orientation) :
                              columnKey === 'education' ? getEducationText(member[columnKey]) :
                              columnKey === 'status' ? (
                               <span className={`px-2 py-1 rounded-full text-[13px] ${member.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : member.status === 'REVOKED' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
