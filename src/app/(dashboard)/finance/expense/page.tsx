@@ -20,6 +20,12 @@ interface ExpenseRecord {
   created_at: string;
 }
 
+interface EditExpenseData {
+  expense_date: string;
+  amount: string;
+  notes: string;
+}
+
 export default function ExpensePage() {
   const { toast } = useToast();
   const { session, isLoading } = useAuth();
@@ -102,8 +108,7 @@ export default function ExpensePage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editExpenseData, setEditExpenseData] = useState({
+  const [editExpenseData, setEditExpenseData] = useState<EditExpenseData>({
     expense_date: '',
     amount: '',
     notes: ''
@@ -318,7 +323,6 @@ export default function ExpensePage() {
                                   amount: record.amount.toString(),
                                   notes: record.notes || ''
                                 });
-                                setEditDialogOpen(true);
                               }}
                               className="h-8 px-2 text-primary"
                             >

@@ -51,6 +51,10 @@ export default function DashboardPage() {
           .from('members')
           .select('*', { count: 'exact' });
 
+        if (totalMembers === null) {
+          throw new Error('Failed to fetch total members');
+        }
+
         // 获取当月收入
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
