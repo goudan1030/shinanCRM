@@ -1,17 +1,11 @@
 'use client';
 
 import { Sidebar } from '@/components/layout/sidebar';
-import { Metadata } from 'next';
 import { usePathname } from 'next/navigation';
-import ThreeColumnLayout from '@/components/layouts/three-column-layout';
-
-export const metadata: Metadata = {
-  title: 'CRM系统',
-  description: '客户关系管理系统',
-};
+import { ThreeColumnLayout } from '@/components/layout/three-column-layout';
 
 interface TitleMap {
-  [key: string]: string;  // 添加索引签名
+  [key: string]: string;
 }
 
 const titleMap: TitleMap = {
@@ -34,7 +28,10 @@ export default function DashboardLayout({
   const pageTitle = titleMap[pathname] || 'CRM系统';
 
   return (
-    <ThreeColumnLayout pageTitle={pageTitle}>
+    <ThreeColumnLayout 
+      sidebarContent={<Sidebar />}
+      className="bg-gray-50"
+    >
       <header className="fixed top-0 right-0 h-[48px] bg-white border-b z-[5] transition-all duration-300 group-hover:left-[207px] left-[57px]">
         <div className="h-full flex items-center px-4">
           <h1 className="text-lg font-medium">{pageTitle}</h1>
