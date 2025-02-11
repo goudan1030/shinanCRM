@@ -11,6 +11,8 @@ const titleMap = {
   '/settings/profile': '个人信息'
 };
 
+import { ThreeColumnLayout } from '@/components/layout/three-column-layout';
+
 export default function DashboardLayout({
   children,
 }: {
@@ -20,18 +22,20 @@ export default function DashboardLayout({
   const pageTitle = titleMap[pathname] || 'CRM系统';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <ThreeColumnLayout
+      sidebarContent={<Sidebar />}
+      className="bg-gray-50"
+    >
       <header className="fixed top-0 right-0 h-[48px] bg-white border-b z-[5] transition-all duration-300 group-hover:left-[207px] left-[57px]">
         <div className="h-full flex items-center px-4">
           <h1 className="text-lg font-medium">{pageTitle}</h1>
         </div>
       </header>
-      <Sidebar />
-      <div className="md:pl-[57px] pt-[48px] h-screen overflow-hidden bg-white">
-        <main className="h-full overflow-auto max-w-[1200px] mx-auto">
+      <div className="pt-[48px] h-screen overflow-hidden bg-white">
+        <main className="h-full overflow-auto mx-auto">
           <div>{children}</div>
         </main>
       </div>
-    </div>
+    </ThreeColumnLayout>
   );
 }

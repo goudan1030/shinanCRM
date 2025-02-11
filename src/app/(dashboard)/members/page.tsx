@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { ThreeColumnLayout } from '@/components/layout/three-column-layout';
 
 interface Member {
   id: string;
