@@ -9,12 +9,43 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
 
+interface FormData {
+  member_no: string;
+  nickname: string;
+  wechat: string;
+  phone: string;
+  province: string;
+  city: string;
+  district: string;
+  gender: string;
+  target_area: string;
+  birth_year: string;
+  height: string;
+  weight: string;
+  education: string;
+  occupation: string;
+  house_car: string;
+  hukou_province: string;
+  hukou_city: string;
+  children_plan: string;
+  marriage_cert: string;
+  marriage_history: string;
+  sexual_orientation: string;
+  self_description: string;
+  partner_requirement: string;
+  [key: string]: string;  // 添加索引签名
+}
+
+interface SubmitData {
+  [key: string]: string | null;
+}
+
 export default function NewMemberPage() {
   const router = useRouter();
   const supabase = createClientComponentClient();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     member_no: '',
     nickname: '',
     wechat: '',
@@ -96,7 +127,7 @@ export default function NewMemberPage() {
 
     try {
       // 处理提交数据，将空字符串转换为null
-      const submitData = Object.entries(formData).reduce((acc, [key, value]) => {
+      const submitData = Object.entries(formData).reduce<SubmitData>((acc, [key, value]) => {
         acc[key] = value === '' ? null : value;
         return acc;
       }, {});
