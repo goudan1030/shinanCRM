@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
@@ -14,6 +13,9 @@ import Link from 'next/link';
 interface Member {
   id: string;
   member_no: string;
+  nickname: string;
+  wechat: string;
+  phone: string;
   type: string;
   status: string;
   province: string;
@@ -40,8 +42,6 @@ interface Member {
   success_reason: string | null;
   created_at: string;
   updated_at: string;
-  wechat: string;
-  phone: string;
   self_description: string | null;
 }
 
@@ -61,10 +61,10 @@ interface MemberOperationLog {
 }
 
 interface MemberDetailProps {
-  id: string;
+  memberId: string;
 }
 
-export default function MemberDetail({ id }: MemberDetailProps) {
+export default function MemberDetail({ memberId }: MemberDetailProps) {
   const { toast } = useToast();
   const { session, isLoading } = useAuth();
   const router = useRouter();
@@ -73,34 +73,33 @@ export default function MemberDetail({ id }: MemberDetailProps) {
   const [operationLogs, setOperationLogs] = useState<MemberOperationLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchMemberDetails = useCallback(async () => {
+  const fetchMember = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('members')
         .select('*')
-        .eq('id', id)
+        .eq('id', memberId)
         .single();
 
       if (error) throw error;
       setMember(data);
     } catch (error) {
-      console.error('获取会员详情失败:', error);
       toast({
         variant: 'destructive',
-        title: '获取会员详情失败',
-        description: '无法加载会员信息，请重试'
+        title: '获取会员信息失败',
+        description: error instanceof Error ? error.message : '未知错误'
       });
     } finally {
       setLoading(false);
     }
-  }, [id, supabase, toast]);
+  }, [memberId, supabase, toast]);
 
   const fetchMemberOperationLogs = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('member_operation_logs')
         .select('*')
-        .eq('member_id', id)
+        .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -113,7 +112,7 @@ export default function MemberDetail({ id }: MemberDetailProps) {
         description: '无法加载操作记录，请重试'
       });
     }
-  }, [id, supabase, toast]);
+  }, [memberId, supabase, toast]);
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -123,10 +122,10 @@ export default function MemberDetail({ id }: MemberDetailProps) {
 
   useEffect(() => {
     if (session) {
-      fetchMemberDetails();
+      fetchMember();
       fetchMemberOperationLogs();
     }
-  }, [session, fetchMemberDetails, fetchMemberOperationLogs]);
+  }, [session, fetchMember, fetchMemberOperationLogs]);
 
   if (loading) {
     return <div>加载中...</div>;
