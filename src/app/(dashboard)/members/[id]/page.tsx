@@ -6,12 +6,14 @@ export const metadata: Metadata = {
   description: '会员详细信息页面',
 };
 
-type Props = {
-  params: { id: string }
+interface PageProps {
+  params: Promise<{ id: string }>;
 }
 
-export default async function MemberDetailPage({ params }: Props) {
+export default async function MemberDetailPage({ params }: PageProps) {
+  const { id } = await params;
+  
   return (
-    <MemberDetail id={params.id} />
+    <MemberDetail id={id} />
   );
 }
