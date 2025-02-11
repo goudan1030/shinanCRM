@@ -48,6 +48,7 @@ interface Member {
   marriage_cert: string;
   marriage_history: string;
   sexual_orientation: string;
+  [key: string]: string | number;
 }
 
 const availableColumns = [
@@ -759,16 +760,16 @@ export default function MembersPage() {
                                   }
                                 }}
                               >
-                                {getMemberTypeText(member[columnKey], member.remaining_matches)}
+                                {getMemberTypeText(member.type, member.remaining_matches)}
                               </Button>
                             ) :
-                             columnKey === 'gender' ? getGenderText(member[columnKey]) :
+                             columnKey === 'gender' ? getGenderText(member.gender) :
                              columnKey === 'house_car' ? getHouseCarText(member.house_car) :
                              columnKey === 'children_plan' ? getChildrenPlanText(member.children_plan) :
                              columnKey === 'marriage_cert' ? getMarriageCertText(member.marriage_cert) :
                              columnKey === 'marriage_history' ? getMarriageHistoryText(member.marriage_history) :
                              columnKey === 'sexual_orientation' ? getSexualOrientationText(member.sexual_orientation) :
-                             columnKey === 'education' ? getEducationText(member[columnKey]) :
+                             columnKey === 'education' ? getEducationText(member.education) :
                              columnKey === 'status' ? (
                               <span className={`px-2 py-1 rounded-full text-[13px] ${member.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : member.status === 'REVOKED' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
                                 {member.status === 'ACTIVE' ? '激活' : member.status === 'REVOKED' ? '撤销' : '成功'}
@@ -844,7 +845,7 @@ export default function MembersPage() {
                                 )}
                               </div>
                              ) :
-                             member[columnKey]}
+                             String(member[columnKey])}
                           </td>
                         ))}
                       </tr>
