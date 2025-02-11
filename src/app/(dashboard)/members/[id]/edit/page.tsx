@@ -11,6 +11,33 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { ArrowLeft } from 'lucide-react';
 
+interface FormData {
+  member_no: string;
+  nickname: string;
+  wechat: string;
+  phone: string;
+  province: string;
+  city: string;
+  district: string;
+  gender: string;
+  target_area: string;
+  birth_year: string;
+  height: string;
+  weight: string;
+  education: string;
+  occupation: string;
+  income: string;
+  marriage: string;
+  has_children: string;
+  want_children: string;
+  housing: string;
+  car: string;
+  smoking: string;
+  drinking: string;
+  partner_requirement: string;
+  [key: string]: string;  // 添加索引签名
+}
+
 export default function EditMemberPage() {
   const router = useRouter();
   const params = useParams();
@@ -18,7 +45,7 @@ export default function EditMemberPage() {
   const { toast } = useToast();
   const { session } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     member_no: '',
     nickname: '',
     wechat: '',
@@ -33,14 +60,14 @@ export default function EditMemberPage() {
     weight: '',
     education: '',
     occupation: '',
-    house_car: '',
-    hukou_province: '',
-    hukou_city: '',
-    children_plan: '',
-    marriage_cert: '',
-    marriage_history: '',
-    sexual_orientation: '',
-    self_description: '',
+    income: '',
+    marriage: '',
+    has_children: '',
+    want_children: '',
+    housing: '',
+    car: '',
+    smoking: '',
+    drinking: '',
     partner_requirement: ''
   });
 
@@ -71,14 +98,14 @@ export default function EditMemberPage() {
             weight: data.weight?.toString() || '',
             education: data.education || '',
             occupation: data.occupation || '',
-            house_car: data.house_car || '',
-            hukou_province: data.hukou_province || '',
-            hukou_city: data.hukou_city || '',
-            children_plan: data.children_plan || '',
-            marriage_cert: data.marriage_cert || '',
-            marriage_history: data.marriage_history || '',
-            sexual_orientation: data.sexual_orientation || '',
-            self_description: data.self_description || '',
+            income: data.income || '',
+            marriage: data.marriage || '',
+            has_children: data.has_children || '',
+            want_children: data.want_children || '',
+            housing: data.housing || '',
+            car: data.car || '',
+            smoking: data.smoking || '',
+            drinking: data.drinking || '',
             partner_requirement: data.partner_requirement || ''
           });
         }
@@ -128,14 +155,14 @@ export default function EditMemberPage() {
       { field: 'weight', label: '体重' },
       { field: 'education', label: '学历' },
       { field: 'occupation', label: '职业' },
-      { field: 'house_car', label: '房车情况' },
-      { field: 'hukou_province', label: '户口所在省' },
-      { field: 'hukou_city', label: '户口所在市' },
-      { field: 'children_plan', label: '孩子需求' },
-      { field: 'marriage_cert', label: '领证需求' },
-      { field: 'marriage_history', label: '婚史' },
-      { field: 'sexual_orientation', label: '性取向' },
-      { field: 'self_description', label: '自我介绍' },
+      { field: 'income', label: '收入' },
+      { field: 'marriage', label: '婚姻状况' },
+      { field: 'has_children', label: '是否有孩子' },
+      { field: 'want_children', label: '孩子需求' },
+      { field: 'housing', label: '住房情况' },
+      { field: 'car', label: '车况' },
+      { field: 'smoking', label: '吸烟情况' },
+      { field: 'drinking', label: '饮酒情况' },
       { field: 'partner_requirement', label: '期望对方' }
     ];
 
@@ -386,24 +413,6 @@ export default function EditMemberPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">户口所在省</label>
-                  <Input
-                    value={formData.hukou_province}
-                    onChange={(e) => handleInputChange('hukou_province', e.target.value)}
-                    placeholder="请输入户口所在省"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">户口所在市</label>
-                  <Input
-                    value={formData.hukou_city}
-                    onChange={(e) => handleInputChange('hukou_city', e.target.value)}
-                    placeholder="请输入户口所在市"
-                  />
-                </div>
-                
-                <div className="space-y-2">
                   <label className="text-sm font-medium">学历</label>
                   <Select value={formData.education} onValueChange={(value) => handleInputChange('education', value)}>
                     <SelectTrigger>
@@ -429,45 +438,25 @@ export default function EditMemberPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">房车情况</label>
-                  <Select value={formData.house_car} onValueChange={(value) => handleInputChange('house_car', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择房车情况" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NONE">无房无车</SelectItem>
-                      <SelectItem value="HOUSE_ONLY">有房无车</SelectItem>
-                      <SelectItem value="CAR_ONLY">有车无房</SelectItem>
-                      <SelectItem value="BOTH">有房有车</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="text-sm font-medium">收入</label>
+                  <Input
+                    value={formData.income}
+                    onChange={(e) => handleInputChange('income', e.target.value)}
+                    placeholder="请输入收入"
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">婚史</label>
-                  <Select value={formData.marriage_history} onValueChange={(value) => handleInputChange('marriage_history', value)}>
+                  <label className="text-sm font-medium">婚姻状况</label>
+                  <Select value={formData.marriage} onValueChange={(value) => handleInputChange('marriage', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="请选择婚史" />
+                      <SelectValue placeholder="请选择婚姻状况" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="YES">有婚史</SelectItem>
-                      <SelectItem value="NO">无婚史</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">性取向</label>
-                  <Select value={formData.sexual_orientation} onValueChange={(value) => handleInputChange('sexual_orientation', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择性取向" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="STRAIGHT_MALE">直男</SelectItem>
-                      <SelectItem value="STRAIGHT_FEMALE">直女</SelectItem>
-                      <SelectItem value="LES">LES</SelectItem>
-                      <SelectItem value="GAY">GAY</SelectItem>
-                      <SelectItem value="ASEXUAL">无性恋</SelectItem>
+                      <SelectItem value="SINGLE">单身</SelectItem>
+                      <SelectItem value="MARRIED">已婚</SelectItem>
+                      <SelectItem value="DIVORCED">离婚</SelectItem>
+                      <SelectItem value="WIDOWED">丧偶</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -510,8 +499,21 @@ export default function EditMemberPage() {
                 </div>
                 
                 <div className="space-y-2">
+                  <label className="text-sm font-medium">是否有孩子</label>
+                  <Select value={formData.has_children} onValueChange={(value) => handleInputChange('has_children', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择是否有孩子" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="YES">有孩子</SelectItem>
+                      <SelectItem value="NO">没有孩子</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
                   <label className="text-sm font-medium">孩子需求</label>
-                  <Select value={formData.children_plan} onValueChange={(value) => handleInputChange('children_plan', value)}>
+                  <Select value={formData.want_children} onValueChange={(value) => handleInputChange('want_children', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="请选择孩子需求" />
                     </SelectTrigger>
@@ -525,37 +527,57 @@ export default function EditMemberPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">领证需求</label>
-                  <Select value={formData.marriage_cert} onValueChange={(value) => handleInputChange('marriage_cert', value)}>
+                  <label className="text-sm font-medium">住房情况</label>
+                  <Select value={formData.housing} onValueChange={(value) => handleInputChange('housing', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="请选择领证需求" />
+                      <SelectValue placeholder="请选择住房情况" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="WANT">要</SelectItem>
-                      <SelectItem value="DONT_WANT">不要</SelectItem>
-                      <SelectItem value="NEGOTIABLE">互相协商</SelectItem>
+                      <SelectItem value="OWNED">自有</SelectItem>
+                      <SelectItem value="RENTED">租赁</SelectItem>
+                      <SelectItem value="OTHER">其他</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">自我介绍</label>
-                  <textarea
-                    value={formData.self_description}
-                    onChange={(e) => handleInputChange('self_description', e.target.value)}
-                    placeholder="请输入自我介绍"
-                    className="w-full min-h-[100px] p-2 rounded-md border border-input bg-background"
-                  />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">车况</label>
+                  <Select value={formData.car} onValueChange={(value) => handleInputChange('car', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择车况" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OWNED">自有</SelectItem>
+                      <SelectItem value="RENTED">租赁</SelectItem>
+                      <SelectItem value="OTHER">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">期望对方</label>
-                  <textarea
-                    value={formData.partner_requirement}
-                    onChange={(e) => handleInputChange('partner_requirement', e.target.value)}
-                    placeholder="请输入择偶要求"
-                    className="w-full min-h-[100px] p-2 rounded-md border border-input bg-background"
-                  />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">吸烟情况</label>
+                  <Select value={formData.smoking} onValueChange={(value) => handleInputChange('smoking', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择吸烟情况" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="YES">吸烟</SelectItem>
+                      <SelectItem value="NO">不吸烟</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">饮酒情况</label>
+                  <Select value={formData.drinking} onValueChange={(value) => handleInputChange('drinking', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="请选择饮酒情况" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="YES">饮酒</SelectItem>
+                      <SelectItem value="NO">不饮酒</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
