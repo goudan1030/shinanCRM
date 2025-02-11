@@ -8,10 +8,9 @@ export const metadata: Metadata = {
 
 type Props = {
   params: { id: string }
-  searchParams: { [key: string]: string | string[] | undefined }
 }
 
-export default async function MemberDetailPage({ params, searchParams }: Props) {
+export default async function MemberDetailPage({ params }: Props) {
   return (
     <MemberDetail id={params.id} />
   );
