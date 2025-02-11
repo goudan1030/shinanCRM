@@ -10,6 +10,17 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { User } from '@supabase/supabase-js';
+
+interface ExtendedUser extends User {
+  user_metadata?: {
+    name?: string;
+  };
+}
+
+interface ExtendedSession {
+  user: ExtendedUser;
+}
 
 interface Member {
   id: string;
@@ -72,7 +83,7 @@ const availableColumns = [
 
 export default function MembersPage() {
   const { toast } = useToast();
-  const { session, isLoading } = useAuth();
+  const { session, isLoading } = useAuth() as { session: ExtendedSession | null, isLoading: boolean };
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [members, setMembers] = useState<Member[]>([]);
@@ -470,7 +481,6 @@ export default function MembersPage() {
         ? new Date(upgradeDate.getFullYear() + 1, upgradeDate.getMonth(), upgradeDate.getDate() - 1).toISOString()
         : null;
       
-      // 开启事务
       const { error: transactionError } = await supabase.rpc('upgrade_member', {
         p_member_id: selectedMemberId,
         p_type: upgradeType,
