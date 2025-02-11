@@ -7,13 +7,29 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
+interface TrendData {
+  month: string;
+  value: number;
+}
+
+interface DashboardData {
+  totalMembers: number;
+  monthlyIncome: number;
+  monthlyExpense: number;
+  settledAmount: number;
+  unsettledAmount: number;
+  memberTrend: TrendData[];
+  incomeTrend: TrendData[];
+}
+
 export default function DashboardPage() {
   const { session, isLoading } = useAuth();
   const router = useRouter();
   const supabase = createClientComponentClient();
-  const [dashboardData, setDashboardData] = useState({
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
     totalMembers: 0,
     monthlyIncome: 0,
+    monthlyExpense: 0,
     settledAmount: 0,
     unsettledAmount: 0,
     memberTrend: [],
@@ -48,6 +64,15 @@ export default function DashboardPage() {
 
         const monthlyIncome = monthlyIncomeData?.reduce((sum, record) => sum + record.amount, 0) || 0;
 
+        // 获取当月支出
+        const { data: expenseData } = await supabase
+          .from('expense_records')
+          .select('amount')
+          .gte('expense_date', firstDayOfMonth.toISOString())
+          .lte('expense_date', lastDayOfMonth.toISOString());
+
+        const monthlyExpense = expenseData?.reduce((sum, record) => sum + (record.amount || 0), 0) || 0;
+
         // 获取当月已结算金额
         const { data: settledData } = await supabase
           .from('settlement_records')
@@ -67,7 +92,6 @@ export default function DashboardPage() {
 
         const wechatZhangAmount = wechatZhangData?.reduce((sum, record) => sum + record.amount, 0) || 0;
 
-        // 计算待结算金额：本月收入/2 - 已结算金额 - WECHAT_ZHANG支付金额
         // 计算待结算金额：(本月收入 - 本月支出)/2 - WECHAT_ZHANG支付金额 - 已结算金额
         const unsettledAmount = ((monthlyIncome - monthlyExpense) / 2) - wechatZhangAmount - settledAmount;
 
@@ -116,6 +140,7 @@ export default function DashboardPage() {
         setDashboardData({
           totalMembers: totalMembers || 0,
           monthlyIncome,
+          monthlyExpense,
           settledAmount,
           unsettledAmount,
           memberTrend,
