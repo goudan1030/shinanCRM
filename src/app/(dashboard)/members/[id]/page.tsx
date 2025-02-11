@@ -1,6 +1,6 @@
 import MemberDetail from './member-detail';
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
+export async function generateMetadata() {
   return {
     title: '会员详情',
     description: '会员详细信息页面',
