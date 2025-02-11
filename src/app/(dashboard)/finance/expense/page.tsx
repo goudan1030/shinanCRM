@@ -108,6 +108,7 @@ export default function ExpensePage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editExpenseData, setEditExpenseData] = useState<EditExpenseData>({
     expense_date: '',
     amount: '',
@@ -323,6 +324,7 @@ export default function ExpensePage() {
                                   amount: record.amount.toString(),
                                   notes: record.notes || ''
                                 });
+                                setEditDialogOpen(true);
                               }}
                               className="h-8 px-2 text-primary"
                             >
