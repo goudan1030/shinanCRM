@@ -51,7 +51,15 @@ interface Member {
   [key: string]: string | number;
 }
 
-const availableColumns = [
+// 首先定义一个类型来表示所有可能的列键
+type ColumnKey = 'member_no' | 'wechat' | 'phone' | 'type' | 'status' | 'gender' | 'birth_year' | 
+  'height' | 'weight' | 'education' | 'occupation' | 'province' | 'city' | 'district' | 
+  'target_area' | 'house_car' | 'hukou_province' | 'hukou_city' | 'children_plan' | 
+  'marriage_cert' | 'marriage_history' | 'sexual_orientation' | 'remaining_matches' | 
+  'created_at' | 'actions';
+
+// 修改 availableColumns 的类型
+const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'member_no', label: '会员编号' },
   { key: 'wechat', label: '微信号' },
   { key: 'phone', label: '手机号' },
@@ -98,7 +106,9 @@ export default function MembersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedColumns, setSelectedColumns] = useState(['member_no', 'wechat', 'phone', 'type', 'status', 'remaining_matches', 'actions']);
+  const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>([
+    'member_no', 'wechat', 'phone', 'type', 'status', 'remaining_matches', 'actions'
+  ]);
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
@@ -845,7 +855,8 @@ export default function MembersPage() {
                                 )}
                               </div>
                              ) :
-                             String(member[columnKey])}
+                             columnKey === 'created_at' ? new Date(member[columnKey]).toLocaleString() :
+                             String(member[columnKey as keyof Member])}
                           </td>
                         ))}
                       </tr>
