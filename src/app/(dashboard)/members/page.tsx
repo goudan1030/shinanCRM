@@ -14,32 +14,32 @@ import { useToast } from '@/hooks/use-toast';
 interface Member {
   id: string;
   member_no: string;
-  type: string;
-  status: string;
+  nickname: string;
+  wechat: string;
+  phone: string;
   province: string;
   city: string;
   district: string;
   gender: string;
-  target_area: text;
+  target_area: string;
   birth_year: number;
   height: number;
   weight: number;
   education: string;
   occupation: string;
-  house_car: string;
-  hukou_province: string;
-  hukou_city: string;
-  children_plan: string;
-  marriage_cert: string;
-  self_description: text;
-  partner_requirement: text;
-  remaining_matches: number | null;
-  success_time: string | null;
-  success_reason: string | null;
+  income: string;
+  marriage: string;
+  has_children: string;
+  want_children: string;
+  housing: string;
+  car: string;
+  smoking: string;
+  drinking: string;
+  partner_requirement: string;
+  type: string;
+  status: string;
+  remaining_matches: number;
   created_at: string;
-  updated_at: string;
-  wechat: string;
-  phone: string;
 }
 
 const availableColumns = [

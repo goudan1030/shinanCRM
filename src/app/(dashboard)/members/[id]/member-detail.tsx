@@ -26,12 +26,14 @@ interface Member {
   weight: number;
   education: string;
   occupation: string;
-  house_car: string;
-  hukou_province: string;
-  hukou_city: string;
-  children_plan: string;
-  marriage_cert: string;
-  self_description: string;
+  income: string;
+  marriage: string;
+  has_children: string;
+  want_children: string;
+  housing: string;
+  car: string;
+  smoking: string;
+  drinking: string;
   partner_requirement: string;
   remaining_matches: number | null;
   success_time: string | null;
@@ -155,13 +157,11 @@ export default function MemberDetail({ id }: MemberDetailProps) {
             <div><span className="font-semibold">体重：</span>{member.weight}kg</div>
             <div><span className="font-semibold">学历：</span>{member.education}</div>
             <div><span className="font-semibold">职业：</span>{member.occupation}</div>
-            <div><span className="font-semibold">房车情况：</span>{member.house_car}</div>
+            <div><span className="font-semibold">房车情况：</span>{member.income} {member.marriage} {member.has_children} {member.want_children} {member.housing} {member.car}</div>
             <div><span className="font-semibold">所在地：</span>{member.province} {member.city} {member.district}</div>
             <div><span className="font-semibold">目标区域：</span>{member.target_area}</div>
-            <div><span className="font-semibold">户籍：</span>{member.hukou_province} {member.hukou_city}</div>
-            <div><span className="font-semibold">生育计划：</span>{member.children_plan}</div>
-            <div><span className="font-semibold">领证需求：</span>{member.marriage_cert}</div>
-            <div><span className="font-semibold">剩余匹配次数：</span>{member.remaining_matches ?? '不限'}</div>
+            <div><span className="font-semibold">吸烟情况：</span>{member.smoking}</div>
+            <div><span className="font-semibold">饮酒情况：</span>{member.drinking}</div>
             <div><span className="font-semibold">微信号：</span>{member.wechat}</div>
             <div><span className="font-semibold">手机号：</span>{member.phone}</div>
             <div><span className="font-semibold">个人说明：</span>{member.self_description}</div>
