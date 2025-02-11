@@ -1,24 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 export default function ProfilePage() {
+  const { session } = useAuth();
   const supabase = createClientComponentClient();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ name: '', avatar_url: '' });
   const [password, setPassword] = useState({ current: '', new: '', confirm: '' });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (session?.user) {
+      setFormData({
+        name: session.user.user_metadata?.name || '',
+        avatar_url: session.user.user_metadata?.avatar_url || ''
+      });
+    }
+  }, [session]);
+
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // 实现更新逻辑
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          name: formData.name,
+          avatar_url: formData.avatar_url
+        }
+      });
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: '更新成功',
+        description: '个人信息已更新'
+      });
     } catch (error) {
       toast({
         variant: 'destructive',
