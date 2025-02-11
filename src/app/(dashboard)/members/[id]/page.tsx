@@ -58,11 +58,11 @@ interface MemberOperationLog {
   operator_id: string;
 }
 
-interface PageProps {
+type PageProps = {
   params: {
     id: string;
   };
-}
+};
 
 export default function MemberDetailPage({ params }: PageProps) {
   const { id } = params;

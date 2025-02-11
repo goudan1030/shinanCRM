@@ -20,7 +20,11 @@ export default function ProfilePage() {
     try {
       // 实现更新逻辑
     } catch (error) {
-      console.error('更新失败:', error instanceof Error ? error.message : '未知错误');
+      toast({
+        variant: 'destructive',
+        title: '更新失败',
+        description: error instanceof Error ? error.message : '未知错误'
+      });
     } finally {
       setLoading(false);
     }
@@ -46,7 +50,7 @@ export default function ProfilePage() {
       setSuccess('密码更新成功');
       setPassword({ current: '', new: '', confirm: '' });
     } catch (error) {
-      setError('密码更新失败，请重试');
+      setError(error instanceof Error ? error.message : '密码更新失败，请重试');
     } finally {
       setLoading(false);
     }
