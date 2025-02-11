@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
-import { User, UserMetadata } from '@supabase/supabase-js';
+import { UserMetadata } from '@supabase/supabase-js';
 import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface ExpenseRecord {
@@ -162,9 +162,6 @@ export default function ExpensePage() {
       </div>
     );
   }
-
-  // 如果有使用 user_metadata，使用类型断言
-  const operatorName = (session?.user?.user_metadata as UserMetadata)?.name || session?.user?.email;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">

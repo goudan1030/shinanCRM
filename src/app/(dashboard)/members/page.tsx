@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { User, UserMetadata } from '@supabase/supabase-js';
+import { UserMetadata } from '@supabase/supabase-js';
 import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface Member {
@@ -472,14 +472,12 @@ export default function MembersPage() {
         ? new Date(upgradeDate.getFullYear() + 1, upgradeDate.getMonth(), upgradeDate.getDate() - 1).toISOString()
         : null;
       
-      const operatorName = (session?.user?.user_metadata as UserMetadata)?.name || session?.user?.email;
-      
       const { error: transactionError } = await supabase.rpc('upgrade_member', {
         p_member_id: selectedMemberId,
         p_type: upgradeType,
         p_payment_time: paymentTime,
         p_expiry_time: expiryTime,
-        p_notes: `${operatorName} 在 ${new Date().toLocaleString('zh-CN')} 将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
+        p_notes: `${new Date().toLocaleString('zh-CN')} 将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
       });
 
       if (transactionError) throw transactionError;
