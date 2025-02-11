@@ -35,6 +35,8 @@ export default function ExpensePage() {
   const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
 
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
+
   const fetchRecords = useCallback(async () => {
     try {
       let query = supabase
@@ -203,11 +205,9 @@ export default function ExpensePage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部</SelectItem>
+                  <SelectItem value="CASH">现金</SelectItem>
+                  <SelectItem value="WECHAT">微信</SelectItem>
                   <SelectItem value="ALIPAY">支付宝</SelectItem>
-                  <SelectItem value="WECHAT_WANG">微信王</SelectItem>
-                  <SelectItem value="WECHAT_ZHANG">微信张</SelectItem>
-                  <SelectItem value="ICBC_QR">工商二维码</SelectItem>
-                  <SelectItem value="CORPORATE">对公账户</SelectItem>
                 </SelectContent>
               </Select>
             </div>
