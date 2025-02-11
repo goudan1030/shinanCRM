@@ -9,7 +9,7 @@ interface UseDataTableProps {
     column: string;
     ascending: boolean;
   };
-  defaultFilters?: Record<string, any>;
+  defaultFilters?: Record<string, unknown>;
 }
 
 export function useDataTable<T>({ 
@@ -70,7 +70,7 @@ export function useDataTable<T>({
     }
   }, [currentPage, filters, pageSize, supabase, tableName, toast, defaultSort]);
 
-  const updateFilters = useCallback((newFilters: Record<string, any>) => {
+  const updateFilters = useCallback((newFilters: Record<string, unknown>) => {
     setFilters(newFilters);
     setCurrentPage(1); // 重置页码
   }, []);

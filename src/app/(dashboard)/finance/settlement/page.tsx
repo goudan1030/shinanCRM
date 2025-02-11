@@ -3,15 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Pagination } from '@/components/ui/pagination';
-import { SearchFilter } from './search-filter';
-import { LoadingRow, EmptyRow, SettlementRow, NewSettlementDialog, DeleteConfirmDialog, EditSettlementDialog } from './components';
+import { SearchFilter } from '@/components/ui/settlement';
+import { LoadingRow, EmptyRow, SettlementRow } from '@/components/ui/settlement';
 
 interface SettlementRecord {
   id: string;
@@ -25,12 +24,10 @@ interface SettlementRecord {
 export default function SettlementPage() {
   const { toast } = useToast();
   const { session, isLoading } = useAuth();
-  const router = useRouter();
   const supabase = createClientComponentClient();
   const [records, setRecords] = useState<SettlementRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -85,7 +82,7 @@ export default function SettlementPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, monthFilter, pageSize, searchKeyword, supabase, toast, yearFilter, paymentMethodFilter]);
+  }, [currentPage, monthFilter, pageSize, searchKeyword, supabase, toast, yearFilter]);
 
   useEffect(() => {
     if (session) {
@@ -116,6 +113,15 @@ export default function SettlementPage() {
 
       const monthlyIncome = monthlyIncomeData?.reduce((sum, record) => sum + record.amount, 0) || 0;
 
+      // 获取当月支出
+      const { data: monthlyExpenseData } = await supabase
+        .from('expense_records')
+        .select('amount')
+        .gte('expense_date', firstDayOfMonth.toISOString())
+        .lte('expense_date', lastDayOfMonth.toISOString());
+
+      const monthlyExpense = monthlyExpenseData?.reduce((sum, record) => sum + record.amount, 0) || 0;
+
       // 获取当月已结算金额
       const { data: settledData } = await supabase
         .from('settlement_records')
@@ -135,8 +141,8 @@ export default function SettlementPage() {
 
       const wechatZhangAmount = wechatZhangData?.reduce((sum, record) => sum + record.amount, 0) || 0;
 
-      // 计算待结算金额：本月收入/2 - 已结算金额 - WECHAT_ZHANG支付金额
-      const unsettled = (monthlyIncome / 2) - settledAmount - wechatZhangAmount;
+      // 计算待结算金额：(本月收入 - 本月支出)/2 - WECHAT_ZHANG支付金额 - 已结算金额
+      const unsettled = ((monthlyIncome - monthlyExpense) / 2) - wechatZhangAmount - settledAmount;
       setUnsettledAmount(unsettled);
     } catch (error) {
       console.error('获取待结算金额失败:', error);
@@ -165,22 +171,7 @@ export default function SettlementPage() {
       fetchRecords();
     }
   }, [session, fetchRecords]);
-  const getPaymentMethodText = (method: string) => {
-    switch (method) {
-      case 'ALIPAY':
-        return '支付宝';
-      case 'WECHAT_WANG':
-        return '微信王';
-      case 'WECHAT_ZHANG':
-        return '微信张';
-      case 'ICBC_QR':
-        return '工商二维码';
-      case 'CORPORATE':
-        return '对公账户';
-      default:
-        return '未知';
-    }
-  };
+  
 
   if (isLoading || loading) {
     return (
@@ -256,8 +247,7 @@ export default function SettlementPage() {
             <SearchFilter
               searchKeyword={searchKeyword}
               setSearchKeyword={setSearchKeyword}
-              paymentMethodFilter={paymentMethodFilter}
-              setPaymentMethodFilter={setPaymentMethodFilter}
+
               yearFilter={yearFilter}
               setYearFilter={setYearFilter}
               monthFilter={monthFilter}

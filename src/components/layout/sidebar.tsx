@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, FileText, Settings, User, ChevronDown, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2 } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -63,8 +63,8 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { session } = useAuth();
-  const [activeParent, setActiveParent] = useState<string | null>(null);
   const supabase = createClientComponentClient();
+  const [activeParent, setActiveParent] = useState<string | null>(null);
 
   useEffect(() => {
     // 根据当前路径设置活动的父菜单

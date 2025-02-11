@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -24,12 +23,10 @@ interface ExpenseRecord {
 export default function ExpensePage() {
   const { toast } = useToast();
   const { session, isLoading } = useAuth();
-  const router = useRouter();
   const supabase = createClientComponentClient();
   const [records, setRecords] = useState<ExpenseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -84,7 +81,7 @@ export default function ExpensePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, monthFilter, pageSize, searchKeyword, supabase, toast, yearFilter, paymentMethodFilter]);
+  }, [currentPage, monthFilter, searchKeyword, supabase, toast, yearFilter]);
 
   useEffect(() => {
     if (session) {
@@ -116,22 +113,7 @@ export default function ExpensePage() {
       fetchRecords();
     }
   }, [session, fetchRecords]);
-  const getPaymentMethodText = (method: string) => {
-    switch (method) {
-      case 'ALIPAY':
-        return '支付宝';
-      case 'WECHAT_WANG':
-        return '微信王';
-      case 'WECHAT_ZHANG':
-        return '微信张';
-      case 'ICBC_QR':
-        return '工商二维码';
-      case 'CORPORATE':
-        return '对公账户';
-      default:
-        return '未知';
-    }
-  };
+  
 
   if (isLoading || loading) {
     return (
@@ -145,13 +127,13 @@ export default function ExpensePage() {
             <div className="space-y-1 p-2">
               <Link
                 href="/finance/income"
-                className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
+                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
               >
                 <span className="text-[13px]">收入管理</span>
               </Link>
               <Link
                 href="/finance/expense"
-                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
+                className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
               >
                 <span className="text-[13px]">支出管理</span>
               </Link>

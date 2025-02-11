@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useCallback } from 'react';
-import { useState, useEffect } from 'react';
+import React from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
@@ -57,8 +58,14 @@ interface MemberOperationLog {
   operator_id: string;
 }
 
-export default function MemberDetailPage({ params }: { params: { id: string } }) {
-  const { id } = React.use(params);
+interface PageProps {
+  params: {
+    id: string;
+  };
+}
+
+export default function MemberDetailPage({ params }: PageProps) {
+  const { id } = params;
   const { toast } = useToast();
   const { session, isLoading } = useAuth();
   const router = useRouter();

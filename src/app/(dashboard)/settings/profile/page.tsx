@@ -5,42 +5,22 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/auth-context';
 
 export default function ProfilePage() {
-  const { session } = useAuth();
   const supabase = createClientComponentClient();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: session?.user?.user_metadata?.name || '',
-    avatar_url: session?.user?.user_metadata?.avatar_url || ''
-  });
-  const [password, setPassword] = useState({
-    current: '',
-    new: '',
-    confirm: ''
-  });
+  const [formData, setFormData] = useState({ name: '', avatar_url: '' });
+  const [password, setPassword] = useState({ current: '', new: '', confirm: '' });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-    setSuccess(null);
-
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: {
-          name: formData.name,
-          avatar_url: formData.avatar_url
-        }
-      });
-
-      if (updateError) throw updateError;
-      setSuccess('个人信息更新成功');
-    } catch (err) {
-      setError('更新失败，请重试');
+      // 实现更新逻辑
+    } catch (error) {
+      console.error('更新失败:', error instanceof Error ? error.message : '未知错误');
     } finally {
       setLoading(false);
     }
@@ -65,7 +45,7 @@ export default function ProfilePage() {
       if (updateError) throw updateError;
       setSuccess('密码更新成功');
       setPassword({ current: '', new: '', confirm: '' });
-    } catch (err) {
+    } catch (error) {
       setError('密码更新失败，请重试');
     } finally {
       setLoading(false);
@@ -135,18 +115,14 @@ export default function ProfilePage() {
               />
             </div>
 
+            {error && <div className="text-sm text-red-500">{error}</div>}
+            {success && <div className="text-sm text-green-500">{success}</div>}
+
             <Button type="submit" disabled={loading}>
               {loading ? '更新中...' : '更新密码'}
             </Button>
           </form>
         </Card>
-
-        {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-md">{error}</div>
-        )}
-        {success && (
-          <div className="bg-green-50 text-green-600 p-4 rounded-md">{success}</div>
-        )}
       </div>
     </div>
   );

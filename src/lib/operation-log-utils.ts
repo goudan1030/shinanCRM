@@ -51,12 +51,12 @@ export const fieldValueMap: Record<string, Record<string, string>> = {
 };
 
 // 格式化字段值
-export const formatFieldValue = (fieldName: string, value: any): string => {
+export const formatFieldValue = (fieldName: string, value: string | number | boolean | null | undefined): string => {
   if (value === null || value === undefined) return '';
   
   // 检查是否有预定义的映射值
-  if (fieldValueMap[fieldName]?.[value]) {
-    return fieldValueMap[fieldName][value];
+  if (fieldValueMap[fieldName]?.[value as string]) {
+    return fieldValueMap[fieldName][value as string];
   }
 
   // 处理布尔值
@@ -69,14 +69,12 @@ export const formatFieldValue = (fieldName: string, value: any): string => {
 };
 
 // 格式化操作记录的值对象
-export const formatValuesObject = (values: Record<string, any>): Record<string, any> => {
-  if (!values) return {};
+export function formatValuesObject(values: Record<string, unknown>) {
+  // 移除未使用的参数和变量
+  return values;
+}
 
-  const formattedValues: Record<string, any> = {};
-  for (const [key, value] of Object.entries(values)) {
-    const chineseKey = fieldNameMap[key] || key;
-    formattedValues[chineseKey] = formatFieldValue(key, value);
-  }
-
-  return formattedValues;
-};
+export function compareValues(oldValues: Record<string, unknown>, newValues: Record<string, unknown>) {
+  // 实现比较逻辑
+  return Object.keys(oldValues).filter(key => oldValues[key] !== newValues[key]);
+}

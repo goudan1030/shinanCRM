@@ -1,18 +1,23 @@
 'use client';
 
+interface SettlementRecord {
+  id: string;
+  settlement_date: string;
+  amount: number;
+  notes: string;
+  operator_id: string;
+  created_at: string;
+}
+
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { LoadingRow, EmptyRow, DataTableCell } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface SettlementRowProps {
-  record: {
-    id: string;
-    settlement_date: string;
-    amount: number;
-    notes: string;
-    created_at: string;
-  };
+  record: SettlementRecord;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -49,14 +54,16 @@ export function SettlementRow({ record, onEdit, onDelete }: SettlementRowProps) 
   );
 }
 
+interface SettlementData {
+  expense_date: string;
+  amount: string;
+}
+
 interface NewSettlementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  data: {
-    expense_date: string;
-    amount: string;
-  };
-  setData: (data: any) => void;
+  data: SettlementData;
+  setData: (data: SettlementData) => void;
   loading: boolean;
   unsettledAmount: number;
   onSubmit: () => void;
@@ -119,8 +126,6 @@ export function NewSettlementDialog({
   );
 }
 
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-
 interface DeleteConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -156,7 +161,7 @@ interface EditSettlementDialogProps {
     amount: string;
     notes: string;
   };
-  setData: (data: any) => void;
+  setData: (data: SettlementRecord) => void;
   loading: boolean;
   onSubmit: () => void;
 }
@@ -211,6 +216,68 @@ export function EditSettlementDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface SearchFilterProps {
+  searchKeyword: string;
+  setSearchKeyword: (value: string) => void;
+  yearFilter: string;
+  setYearFilter: (value: string) => void;
+  monthFilter: string;
+  setMonthFilter: (value: string) => void;
+}
+
+export function SearchFilter({
+  searchKeyword,
+  setSearchKeyword,
+  yearFilter,
+  setYearFilter,
+  monthFilter,
+  setMonthFilter,
+}: SearchFilterProps) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">搜索</label>
+        <Input
+          placeholder="搜索结算日期"
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          className="w-full"
+        />
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">年份筛选</label>
+        <Select value={yearFilter} onValueChange={setYearFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="选择年份" />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: 10 }, (_, i) => {
+              const year = new Date().getFullYear() - i;
+              return (
+                <SelectItem key={year} value={String(year)}>{year}年</SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">月份筛选</label>
+        <Select value={monthFilter} onValueChange={setMonthFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="选择月份" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部</SelectItem>
+            {Array.from({ length: 12 }, (_, i) => (
+              <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}月</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 }
 

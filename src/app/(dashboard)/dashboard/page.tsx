@@ -68,7 +68,8 @@ export default function DashboardPage() {
         const wechatZhangAmount = wechatZhangData?.reduce((sum, record) => sum + record.amount, 0) || 0;
 
         // 计算待结算金额：本月收入/2 - 已结算金额 - WECHAT_ZHANG支付金额
-        const unsettledAmount = (monthlyIncome / 2) - settledAmount - wechatZhangAmount;
+        // 计算待结算金额：(本月收入 - 本月支出)/2 - WECHAT_ZHANG支付金额 - 已结算金额
+        const unsettledAmount = ((monthlyIncome - monthlyExpense) / 2) - wechatZhangAmount - settledAmount;
 
         // 获取最近30天的每日新增用户数量
         const memberTrend = [];
