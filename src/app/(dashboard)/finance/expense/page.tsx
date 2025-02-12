@@ -42,8 +42,6 @@ export default function ExpensePage() {
   const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
 
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
-
   const fetchRecords = useCallback(async () => {
     try {
       let query = supabase
@@ -71,10 +69,6 @@ export default function ExpensePage() {
         query = query.gte('expense_date', startDate).lte('expense_date', endDate);
       }
     
-      if (paymentMethodFilter !== 'all') {
-        query = query.eq('payment_method', paymentMethodFilter);
-      }
-    
       const { data, error, count } = await query;
     
       if (error) throw error;
@@ -94,7 +88,7 @@ export default function ExpensePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, monthFilter, searchKeyword, supabase, toast, yearFilter, paymentMethodFilter]);
+  }, [currentPage, monthFilter, searchKeyword, supabase, toast, yearFilter]);
 
   useEffect(() => {
     if (session) {
@@ -237,21 +231,6 @@ export default function ExpensePage() {
                   {Array.from({ length: 12 }, (_, i) => (
                     <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}月</SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">支付方式</label>
-              <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择支付方式" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部</SelectItem>
-                  <SelectItem value="CASH">现金</SelectItem>
-                  <SelectItem value="WECHAT">微信</SelectItem>
-                  <SelectItem value="ALIPAY">支付宝</SelectItem>
                 </SelectContent>
               </Select>
             </div>
