@@ -8,9 +8,10 @@ export async function generateMetadata() {
 }
 
 interface PageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function MemberPage({ params }: PageProps) {
-  return <MemberDetail memberId={params.id} />;
+  const resolvedParams = await params;
+  return <MemberDetail memberId={resolvedParams.id} />;
 }
