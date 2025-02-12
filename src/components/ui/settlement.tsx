@@ -4,9 +4,9 @@ interface SettlementRecord {
   id: string;
   settlement_date: string;
   amount: number;
-  notes: string;
-  operator_id: string;
+  notes: string | null;
   created_at: string;
+  operator_id: string;
 }
 
 import { Button } from '@/components/ui/button';
@@ -55,8 +55,14 @@ export function SettlementRow({ record, onEdit, onDelete }: SettlementRowProps) 
 }
 
 interface SettlementData {
-  expense_date: string;
+  settlement_date: string;
   amount: string;
+}
+
+interface EditSettlementData {
+  settlement_date: string;
+  amount: string;
+  notes: string;
 }
 
 interface NewSettlementDialogProps {
@@ -89,8 +95,8 @@ export function NewSettlementDialog({
             <label className="text-sm font-medium">结算日期</label>
             <Input
               type="date"
-              value={data.expense_date}
-              onChange={(e) => setData({ ...data, expense_date: e.target.value })}
+              value={data.settlement_date}
+              onChange={(e) => setData({ ...data, settlement_date: e.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -156,12 +162,8 @@ export function DeleteConfirmDialog({
 interface EditSettlementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  data: {
-    expense_date: string;
-    amount: string;
-    notes: string;
-  };
-  setData: (data: SettlementRecord) => void;
+  data: EditSettlementData;
+  setData: (data: EditSettlementData) => void;
   loading: boolean;
   onSubmit: () => void;
 }
@@ -185,8 +187,8 @@ export function EditSettlementDialog({
             <label className="text-sm font-medium">结算日期</label>
             <Input
               type="date"
-              value={data.expense_date}
-              onChange={(e) => setData({ ...data, expense_date: e.target.value })}
+              value={data.settlement_date}
+              onChange={(e) => setData({ ...data, settlement_date: e.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -196,6 +198,14 @@ export function EditSettlementDialog({
               value={data.amount}
               onChange={(e) => setData({ ...data, amount: e.target.value })}
               placeholder="请输入结算金额"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">备注</label>
+            <Input
+              value={data.notes}
+              onChange={(e) => setData({ ...data, notes: e.target.value })}
+              placeholder="请输入备注"
             />
           </div>
         </div>

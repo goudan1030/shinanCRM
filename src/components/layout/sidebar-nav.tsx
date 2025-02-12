@@ -3,62 +3,59 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Globe, Window, Settings } from 'lucide-react';
+import { Globe, LayoutDashboard, Settings } from 'lucide-react';
+import React from 'react';
 
-interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
-  items: {
-    href: string;
-    title: string;
-    icon?: React.ReactNode;
-  }[];
+// 使用字面量类型更安全
+type IconType = 'dashboard' | 'members' | 'settings';
+
+interface SidebarNavItem {
+  href: string;
+  title: string;
+  icon: IconType;
 }
 
-export function SidebarNav({ className, items, ...props }: SidebarNavProps) {
+interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
+  items: SidebarNavItem[];
+}
+
+// 将 getIcon 提取到组件外部
+const getIcon = (icon: IconType) => {
+  switch (icon) {
+    case 'dashboard':
+      return <LayoutDashboard className="h-4 w-4" />;
+    case 'members':
+      return <Globe className="h-4 w-4" />;
+    case 'settings':
+      return <Settings className="h-4 w-4" />;
+    default:
+      return null;
+  }
+};
+
+// 使用命名函数表达式
+const SidebarNav: React.FC<SidebarNavProps> = ({ className, items, ...props }) => {
   const pathname = usePathname();
 
-  const defaultItems = [
-    {
-      title: '小程序管理',
-      href: '/miniapp/config',
-      icon: <Globe className="h-4 w-4" />
-    },
-    {
-      title: '企业微信配置',
-      href: '/wecom/config',
-      icon: <Window className="h-4 w-4" />
-    },
-    {
-      title: '系统设置',
-      href: '/settings',
-      icon: <Settings className="h-4 w-4" />
-    }
-  ];
-
-  const navItems = items || defaultItems;
-
   return (
-    <nav
-      className={cn(
-        'flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1',
-        className
-      )}
-      {...props}
-    >
-      {navItems.map((item) => (
+    <nav className={cn('flex space-x-2', className)} {...props}>
+      {items.map((item) => (
         <Link
           key={item.href}
           href={item.href}
           className={cn(
-            'flex items-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground',
-            pathname === item.href
-              ? 'bg-accent text-accent-foreground'
-              : 'text-muted-foreground'
+            'flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md hover:bg-accent hover:text-accent-foreground',
+            pathname === item.href ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
           )}
         >
-          {item.icon && <span className="mr-2">{item.icon}</span>}
-          <span>{item.title}</span>
+          {getIcon(item.icon)}
+          {item.title}
         </Link>
       ))}
     </nav>
   );
-}
+};
+
+SidebarNav.displayName = 'SidebarNav';
+
+export { SidebarNav };

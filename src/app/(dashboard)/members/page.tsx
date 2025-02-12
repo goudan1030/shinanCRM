@@ -56,7 +56,7 @@ type ColumnKey = 'member_no' | 'wechat' | 'phone' | 'type' | 'status' | 'gender'
   'height' | 'weight' | 'education' | 'occupation' | 'province' | 'city' | 'district' | 
   'target_area' | 'house_car' | 'hukou_province' | 'hukou_city' | 'children_plan' | 
   'marriage_cert' | 'marriage_history' | 'sexual_orientation' | 'remaining_matches' | 
-  'created_at' | 'actions';
+  'created_at' | 'actions' | 'self_description' | 'partner_requirement';
 
 // 修改 availableColumns 的类型
 const availableColumns: { key: ColumnKey; label: string }[] = [
@@ -126,7 +126,7 @@ export default function MembersPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleColumnChange = (columns: string[]) => {
+  const handleColumnChange = (columns: ColumnKey[]) => {
     if (columns.length === 0) {
       // 至少保留一个字段
       return;
@@ -195,20 +195,20 @@ export default function MembersPage() {
     }
   }, [session, fetchMembers]);
 
-  const getMemberTypeText = (type: string, remainingMatches?: number) => {
+  const getMemberTypeText = (type: string, remainingMatches: number): string => {
     switch (type) {
       case 'NORMAL':
         return '普通会员';
       case 'ONE_TIME':
-        return `一次性会员${remainingMatches !== undefined ? ` (${remainingMatches}次)` : ''}`;
+        return `一次性会员 (${remainingMatches}次)`;
       case 'ANNUAL':
         return '年费会员';
       default:
-        return '未知类型';
+        return '未知';
     }
   };
 
-  const getGenderText = (gender: string) => {
+  const getGenderText = (gender: string): string => {
     return gender === 'male' ? '男' : '女';
   };
 
@@ -304,13 +304,16 @@ export default function MembersPage() {
     setCurrentPage(page);
   };
 
-  const getColumnWidth = (key: string) => {
-    switch (key) {
+  const getColumnWidth = (columnKey: ColumnKey): string => {
+    switch (columnKey) {
       case 'member_no':
-      case 'phone':
-        return 'min-w-[120px]';
+        return 'w-[120px]';
+      case 'actions':
+        return 'w-[200px]';
       case 'wechat':
         return 'min-w-[150px]';
+      case 'phone':
+        return 'min-w-[120px]';
       case 'type':
       case 'status':
       case 'gender':
@@ -337,8 +340,6 @@ export default function MembersPage() {
       case 'self_description':
       case 'partner_requirement':
         return 'min-w-[200px]';
-      case 'actions':
-        return 'min-w-[180px]';
       default:
         return 'min-w-[120px]';
     }
@@ -706,45 +707,8 @@ export default function MembersPage() {
                 <table className="w-full min-w-[1200px]">
                   <thead className="sticky top-0 bg-[#f2f2f2] z-40">
                     <tr className="border-b">
-                      {selectedColumns.map((columnKey) => {
+                      {selectedColumns.map((columnKey: ColumnKey) => {
                         const column = availableColumns.find(col => col.key === columnKey);
-                        const getColumnWidth = (key: string) => {
-                          switch (key) {
-                            case 'member_no':
-                            case 'phone':
-                              return 'min-w-[120px]';
-                            case 'wechat':
-                              return 'min-w-[150px]';
-                            case 'type':
-                            case 'status':
-                            case 'gender':
-                              return 'min-w-[100px]';
-                            case 'birth_year':
-                            case 'height':
-                            case 'weight':
-                              return 'min-w-[80px]';
-                            case 'education':
-                            case 'occupation':
-                            case 'house_car':
-                            case 'children_plan':
-                            case 'marriage_cert':
-                            case 'marriage_history':
-                            case 'sexual_orientation':
-                              return 'min-w-[120px]';
-                            case 'province':
-                            case 'city':
-                            case 'district':
-                            case 'hukou_province':
-                            case 'hukou_city':
-                              return 'min-w-[100px]';
-                            case 'target_area':
-                            case 'self_description':
-                            case 'partner_requirement':
-                              return 'min-w-[200px]';
-                            default:
-                              return 'min-w-[120px]';
-                          }
-                        };
                         return column ? (
                           <th key={column.key} className={`py-3 px-4 text-left text-[13px] whitespace-nowrap ${getColumnWidth(column.key)} ${columnKey === 'actions' ? 'sticky right-0 bg-[#f2f2f2] shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)]' : ''}`}>{column.label}</th>
                         ) : null;
@@ -754,7 +718,7 @@ export default function MembersPage() {
                   <tbody>
                     {members.map((member) => (
                       <tr key={member.id} className="border-b hover:bg-gray-50 h-10">
-                        {selectedColumns.map((columnKey) => (
+                        {selectedColumns.map((columnKey: ColumnKey) => (
                           <td key={columnKey} className={`py-3 px-4 text-[13px] whitespace-nowrap ${getColumnWidth(columnKey)} ${columnKey === 'actions' ? 'sticky right-0 bg-white shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.15)]' : ''}`}>
                             {columnKey === 'type' ? (
                               <Button

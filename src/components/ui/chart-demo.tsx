@@ -10,10 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  ChartConfig,
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart"
 
 export const description = "每日数据统计"
@@ -52,18 +49,15 @@ const chartData = [
 ]
 
 const chartConfig = {
-  views: {
-    label: "每日数据",
-  },
   desktop: {
     label: "新增用户",
-    color: "hsl(var(--chart-1))",
+    color: "hsl(var(--primary))"
   },
   mobile: {
     label: "收入金额",
-    color: "hsl(var(--chart-2))",
-  },
-} satisfies ChartConfig
+    color: "hsl(var(--muted))"
+  }
+};
 
 export function Component() {
   return (
@@ -74,8 +68,8 @@ export function Component() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer>
-          <ResponsiveContainer width="100%" height="100%">
+        <ChartContainer config={chartConfig}>
+          <ResponsiveContainer width="100%" height={350}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis
@@ -88,26 +82,26 @@ export function Component() {
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
               />
               <Tooltip
-                content={({ active, payload, label }: {
-                  active?: boolean;
-                  payload?: Array<{
-                    name: keyof typeof chartConfig;
-                    value: number;
-                  }>;
-                  label?: string;
-                }) => {
+                content={({ active, payload, label }) => {
                   if (!active || !payload) return null
                   return (
-                    <ChartTooltip>
-                      {payload.map((item) => (
-                        <ChartTooltipContent
-                          key={item.name}
-                          date={label}
-                          value={item.value}
-                          label={chartConfig[item.name as keyof typeof chartConfig].label}
-                        />
-                      ))}
-                    </ChartTooltip>
+                    <div className="rounded-lg border bg-background p-2 shadow-sm">
+                      <div className="grid grid-cols-2 gap-2">
+                        {payload.map((item) => (
+                          <div key={item.name} className="flex flex-col">
+                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                              {chartConfig[item.name as keyof typeof chartConfig].label}
+                            </span>
+                            <span className="font-bold text-muted-foreground">
+                              {item.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-[0.70rem] text-muted-foreground">
+                        {label}
+                      </div>
+                    </div>
                   )
                 }}
               />

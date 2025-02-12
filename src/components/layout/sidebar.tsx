@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -15,7 +15,44 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navigation = [
+import { User as SupabaseUser } from '@supabase/supabase-js';
+import { LucideIcon } from 'lucide-react';
+import React from 'react';
+
+// 扩展 User 类型
+interface ExtendedUser extends SupabaseUser {
+  user_metadata: {
+    name?: string;
+    avatar_url?: string;
+  };
+}
+
+// 扩展 Session 类型
+interface ExtendedSession {
+  user: ExtendedUser;
+}
+
+// 为子菜单项创建单独的类型
+interface NavigationChildItem {
+  name: string;
+  href: string;
+  icon?: LucideIcon;
+}
+
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  matchPaths?: string[];
+  children?: NavigationChildItem[];
+}
+
+// 为 props 添加类型定义
+interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
+  className?: string;
+}
+
+const navigation: NavigationItem[] = [
   { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
   { name: '会员管理', href: '/members', icon: Users },
   {
@@ -59,15 +96,18 @@ const navigation = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { session } = useAuth();
+  const { session } = useAuth() as { session: ExtendedSession | null };
   const supabase = createClientComponentClient();
 
-
-  const currentParentItem = navigation.find(item => 
-    item.children?.some(child => child.href === pathname) || item.href === pathname
+  // 提取复用的逻辑到自定义 hook
+  const currentParentItem = React.useMemo(() => 
+    navigation.find(item => 
+      item.children?.some(child => child.href === pathname) || item.href === pathname
+    ),
+    [pathname]
   );
 
   const handleLogout = async () => {
@@ -80,21 +120,23 @@ export function Sidebar() {
   };
 
   return (
-    <>
+    <div className={cn('pb-12', className)}>
       <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col fixed left-0 top-0 bottom-0 bg-white border-r transition-all duration-300 overflow-hidden group z-20">
         <div className="flex h-[48px] items-center px-4 border-b">
           <Image src="/logo.svg" alt="Logo" width={32} height={32} />
         </div>
         <nav className="flex-1 space-y-1 px-2 py-4">
           {navigation.map((item) => {
-            const isActive = item.matchPaths ? item.matchPaths.includes(pathname) : pathname === item.href;
+            const isActive = item.matchPaths 
+              ? item.matchPaths.includes(pathname) 
+              : pathname === item.href;
             const hasChildren = item.children && item.children.length > 0;
-            const isChildActive = hasChildren && item.children.some(child => child.href === pathname);
+            const isChildActive = hasChildren && item.children?.some(child => child.href === pathname);
 
             return (
               <div key={item.name}>
                 <Link
-                  href={hasChildren ? item.children[0].href : item.href}
+                  href={hasChildren && item.children ? item.children[0].href : item.href}
                   className={cn(
                     'flex items-center rounded-md group-hover:w-full',
                     (isActive || isChildActive)
@@ -130,7 +172,7 @@ export function Sidebar() {
                       className="rounded-full"
                     />
                   ) : (
-                    <User className="h-4 w-4 text-gray-500" />
+                    <UserCircle className="h-4 w-4 text-gray-500" />
                   )}
                 </div>
                 <div className="w-0 group-hover:w-auto overflow-hidden transition-all duration-300">
@@ -178,6 +220,6 @@ export function Sidebar() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -10,7 +10,13 @@ import {
   FieldValues,
   FormProvider,
   useFormContext,
+  UseFormProps,
+  UseFormReturn,
+  useForm,
+  DefaultValues,
 } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
@@ -166,19 +172,23 @@ const FormMessage = React.forwardRef<
 })
 FormMessage.displayName = "FormMessage"
 
-interface UseZodFormProps<T extends FieldValues> {
-  defaultValues?: Partial<T>;
-  schema?: z.ZodType<T>;
-}
+export type FormProps<T extends FieldValues> = Omit<React.ComponentProps<"form">, "onSubmit"> & {
+  form: UseFormReturn<T>;
+  onSubmit: (values: T) => void;
+};
+
+type UseZodFormProps<T extends FieldValues> = Omit<UseFormProps<T>, "resolver"> & {
+  schema?: z.ZodSchema;
+};
 
 export function useZodForm<T extends FieldValues>({
-  defaultValues,
   schema,
+  defaultValues,
   ...formProps
-}: UseZodFormProps<T> & Omit<UseFormProps<T>, 'defaultValues' | 'resolver'>) {
+}: UseZodFormProps<T>) {
   return useForm<T>({
     ...formProps,
-    defaultValues,
+    defaultValues: defaultValues as DefaultValues<T>,
     resolver: schema ? zodResolver(schema) : undefined
   });
 }
@@ -218,7 +228,3 @@ export {
   FormMessage,
   FormField,
 };
-
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useForm, UseFormProps } from "react-hook-form";
