@@ -6,8 +6,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,11 +25,6 @@ interface ExtendedUser extends SupabaseUser {
     name?: string;
     avatar_url?: string;
   };
-}
-
-// 扩展 Session 类型
-interface ExtendedSession {
-  user: ExtendedUser;
 }
 
 // 为子菜单项创建单独的类型
@@ -102,6 +97,10 @@ export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { session } = useAuth();
+  const supabase = createClientComponentClient();
+
+  // 添加类型断言
+  const user = session?.user as ExtendedUser | null;
 
   const handleLogout = async () => {
     try {
@@ -169,9 +168,9 @@ export function Sidebar({ className }: SidebarProps) {
                 pathname === '/settings/profile' ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-50'
               )}>
                 <div className="w-[40px] h-[40px] flex items-center justify-center flex-shrink-0">
-                  {session?.user?.user_metadata?.avatar_url ? (
+                  {user?.user_metadata?.avatar_url ? (
                     <Image
-                      src={session.user.user_metadata.avatar_url}
+                      src={user.user_metadata.avatar_url}
                       alt="Avatar"
                       width={16}
                       height={16}
@@ -183,7 +182,7 @@ export function Sidebar({ className }: SidebarProps) {
                 </div>
                 <div className="w-0 group-hover/sidebar:w-auto overflow-hidden transition-all duration-300">
                   <p className="whitespace-nowrap group-hover/sidebar:ml-2 text-[13px] font-medium truncate">
-                    {session?.user?.user_metadata?.name || session?.user?.email}
+                    {user?.user_metadata?.name || user?.email}
                   </p>
                 </div>
               </div>
