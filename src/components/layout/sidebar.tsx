@@ -121,7 +121,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   return (
     <div className={cn('pb-12', className)}>
-      <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col fixed left-0 top-0 bottom-0 bg-white border-r transition-all duration-300 overflow-hidden group z-20">
+      <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col fixed left-0 top-0 bottom-0 bg-white border-r transition-all duration-300 overflow-hidden group z-50">
         <div className="flex h-[48px] items-center px-4 border-b">
           <Image src="/logo.svg" alt="Logo" width={32} height={32} />
         </div>
@@ -198,7 +198,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* 独立的二级菜单区域 */}
       {currentParentItem?.children && (
-        <div className="hidden md:block fixed left-[57px] top-0 h-[calc(100vh-0px)] w-[240px] bg-white border-r z-[5]">
+        <div className="hidden md:block fixed left-[57px] top-0 h-[calc(100vh-0px)] w-[240px] bg-white border-r z-[51]">
           <div className="h-[48px] flex items-center px-4 border-b">
             <h2 className="text-2xl font-bold">{currentParentItem.name}</h2>
           </div>
