@@ -120,8 +120,9 @@ export function Sidebar({ className }: SidebarProps) {
   };
 
   return (
-    <div className={cn('pb-12', className)}>
-      <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col fixed left-0 top-0 bottom-0 bg-white border-r transition-all duration-300 overflow-hidden group z-50">
+    <div className={cn('pb-12 h-full', className)}>
+      {/* 主侧边栏 - 不需要 fixed，因为父容器已经 fixed */}
+      <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col bg-white border-r transition-all duration-300 overflow-hidden group">
         <div className="flex h-[48px] items-center px-4 border-b">
           <Image src="/logo.svg" alt="Logo" width={32} height={32} />
         </div>
@@ -196,9 +197,9 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
       </div>
 
-      {/* 独立的二级菜单区域 */}
+      {/* 二级菜单 - 使用 absolute 定位 */}
       {currentParentItem?.children && (
-        <div className="hidden md:block fixed left-[57px] top-0 h-[calc(100vh-0px)] w-[240px] bg-white border-r z-[51]">
+        <div className="hidden md:block absolute left-full top-0 h-full w-[240px] bg-white border-r">
           <div className="h-[48px] flex items-center px-4 border-b">
             <h2 className="text-2xl font-bold">{currentParentItem.name}</h2>
           </div>
