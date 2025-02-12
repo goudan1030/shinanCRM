@@ -756,17 +756,33 @@ function MembersPageContent() {
         </div>
 
         {loading ? (
-          <div className="space-y-4 mt-[40px]">
-            {Array.from({ length: 10 }).map((_, index) => (
-              <div key={index} className="flex items-center space-x-4">
-                <Skeleton className="h-4 w-[100px]" />
-                <Skeleton className="h-4 w-[120px]" />
-                <Skeleton className="h-4 w-[80px]" />
-                <Skeleton className="h-4 w-[100px]" />
-                <Skeleton className="h-4 w-[60px]" />
-                <Skeleton className="h-4 w-[100px]" />
-              </div>
-            ))}
+          <div className="bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1200px]">
+                <thead>
+                  <tr className="border-b">
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">会员编号</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">微信号</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">手机号</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">会员类型</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 10 }).map((_, index) => (
+                    <tr key={index} className="border-b">
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-[100px]" /></td>
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-[120px]" /></td>
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-[120px]" /></td>
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-[100px]" /></td>
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-[80px]" /></td>
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-[100px]" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : members.length === 0 ? (
           <div className="text-center py-4 text-gray-500 text-[13px] mt-[40px]">暂无会员数据</div>
