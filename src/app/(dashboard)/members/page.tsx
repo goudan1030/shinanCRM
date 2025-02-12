@@ -760,7 +760,7 @@ function MembersPageContent() {
           <div className="text-center py-4 text-gray-500 text-[13px] mt-[40px]">暂无会员数据</div>
         ) : (
           <>
-            <div className="flex items-center space-x-4 mb-4">
+            <div className="flex items-center space-x-4">
               <Input
                 placeholder="搜索会员编号/微信/手机"
                 value={searchKeyword}
@@ -778,7 +778,7 @@ function MembersPageContent() {
                 重置
               </Button>
             </div>
-            <div className="overflow-auto flex-1 mt-[40px] pb-10">
+            <div className="overflow-auto flex-1 pb-10">
               <div className="relative">
                 <table className="w-full min-w-[1200px]">
                   <thead className="sticky top-0 bg-[#f2f2f2] z-40">
