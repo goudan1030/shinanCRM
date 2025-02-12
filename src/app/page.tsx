@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
 export default function Home() {
-  // 直接重定向到登录页面
-  redirect('/login');
+  // 重定向到 (auth) 组下的登录页面
+  redirect('/(auth)/login');
 }
