@@ -196,30 +196,17 @@ export default function ExpensePage() {
         <div className="w-[240px] border-r border-gray-200 bg-white fixed left-[297px] top-[48px] bottom-0 z-[5]">
           <div className="flex flex-col p-4 space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">搜索</label>
-              <Input
-                placeholder="搜索会员编号或备注"
+              <label className="text-sm font-medium">搜索</label>
+              <Input 
+                placeholder="搜索备注"
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 className="w-full"
               />
             </div>
+
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">支付方式筛选</label>
-              <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="支付方式" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部</SelectItem>
-                  <SelectItem value="CASH">现金</SelectItem>
-                  <SelectItem value="WECHAT">微信</SelectItem>
-                  <SelectItem value="ALIPAY">支付宝</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">年份筛选</label>
+              <label className="text-sm font-medium">年份筛选</label>
               <Select value={yearFilter} onValueChange={setYearFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="选择年份" />
@@ -234,8 +221,9 @@ export default function ExpensePage() {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">月份筛选</label>
+              <label className="text-sm font-medium">月份筛选</label>
               <Select value={monthFilter} onValueChange={setMonthFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="选择月份" />

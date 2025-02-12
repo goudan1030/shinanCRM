@@ -116,8 +116,9 @@ export function Sidebar({ className }: SidebarProps) {
     <div className={cn('pb-12 h-full', className)}>
       {/* 主侧边栏 - 使用 group/sidebar 来控制展开效果 */}
       <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col bg-white border-r transition-all duration-300 overflow-hidden group/sidebar relative z-[1001]">
-        <div className="h-[48px] flex items-center justify-center border-b">
-          <div className="w-[40px] h-[40px] flex items-center justify-center flex-shrink-0">
+        <div className="h-[48px] flex items-center border-b">
+          {/* Logo 容器固定宽度 */}
+          <div className="w-[57px] flex items-center justify-center flex-shrink-0">
             <Image
               src="/logo.svg"
               alt="Logo"
@@ -127,8 +128,9 @@ export function Sidebar({ className }: SidebarProps) {
               priority
             />
           </div>
+          {/* 系统名称 */}
           <div className="w-0 group-hover/sidebar:w-auto overflow-hidden transition-all duration-300">
-            <p className="whitespace-nowrap group-hover/sidebar:ml-2 text-[13px] font-medium truncate">
+            <p className="whitespace-nowrap text-[13px] font-medium truncate">
               CRM系统
             </p>
           </div>

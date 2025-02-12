@@ -125,7 +125,8 @@ export default function WecomConfigPage() {
   };
 
   return (
-    <div>
+    <div className="p-6">
+      <h2 className="text-lg font-semibold mb-4">企业微信基础配置</h2>
       <Card className="p-6 border-none shadow-none">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-md">

@@ -34,6 +34,11 @@ export default function MiniappReviewPage() {
           审核管理功能开发中...
         </div>
       </Card>
+
+      <div className="p-6">
+        <h2 className="text-lg font-semibold mb-4">小程序审核发布</h2>
+        {/* 添加审核列表 */}
+      </div>
     </div>
   );
 }
