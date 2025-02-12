@@ -11,6 +11,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
 import { Session } from '@supabase/auth-helpers-nextjs';
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ExpenseRecord {
   id: string;
@@ -278,11 +279,16 @@ export default function ExpensePage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {loading ? (
-                      <tr>
-                        <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
-                          加载中...
-                        </td>
-                      </tr>
+                      <div className="space-y-4 mt-[40px]">
+                        {Array.from({ length: 10 }).map((_, index) => (
+                          <div key={index} className="flex items-center space-x-4">
+                            <Skeleton className="h-4 w-[100px]" />
+                            <Skeleton className="h-4 w-[120px]" />
+                            <Skeleton className="h-4 w-[80px]" />
+                            <Skeleton className="h-4 w-[100px]" />
+                          </div>
+                        ))}
+                      </div>
                     ) : records.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
