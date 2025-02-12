@@ -42,7 +42,7 @@ export default function ExpensePage() {
   const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
 
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
 
   const fetchRecords = useCallback(async () => {
     try {
@@ -71,6 +71,10 @@ export default function ExpensePage() {
         query = query.gte('expense_date', startDate).lte('expense_date', endDate);
       }
     
+      if (paymentMethodFilter !== 'all') {
+        query = query.eq('payment_method', paymentMethodFilter);
+      }
+    
       const { data, error, count } = await query;
     
       if (error) throw error;
@@ -90,7 +94,7 @@ export default function ExpensePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, monthFilter, searchKeyword, supabase, toast, yearFilter]);
+  }, [currentPage, monthFilter, searchKeyword, supabase, toast, yearFilter, paymentMethodFilter]);
 
   useEffect(() => {
     if (session) {

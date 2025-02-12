@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Session } from '@supabase/auth-helpers-nextjs';
-import { Pagination } from '@/components/ui/pagination';
 
 interface Member {
   id: string;
@@ -88,7 +87,7 @@ const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'actions', label: '操作' }
 ];
 
-export default function MembersPage() {
+function MembersPageContent() {
   const { toast } = useToast();
   const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
   const router = useRouter();
@@ -101,9 +100,6 @@ export default function MembersPage() {
   const [upgradeDate, setUpgradeDate] = useState<Date>(new Date());
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -117,6 +113,7 @@ export default function MembersPage() {
   const searchParams = useSearchParams();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState('');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -157,15 +154,12 @@ export default function MembersPage() {
         .from('members')
         .select('*', { count: 'exact' });
 
-      const keyword = searchParams.get('keyword');
+      if (searchKeyword) {
+        query = query.or(`member_no.ilike.%${searchKeyword}%,wechat.ilike.%${searchKeyword}%,phone.ilike.%${searchKeyword}%`);
+      }
+
       const type = searchParams.get('type');
       const status = searchParams.get('status');
-
-      if (keyword) {
-        query = query.or(
-          `member_no.ilike.%${keyword}%,wechat.ilike.%${keyword}%,phone.ilike.%${keyword}%`
-        );
-      }
 
       if (type && type !== 'all') {
         query = query.eq('type', type);
@@ -196,7 +190,7 @@ export default function MembersPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchParams, supabase, toast]);
+  }, [currentPage, pageSize, searchParams, supabase, toast, searchKeyword]);
 
   useEffect(() => {
     if (session) {
@@ -993,5 +987,17 @@ export default function MembersPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function MembersPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">加载中...</p>
+      </div>
+    }>
+      <MembersPageContent />
+    </Suspense>
   );
 }

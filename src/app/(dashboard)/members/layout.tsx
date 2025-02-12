@@ -1,10 +1,11 @@
 'use client';
 
+import { Suspense } from 'react';
 import { ThreeColumnLayout } from '@/components/layout/three-column-layout';
 import { Sidebar } from '@/components/layout/sidebar';
 import { MemberFilter } from '@/components/member/member-filter';
 
-export default function MembersLayout({
+function MembersLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -18,5 +19,21 @@ export default function MembersLayout({
     >
       {children}
     </ThreeColumnLayout>
+  );
+}
+
+export default function MembersLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">加载中...</p>
+      </div>
+    }>
+      <MembersLayoutContent>{children}</MembersLayoutContent>
+    </Suspense>
   );
 } 

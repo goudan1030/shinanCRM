@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { ArrowLeft } from 'lucide-react';
 
 interface FormData {
   member_no: string;
@@ -35,10 +34,11 @@ interface FormData {
   marriage_cert: string;
   self_description: string;
   partner_requirement: string;
+  [key: string]: string;
 }
 
 interface SubmitData {
-  [key: string]: string | null;
+  [key: string]: string | number | null;
 }
 
 export default function EditMemberPage() {
@@ -73,6 +73,7 @@ export default function EditMemberPage() {
     self_description: '',
     partner_requirement: ''
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchMemberData = async () => {
@@ -199,8 +200,6 @@ export default function EditMemberPage() {
       setLoading(false);
     }
   };
-
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (field: string, value: string) => {
     setFieldErrors(prev => ({ ...prev, [field]: '' }));
