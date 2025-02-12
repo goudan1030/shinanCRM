@@ -11,6 +11,6 @@ interface PageProps {
   params: { id: string };
 }
 
-export default function MemberPage({ params }: PageProps) {
+export default async function MemberPage({ params }: PageProps) {
   return <MemberDetail memberId={params.id} />;
 }
