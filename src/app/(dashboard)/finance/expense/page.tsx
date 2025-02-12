@@ -240,6 +240,21 @@ export default function ExpensePage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">支付方式</label>
+              <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择支付方式" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部</SelectItem>
+                  <SelectItem value="CASH">现金</SelectItem>
+                  <SelectItem value="WECHAT">微信</SelectItem>
+                  <SelectItem value="ALIPAY">支付宝</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
