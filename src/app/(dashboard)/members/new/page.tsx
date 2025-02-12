@@ -132,13 +132,16 @@ export default function NewMemberPage() {
         return acc;
       }, {});
 
+      // 根据性别设置初始匹配次数
+      const initialRemainingMatches = submitData.gender === 'female' ? 1 : 0;
+
       const { error } = await supabase
         .from('members')
         .insert([{
           ...submitData,
           type: 'NORMAL',
           status: 'ACTIVE',
-          remaining_matches: 10
+          remaining_matches: initialRemainingMatches  // 根据性别设置初始匹配次数
         }]);
 
       if (error) {
@@ -236,19 +239,19 @@ export default function NewMemberPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-screen overflow-hidden">
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-[1200px] mx-auto px-4 py-4">
-          <div className="flex items-center mb-8">
+    <div className="overflow-auto">
+      <div className="max-w-[1200px] mx-auto p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
             <Button
               variant="ghost"
+              size="sm"
               onClick={() => router.back()}
-              className="mr-4"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
+                width="16"
+                height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -259,295 +262,295 @@ export default function NewMemberPage() {
                 <path d="M19 12H5M12 19l-7-7 7-7" />
               </svg>
             </Button>
-            <h1 className="text-2xl font-bold">新增会员</h1>
+            <h2 className="text-lg font-semibold">新增会员</h2>
           </div>
-          <Card className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold mb-4">个人信息</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">会员编号</label>
-                      <Input
-                        value={formData.member_no}
-                        onChange={(e) => handleInputChange('member_no', e.target.value)}
-                        placeholder="请输入会员编号"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">微信昵称</label>
-                      <Input
-                        value={formData.nickname}
-                        onChange={(e) => handleInputChange('nickname', e.target.value)}
-                        placeholder="请输入微信昵称"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">性别</label>
-                      <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="请选择性别" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">男</SelectItem>
-                          <SelectItem value="female">女</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">出生年份</label>
-                      <Input
-                        type="number"
-                        value={formData.birth_year}
-                        onChange={(e) => handleInputChange('birth_year', e.target.value)}
-                        onBlur={() => handleInputBlur('birth_year')}
-                        placeholder="请输入出生年份"
-                        className={`${fieldErrors.birth_year ? 'border-red-500 focus:border-red-500' : ''}`}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">身高(cm)</label>
-                      <Input
-                        type="number"
-                        value={formData.height}
-                        onChange={(e) => handleInputChange('height', e.target.value)}
-                        onBlur={() => handleInputBlur('height')}
-                        placeholder="请输入身高"
-                        className={`${fieldErrors.height ? 'border-red-500 focus:border-red-500' : ''}`}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">体重(kg)</label>
-                      <Input
-                        type="number"
-                        value={formData.weight}
-                        onChange={(e) => handleInputChange('weight', e.target.value)}
-                        onBlur={() => handleInputBlur('weight')}
-                        placeholder="请输入体重"
-                        className={`${fieldErrors.weight ? 'border-red-500 focus:border-red-500' : ''}`}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">所在省份</label>
-                      <Input
-                        value={formData.province}
-                        onChange={(e) => handleInputChange('province', e.target.value)}
-                        placeholder="请输入所在省份"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">所在城市</label>
-                      <Input
-                        value={formData.city}
-                        onChange={(e) => handleInputChange('city', e.target.value)}
-                        placeholder="请输入所在城市"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">所在区市</label>
-                      <Input
-                        value={formData.district}
-                        onChange={(e) => handleInputChange('district', e.target.value)}
-                        placeholder="请输入所在区市"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">户口所在省</label>
-                      <Input
-                        value={formData.hukou_province}
-                        onChange={(e) => handleInputChange('hukou_province', e.target.value)}
-                        placeholder="请输入户口所在省"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">户口所在市</label>
-                      <Input
-                        value={formData.hukou_city}
-                        onChange={(e) => handleInputChange('hukou_city', e.target.value)}
-                        placeholder="请输入户口所在市"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">学历</label>
-                      <Select value={formData.education} onValueChange={(value) => handleInputChange('education', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="请选择学历" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="HIGH_SCHOOL">高中</SelectItem>
-                          <SelectItem value="COLLEGE">大专</SelectItem>
-                          <SelectItem value="BACHELOR">本科</SelectItem>
-                          <SelectItem value="MASTER">硕士</SelectItem>
-                          <SelectItem value="PHD">博士</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">职业</label>
-                      <Input
-                        value={formData.occupation}
-                        onChange={(e) => handleInputChange('occupation', e.target.value)}
-                        placeholder="请输入职业"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">房车情况</label>
-                      <Select value={formData.house_car} onValueChange={(value) => handleInputChange('house_car', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="请选择房车情况" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="NONE">无房无车</SelectItem>
-                          <SelectItem value="HOUSE_ONLY">有房无车</SelectItem>
-                          <SelectItem value="CAR_ONLY">有车无房</SelectItem>
-                          <SelectItem value="BOTH">有房有车</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">婚史</label>
-                      <Select value={formData.marriage_history} onValueChange={(value) => handleInputChange('marriage_history', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="请选择婚史" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="YES">有婚史</SelectItem>
-                          <SelectItem value="NO">无婚史</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">性取向</label>
-                      <Select value={formData.sexual_orientation} onValueChange={(value) => handleInputChange('sexual_orientation', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="请选择性取向" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="STRAIGHT_MALE">直男</SelectItem>
-                          <SelectItem value="STRAIGHT_FEMALE">直女</SelectItem>
-                          <SelectItem value="LES">LES</SelectItem>
-                          <SelectItem value="GAY">GAY</SelectItem>
-                          <SelectItem value="ASEXUAL">无性恋</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+        </div>
+        <Card className="border-none shadow-none p-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold mb-4">个人信息</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">会员编号</label>
+                    <Input
+                      value={formData.member_no}
+                      onChange={(e) => handleInputChange('member_no', e.target.value)}
+                      placeholder="请输入会员编号"
+                    />
                   </div>
-                </div>
-                
-                <div>
-                  <h2 className="text-lg font-semibold mb-4">联系方式</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">微信号</label>
-                      <Input
-                        value={formData.wechat}
-                        onChange={(e) => handleInputChange('wechat', e.target.value)}
-                        placeholder="请输入微信号"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">手机号</label>
-                      <Input
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        placeholder="请输入手机号"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">微信昵称</label>
+                    <Input
+                      value={formData.nickname}
+                      onChange={(e) => handleInputChange('nickname', e.target.value)}
+                      placeholder="请输入微信昵称"
+                    />
                   </div>
-                </div>
-                
-                <div>
-                  <h2 className="text-lg font-semibold mb-4">形婚需求</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">目标区域</label>
-                      <Input
-                        value={formData.target_area}
-                        onChange={(e) => handleInputChange('target_area', e.target.value)}
-                        placeholder="请输入目标区域"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">孩子需求</label>
-                      <Select value={formData.children_plan} onValueChange={(value) => handleInputChange('children_plan', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="请选择孩子需求" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="TOGETHER">一起要</SelectItem>
-                          <SelectItem value="SEPARATE">各自要</SelectItem>
-                          <SelectItem value="NEGOTIABLE">互相协商</SelectItem>
-                          <SelectItem value="DONT_WANT">不要</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">领证需求</label>
-                      <Select value={formData.marriage_cert} onValueChange={(value) => handleInputChange('marriage_cert', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="请选择领证需求" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="WANT">要</SelectItem>
-                          <SelectItem value="DONT_WANT">不要</SelectItem>
-                          <SelectItem value="NEGOTIABLE">互相协商</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="text-sm font-medium">自我介绍</label>
-                      <textarea
-                        value={formData.self_description}
-                        onChange={(e) => handleInputChange('self_description', e.target.value)}
-                        placeholder="请输入自我介绍"
-                        className="w-full min-h-[100px] p-2 rounded-md border border-input bg-background"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="text-sm font-medium">期望对方</label>
-                      <textarea
-                        value={formData.partner_requirement}
-                        onChange={(e) => handleInputChange('partner_requirement', e.target.value)}
-                        placeholder="请输入择偶要求"
-                        className="w-full min-h-[100px] p-2 rounded-md border border-input bg-background"
-                      />
-                    </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">性别</label>
+                    <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择性别" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">男</SelectItem>
+                        <SelectItem value="female">女</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">出生年份</label>
+                    <Input
+                      type="number"
+                      value={formData.birth_year}
+                      onChange={(e) => handleInputChange('birth_year', e.target.value)}
+                      onBlur={() => handleInputBlur('birth_year')}
+                      placeholder="请输入出生年份"
+                      className={`${fieldErrors.birth_year ? 'border-red-500 focus:border-red-500' : ''}`}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">身高(cm)</label>
+                    <Input
+                      type="number"
+                      value={formData.height}
+                      onChange={(e) => handleInputChange('height', e.target.value)}
+                      onBlur={() => handleInputBlur('height')}
+                      placeholder="请输入身高"
+                      className={`${fieldErrors.height ? 'border-red-500 focus:border-red-500' : ''}`}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">体重(kg)</label>
+                    <Input
+                      type="number"
+                      value={formData.weight}
+                      onChange={(e) => handleInputChange('weight', e.target.value)}
+                      onBlur={() => handleInputBlur('weight')}
+                      placeholder="请输入体重"
+                      className={`${fieldErrors.weight ? 'border-red-500 focus:border-red-500' : ''}`}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">所在省份</label>
+                    <Input
+                      value={formData.province}
+                      onChange={(e) => handleInputChange('province', e.target.value)}
+                      placeholder="请输入所在省份"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">所在城市</label>
+                    <Input
+                      value={formData.city}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
+                      placeholder="请输入所在城市"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">所在区市</label>
+                    <Input
+                      value={formData.district}
+                      onChange={(e) => handleInputChange('district', e.target.value)}
+                      placeholder="请输入所在区市"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">户口所在省</label>
+                    <Input
+                      value={formData.hukou_province}
+                      onChange={(e) => handleInputChange('hukou_province', e.target.value)}
+                      placeholder="请输入户口所在省"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">户口所在市</label>
+                    <Input
+                      value={formData.hukou_city}
+                      onChange={(e) => handleInputChange('hukou_city', e.target.value)}
+                      placeholder="请输入户口所在市"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">学历</label>
+                    <Select value={formData.education} onValueChange={(value) => handleInputChange('education', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择学历" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="HIGH_SCHOOL">高中</SelectItem>
+                        <SelectItem value="COLLEGE">大专</SelectItem>
+                        <SelectItem value="BACHELOR">本科</SelectItem>
+                        <SelectItem value="MASTER">硕士</SelectItem>
+                        <SelectItem value="PHD">博士</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">职业</label>
+                    <Input
+                      value={formData.occupation}
+                      onChange={(e) => handleInputChange('occupation', e.target.value)}
+                      placeholder="请输入职业"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">房车情况</label>
+                    <Select value={formData.house_car} onValueChange={(value) => handleInputChange('house_car', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择房车情况" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE">无房无车</SelectItem>
+                        <SelectItem value="HOUSE_ONLY">有房无车</SelectItem>
+                        <SelectItem value="CAR_ONLY">有车无房</SelectItem>
+                        <SelectItem value="BOTH">有房有车</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">婚史</label>
+                    <Select value={formData.marriage_history} onValueChange={(value) => handleInputChange('marriage_history', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择婚史" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="YES">有婚史</SelectItem>
+                        <SelectItem value="NO">无婚史</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">性取向</label>
+                    <Select value={formData.sexual_orientation} onValueChange={(value) => handleInputChange('sexual_orientation', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择性取向" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="STRAIGHT_MALE">直男</SelectItem>
+                        <SelectItem value="STRAIGHT_FEMALE">直女</SelectItem>
+                        <SelectItem value="LES">LES</SelectItem>
+                        <SelectItem value="GAY">GAY</SelectItem>
+                        <SelectItem value="ASEXUAL">无性恋</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
               
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-primary text-white"
-                >
-                  {loading ? '保存中...' : '保存'}
-                </Button>
+              <div>
+                <h2 className="text-lg font-semibold mb-4">联系方式</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">微信号</label>
+                    <Input
+                      value={formData.wechat}
+                      onChange={(e) => handleInputChange('wechat', e.target.value)}
+                      placeholder="请输入微信号"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">手机号</label>
+                    <Input
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      placeholder="请输入手机号"
+                    />
+                  </div>
+                </div>
               </div>
-            </form>
-          </Card>
-        </div>
+              
+              <div>
+                <h2 className="text-lg font-semibold mb-4">形婚需求</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">目标区域</label>
+                    <Input
+                      value={formData.target_area}
+                      onChange={(e) => handleInputChange('target_area', e.target.value)}
+                      placeholder="请输入目标区域"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">孩子需求</label>
+                    <Select value={formData.children_plan} onValueChange={(value) => handleInputChange('children_plan', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择孩子需求" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="TOGETHER">一起要</SelectItem>
+                        <SelectItem value="SEPARATE">各自要</SelectItem>
+                        <SelectItem value="NEGOTIABLE">互相协商</SelectItem>
+                        <SelectItem value="DONT_WANT">不要</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">领证需求</label>
+                    <Select value={formData.marriage_cert} onValueChange={(value) => handleInputChange('marriage_cert', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择领证需求" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="WANT">要</SelectItem>
+                        <SelectItem value="DONT_WANT">不要</SelectItem>
+                        <SelectItem value="NEGOTIABLE">互相协商</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium">自我介绍</label>
+                    <textarea
+                      value={formData.self_description}
+                      onChange={(e) => handleInputChange('self_description', e.target.value)}
+                      placeholder="请输入自我介绍"
+                      className="w-full min-h-[100px] p-2 rounded-md border border-input bg-background"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium">期望对方</label>
+                    <textarea
+                      value={formData.partner_requirement}
+                      onChange={(e) => handleInputChange('partner_requirement', e.target.value)}
+                      placeholder="请输入择偶要求"
+                      className="w-full min-h-[100px] p-2 rounded-md border border-input bg-background"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-primary text-white"
+              >
+                {loading ? '保存中...' : '保存'}
+              </Button>
+            </div>
+          </form>
+        </Card>
       </div>
     </div>
   );

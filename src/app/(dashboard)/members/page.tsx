@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Session } from '@supabase/auth-helpers-nextjs';
+import { Pagination } from '@/components/ui/pagination';
 
 interface Member {
   id: string;
@@ -101,8 +102,8 @@ export default function MembersPage() {
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -113,6 +114,9 @@ export default function MembersPage() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
   const pageSize = 25;
+  const searchParams = useSearchParams();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -148,46 +152,51 @@ export default function MembersPage() {
 
   const fetchMembers = useCallback(async () => {
     try {
+      setLoading(true);
       let query = supabase
         .from('members')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+        .select('*', { count: 'exact' });
 
-      if (searchKeyword) {
+      const keyword = searchParams.get('keyword');
+      const type = searchParams.get('type');
+      const status = searchParams.get('status');
+
+      if (keyword) {
         query = query.or(
-          `member_no.ilike.%${searchKeyword}%,wechat.ilike.%${searchKeyword}%,phone.ilike.%${searchKeyword}%`
+          `member_no.ilike.%${keyword}%,wechat.ilike.%${keyword}%,phone.ilike.%${keyword}%`
         );
       }
 
-      if (typeFilter) {
-        query = query.eq('type', typeFilter);
+      if (type && type !== 'all') {
+        query = query.eq('type', type);
       }
 
-      if (statusFilter) {
-        query = query.eq('status', statusFilter);
+      if (status && status !== 'all') {
+        query = query.eq('status', status);
       }
+
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize - 1;
+      query = query.range(start, end).order('created_at', { ascending: false });
 
       const { data, error, count } = await query;
 
       if (error) throw error;
 
       setMembers(data || []);
-      if (count) {
-        setTotalCount(count);
-        setTotalPages(Math.ceil(count / pageSize));
-      }
+      setTotalCount(count || 0);
+      setTotalPages(Math.ceil((count || 0) / pageSize));
     } catch (error) {
       console.error('获取会员列表失败:', error);
       toast({
         variant: 'destructive',
-        title: '获取会员列表失败',
-        description: error instanceof Error ? error.message : '操作失败，请重试'
+        title: '获取失败',
+        description: error instanceof Error ? error.message : '获取会员列表失败，请重试'
       });
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchKeyword, statusFilter, supabase, toast, typeFilter]);
+  }, [currentPage, pageSize, searchParams, supabase, toast]);
 
   useEffect(() => {
     if (session) {
@@ -451,11 +460,9 @@ export default function MembersPage() {
 
     setRevokeLoading(true);
     try {
-      // 开启事务
       const { error } = await supabase.rpc('revoke_member', {
         p_member_id: memberId,
-        p_reason: revokeReason,
-        p_revoked_by: session?.user?.id
+        p_reason: revokeReason
       });
 
       if (error) throw error;
@@ -519,8 +526,37 @@ export default function MembersPage() {
     }
   };
 
+  const handleDelete = async (memberId: string) => {
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase.rpc('delete_member', {
+        p_member_id: memberId
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: '删除成功',
+        description: '会员数据已删除'
+      });
+
+      setDeleteDialogOpen(false);
+      setSelectedMemberId(null);
+      fetchMembers();
+    } catch (error) {
+      console.error('删除会员失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '删除失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="space-y-4">
       <Dialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -642,6 +678,26 @@ export default function MembersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除会员</DialogTitle>
+            <DialogDescription>
+              确定要删除这个会员吗？此操作不可恢复。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>取消</Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleDelete(selectedMemberId!)}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? '删除中...' : '确认删除'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[294px] z-50">
           <div className="relative column-selector">
@@ -666,25 +722,33 @@ export default function MembersPage() {
               显示字段
             </Button>
             {isColumnSelectorOpen && (
-              <div className="absolute right-0 mt-2 p-4 border rounded-md shadow-lg bg-white z-10 min-w-[240px] column-selector">
-                <h3 className="text-[13px] font-medium mb-2">选择显示字段</h3>
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {availableColumns.map((column) => (
-                    <label key={column.key} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
-                      <input
-                        type="checkbox"
-                        checked={selectedColumns.includes(column.key)}
-                        onChange={(e) => {
-                          const newColumns = e.target.checked
-                            ? [...selectedColumns, column.key]
-                            : selectedColumns.filter(key => key !== column.key);
-                          handleColumnChange(newColumns);
-                        }}
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <span className="text-[13px]">{column.label}</span>
-                    </label>
-                  ))}
+              <div className="column-selector absolute top-[40px] left-4 bg-white border rounded-md shadow-lg p-4 z-[1002] w-[280px]">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h3 className="font-medium text-sm">选择显示字段</h3>
+                    <span className="text-[12px] text-gray-500">
+                      已选 {selectedColumns.length} 项
+                    </span>
+                  </div>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                    {availableColumns.map(({ key, label }) => (
+                      <label key={key} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                        <input
+                          type="checkbox"
+                          checked={selectedColumns.includes(key as ColumnKey)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              handleColumnChange([...selectedColumns, key as ColumnKey]);
+                            } else {
+                              handleColumnChange(selectedColumns.filter(col => col !== key));
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-[13px] text-gray-700">{label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -805,16 +869,15 @@ export default function MembersPage() {
                                 )}
                                 {member.status === 'REVOKED' && (
                                   <Button
-                                    variant="outline"
+                                    variant="destructive"
                                     size="sm"
-                                    className="h-[26px] text-[13px] text-green-500 hover:text-green-500"
                                     onClick={() => {
                                       setSelectedMemberId(member.id);
-                                      setActivateReason('');
-                                      setActivateDialogOpen(true);
+                                      setDeleteDialogOpen(true);
                                     }}
+                                    className="text-[13px] h-[26px]"
                                   >
-                                    激活
+                                    删除
                                   </Button>
                                 )}
                               </div>
@@ -928,51 +991,6 @@ export default function MembersPage() {
             </div>
           </>
         )}
-      </div>
-
-      {/* 搜索区域 */}
-      <div className="hidden md:block fixed left-[54px] top-[48px] bottom-0 w-[240px] bg-white border-r p-4 transition-all duration-300 z-10">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-[13px] font-medium">关键词搜索</label>
-            <Input
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              placeholder="搜索会员编号/微信/手机号"
-              className="text-[13px]"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[13px] font-medium">会员类型</label>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="text-[13px]">
-                <SelectValue placeholder="全部类型" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部类型</SelectItem>
-                <SelectItem value="NORMAL">普通会员</SelectItem>
-                <SelectItem value="ONE_TIME">一次性会员</SelectItem>
-                <SelectItem value="ANNUAL">年费会员</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[13px] font-medium">会员状态</label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="text-[13px]">
-                <SelectValue placeholder="全部状态" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部状态</SelectItem>
-                <SelectItem value="ACTIVE">激活</SelectItem>
-                <SelectItem value="REVOKED">撤销</SelectItem>
-                <SelectItem value="SUCCESS">成功</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
       </div>
     </div>
   );

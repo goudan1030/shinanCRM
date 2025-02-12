@@ -2,7 +2,7 @@
 
 import { ThreeColumnLayout } from '@/components/layout/three-column-layout';
 import { Sidebar } from '@/components/layout/sidebar';
-import { MemberFilter } from '@/components/member/member-filter';  // 需要创建这个组件
+import { MemberFilter } from '@/components/member/member-filter';
 
 export default function MembersLayout({
   children,
@@ -13,7 +13,7 @@ export default function MembersLayout({
     <ThreeColumnLayout 
       sidebarContent={<Sidebar />}
       middleContent={<MemberFilter />}
-      useThreeColumns={true}  // 启用三栏布局
+      useThreeColumns={true}
       className="bg-gray-50"
     >
       {children}
