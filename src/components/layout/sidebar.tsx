@@ -57,7 +57,7 @@ const navigation: NavigationItem[] = [
   { name: '会员管理', href: '/members', icon: Users },
   {
     name: '收支管理',
-    href: '/finance',
+    href: '/finance/income',
     icon: Wallet,
     matchPaths: ['/finance', '/finance/income', '/finance/expense', '/finance/settlement'],
     children: [
@@ -68,30 +68,32 @@ const navigation: NavigationItem[] = [
   },
   {
     name: '小程序管理',
-    href: '/miniapp',
+    href: '/miniapp/config',
     icon: Smartphone,
     matchPaths: ['/miniapp', '/miniapp/config', '/miniapp/review'],
     children: [
-      { name: '基本配置', href: '/miniapp/config' },
-      { name: '审核管理', href: '/miniapp/review' }
+      { name: '基础配置', href: '/miniapp/config' },
+      { name: '审核发布', href: '/miniapp/review' }
     ]
   },
   {
     name: '企业微信管理',
-    href: '/wecom',
+    href: '/wecom/config',
     icon: Building2,
-    matchPaths: ['/wecom', '/wecom/config'],
+    matchPaths: ['/wecom', '/wecom/config', '/wecom/sync'],
     children: [
-      { name: '基本配置', href: '/wecom/config' }
+      { name: '基础配置', href: '/wecom/config' },
+      { name: '数据同步', href: '/wecom/sync' }
     ]
   },
   {
     name: '系统设置',
-    href: '/settings',
+    href: '/settings/profile',
     icon: Settings,
-    matchPaths: ['/settings', '/settings/profile'],
+    matchPaths: ['/settings', '/settings/profile', '/settings/security'],
     children: [
-      { name: '个人信息', href: '/settings/profile' }
+      { name: '个人资料', href: '/settings/profile' },
+      { name: '安全设置', href: '/settings/security' }
     ]
   },
 ];
@@ -99,16 +101,7 @@ const navigation: NavigationItem[] = [
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { session } = useAuth() as { session: ExtendedSession | null };
-  const supabase = createClientComponentClient();
-
-  // 提取复用的逻辑到自定义 hook
-  const currentParentItem = React.useMemo(() => 
-    navigation.find(item => 
-      item.children?.some(child => child.href === pathname) || item.href === pathname
-    ),
-    [pathname]
-  );
+  const { session } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -121,41 +114,51 @@ export function Sidebar({ className }: SidebarProps) {
 
   return (
     <div className={cn('pb-12 h-full', className)}>
-      {/* 主侧边栏 - 不需要 fixed，因为父容器已经 fixed */}
-      <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col bg-white border-r transition-all duration-300 overflow-hidden group">
-        <div className="flex h-[48px] items-center px-4 border-b">
-          <Image src="/logo.svg" alt="Logo" width={32} height={32} />
+      {/* 主侧边栏 - 使用 group/sidebar 来控制展开效果 */}
+      <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col bg-white border-r transition-all duration-300 overflow-hidden group/sidebar relative z-[1001]">
+        <div className="h-[48px] flex items-center justify-center border-b">
+          <div className="w-[40px] h-[40px] flex items-center justify-center flex-shrink-0">
+            <Image
+              src="/logo.svg"
+              alt="Logo"
+              width={24}
+              height={24}
+              className="rounded-md"
+              priority
+            />
+          </div>
+          <div className="w-0 group-hover/sidebar:w-auto overflow-hidden transition-all duration-300">
+            <p className="whitespace-nowrap group-hover/sidebar:ml-2 text-[13px] font-medium truncate">
+              CRM系统
+            </p>
+          </div>
         </div>
-        <nav className="flex-1 space-y-1 px-2 py-4">
-          {navigation.map((item) => {
-            const isActive = item.matchPaths 
-              ? item.matchPaths.includes(pathname) 
-              : pathname === item.href;
-            const hasChildren = item.children && item.children.length > 0;
-            const isChildActive = hasChildren && item.children?.some(child => child.href === pathname);
 
-            return (
-              <div key={item.name}>
-                <Link
-                  href={hasChildren && item.children ? item.children[0].href : item.href}
-                  className={cn(
-                    'flex items-center rounded-md group-hover:w-full',
-                    (isActive || isChildActive)
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  )}
-                >
-                  <div className="w-[40px] h-[40px] flex items-center justify-center flex-shrink-0">
-                    <item.icon className="h-4 w-4" />
-                  </div>
-                  <div className="w-0 group-hover:w-auto overflow-hidden transition-all duration-300 flex items-center justify-between flex-1">
-                    <span className="whitespace-nowrap group-hover:ml-2 text-[13px]">{item.name}</span>
-                  </div>
-                </Link>
-              </div>
-            );
-          })}
+        <nav className="flex-1 px-2 py-2 space-y-1">
+          {navigation.map((item) => (
+            <div key={item.name}>
+              <Link
+                href={item.href}
+                className={cn(
+                  'flex items-center rounded-md',
+                  (item.matchPaths?.some(path => pathname.startsWith(path)) || pathname === item.href)
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-700 hover:bg-gray-50'
+                )}
+              >
+                <div className="w-[40px] h-[40px] flex items-center justify-center flex-shrink-0">
+                  <item.icon className="h-4 w-4" />
+                </div>
+                <div className="w-0 group-hover/sidebar:w-auto overflow-hidden transition-all duration-300">
+                  <p className="whitespace-nowrap group-hover/sidebar:ml-2 text-[13px] font-medium truncate">
+                    {item.name}
+                  </p>
+                </div>
+              </Link>
+            </div>
+          ))}
         </nav>
+
         <div className="px-2 h-[48px] flex items-center border-t">
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full outline-none">
@@ -176,8 +179,8 @@ export function Sidebar({ className }: SidebarProps) {
                     <UserCircle className="h-4 w-4 text-gray-500" />
                   )}
                 </div>
-                <div className="w-0 group-hover:w-auto overflow-hidden transition-all duration-300">
-                  <p className="whitespace-nowrap group-hover:ml-2 text-[13px] font-medium truncate">
+                <div className="w-0 group-hover/sidebar:w-auto overflow-hidden transition-all duration-300">
+                  <p className="whitespace-nowrap group-hover/sidebar:ml-2 text-[13px] font-medium truncate">
                     {session?.user?.user_metadata?.name || session?.user?.email}
                   </p>
                 </div>
@@ -196,31 +199,6 @@ export function Sidebar({ className }: SidebarProps) {
           </DropdownMenu>
         </div>
       </div>
-
-      {/* 二级菜单 - 使用 absolute 定位 */}
-      {currentParentItem?.children && (
-        <div className="hidden md:block absolute left-full top-0 h-full w-[240px] bg-white border-r">
-          <div className="h-[48px] flex items-center px-4 border-b">
-            <h2 className="text-2xl font-bold">{currentParentItem.name}</h2>
-          </div>
-          <div className="space-y-1 p-2">
-            {currentParentItem.children.map((child) => (
-              <Link
-                key={child.name}
-                href={child.href}
-                className={cn(
-                  'flex items-center rounded-md py-2 px-3',
-                  pathname === child.href
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-gray-700 hover:bg-gray-50'
-                )}
-              >
-                <span className="text-[13px]">{child.name}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
