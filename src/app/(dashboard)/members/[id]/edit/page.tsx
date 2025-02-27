@@ -78,13 +78,12 @@ export default function EditMemberPage() {
   useEffect(() => {
     const fetchMemberData = async () => {
       try {
-        const { data, error } = await supabase
-          .from('members')
-          .select('*')
-          .eq('id', params.id)
-          .single();
+        const response = await fetch(`/api/members/${params.id}`);
+        const data = await response.json();
 
-        if (error) throw error;
+        if (!response.ok) {
+          throw new Error(data.error || '获取会员信息失败');
+        }
 
         if (data) {
           setFormData({
@@ -175,13 +174,19 @@ export default function EditMemberPage() {
         partner_requirement: formData.partner_requirement
       };
 
-      // 直接更新会员信息
-      const { error } = await supabase
-        .from('members')
-        .update(submitData)
-        .eq('id', params.id);
+      const response = await fetch(`/api/members/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submitData)
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '更新失败');
+      }
 
       toast({
         title: '更新成功',

@@ -47,26 +47,24 @@ export default function DashboardPage() {
     async function fetchDashboardData() {
       try {
         // 获取总会员数
-        const { count: totalMembers } = await supabase
-          .from('members')
-          .select('*', { count: 'exact' });
-
-        if (totalMembers === null) {
+        const response = await fetch('/api/dashboard/members/count');
+        const data = await response.json();
+        if (!response.ok) {
           throw new Error('Failed to fetch total members');
         }
+        const totalMembers = data.count;
 
         // 获取当月收入
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-        const { data: monthlyIncomeData } = await supabase
-          .from('income_records')
-          .select('amount')
-          .gte('created_at', firstDayOfMonth.toISOString())
-          .lte('created_at', lastDayOfMonth.toISOString());
-
-        const monthlyIncome = monthlyIncomeData?.reduce((sum, record) => sum + record.amount, 0) || 0;
+        const incomeResponse = await fetch('/api/dashboard/income/monthly');
+        const incomeData = await incomeResponse.json();
+        if (!incomeResponse.ok) {
+          throw new Error('Failed to fetch monthly income');
+        }
+        const monthlyIncome = incomeData.amount;
 
         // 获取当月支出
         const { data: expenseData } = await supabase
@@ -99,46 +97,11 @@ export default function DashboardPage() {
         // 计算待结算金额：(本月收入 - 本月支出)/2 - WECHAT_ZHANG支付金额 - 已结算金额
         const unsettledAmount = ((monthlyIncome - monthlyExpense) / 2) - wechatZhangAmount - settledAmount;
 
-        // 获取最近30天的每日新增用户数量
-        const memberTrend = [];
-        for (let i = 29; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-          const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
-
-          const { data: dailyMembers } = await supabase
-            .from('members')
-            .select('created_at')
-            .gte('created_at', startOfDay.toISOString())
-            .lte('created_at', endOfDay.toISOString());
-
-          memberTrend.push({
-            month: `${date.getMonth() + 1}月${date.getDate()}日`,
-            value: dailyMembers?.length || 0
-          });
-        }
-
-        // 获取最近30天的每日收入
-        const incomeTrend = [];
-        for (let i = 29; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-          const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
-
-          const { data: incomeData } = await supabase
-            .from('income_records')
-            .select('amount')
-            .gte('created_at', startOfDay.toISOString())
-            .lte('created_at', endOfDay.toISOString());
-
-          const dailyTotal = incomeData?.reduce((sum, record) => sum + record.amount, 0) || 0;
-
-          incomeTrend.push({
-            month: `${date.getMonth() + 1}月${date.getDate()}日`,
-            value: dailyTotal
-          });
+        // 获取趋势数据
+        const trendsResponse = await fetch('/api/dashboard/trends');
+        const trendsData = await trendsResponse.json();
+        if (!trendsResponse.ok) {
+          throw new Error('Failed to fetch trends data');
         }
 
         setDashboardData({
@@ -147,8 +110,8 @@ export default function DashboardPage() {
           monthlyExpense,
           settledAmount,
           unsettledAmount,
-          memberTrend,
-          incomeTrend
+          memberTrend: trendsData.memberTrend,
+          incomeTrend: trendsData.incomeTrend
         });
       } catch (error) {
         console.error('获取仪表盘数据失败:', error);

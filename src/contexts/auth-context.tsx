@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import type { AuthState, Session } from '@/types/auth';
+import { usePathname, useRouter } from 'next/navigation';
+import type { AuthState } from '@/types/auth';
 
 const initialState: AuthState = {
   session: null,
@@ -15,24 +15,51 @@ const AuthContext = createContext<AuthState>(initialState);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(initialState);
-  const supabase = createClientComponentClient();
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setState(prev => ({
-        ...prev,
-        session: session as Session,
-        isLoading: false,
-        operatorId: session?.user?.id || null,
-      }));
-    });
-
-    return () => {
-      subscription.unsubscribe();
+    const checkSession = async () => {
+      try {
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        
+        if (data.user) {
+          setState(prev => ({
+            ...prev,
+            session: {
+              user: data.user
+            },
+            isLoading: false,
+            operatorId: data.user.id
+          }));
+        } else {
+          setState(prev => ({ ...prev, session: null, operatorId: null, isLoading: false }));
+          // 如果不在登录页面且没有有效会话，重定向到登录页
+          if (pathname !== '/login') {
+            router.push('/login');
+          }
+        }
+      } catch (error) {
+        setState(prev => ({ 
+          ...prev, 
+          session: null, 
+          operatorId: null, 
+          isLoading: false, 
+          error: error as Error 
+        }));
+        // 发生错误时也重定向到登录页
+        if (pathname !== '/login') {
+          router.push('/login');
+        }
+      }
     };
-  }, [supabase.auth]);
+
+    checkSession();
+  }, [pathname, router]); // 添加router作为依赖项
 
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
 }

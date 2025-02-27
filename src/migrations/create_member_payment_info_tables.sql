@@ -1,0 +1,28 @@
+-- 创建一次性会员支付信息表
+CREATE TABLE IF NOT EXISTS member_one_time_info (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  member_id BIGINT NOT NULL,
+  payment_time DATETIME NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (member_id) REFERENCES members(id),
+  UNIQUE(member_id)
+);
+
+-- 创建年费会员支付信息表
+CREATE TABLE IF NOT EXISTS member_annual_info (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  member_id BIGINT NOT NULL,
+  payment_time DATETIME NOT NULL,
+  expiry_time DATETIME NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (member_id) REFERENCES members(id),
+  UNIQUE(member_id)
+);
+
+-- 修改member_type_logs表，确保包含所有必要的字段
+ALTER TABLE member_type_logs
+ADD COLUMN IF NOT EXISTS payment_time DATETIME,
+ADD COLUMN IF NOT EXISTS expiry_time DATETIME,
+ADD COLUMN IF NOT EXISTS notes TEXT;

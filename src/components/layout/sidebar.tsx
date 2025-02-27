@@ -4,9 +4,10 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, AppWindow } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useToast } from '@/components/ui/use-toast';
 
 import {
   DropdownMenu,
@@ -93,10 +94,19 @@ const navigation: NavigationItem[] = [
   },
 ];
 
+const menuRedirectMap = {
+  '/finance': '/finance/income', // 收支管理 -> 收入管理
+  '/platform': '/platform/banner', // 平台管理 -> Banner管理
+  '/miniapp': '/miniapp/config', // 小程序管理 -> 基础配置
+  '/wecom': '/wecom/config', // 企业微信 -> 基础配置
+  '/settings': '/settings/profile', // 系统设置 -> 个人资料
+};
+
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { session } = useAuth();
+  const { toast } = useToast();
   const supabase = createClientComponentClient();
 
   // 添加类型断言
@@ -104,19 +114,80 @@ export function Sidebar({ className }: SidebarProps) {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('退出登录失败');
+      }
+      
+      // 等待响应成功后再重定向
+      await response.json();
       router.push('/login');
+      router.refresh(); // 刷新路由以确保状态更新
     } catch (error) {
       console.error('退出登录失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '退出失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
     }
   };
 
+  const handleMenuClick = (href: string) => {
+    // 如果是需要重定向的路径，则重定向到对应的子页面
+    if (href in menuRedirectMap) {
+      router.push(menuRedirectMap[href as keyof typeof menuRedirectMap]);
+    } else {
+      router.push(href);
+    }
+  };
+
+  const menus = [
+    {
+      href: '/dashboard',
+      icon: <LayoutDashboard className="h-4 w-4" />,
+      label: '仪表盘'
+    },
+    {
+      href: '/members',
+      icon: <Users className="h-4 w-4" />,
+      label: '会员管理'
+    },
+    {
+      href: '/finance',
+      icon: <Wallet className="h-4 w-4" />,
+      label: '收支管理'
+    },
+    {
+      href: '/platform',
+      icon: <Megaphone className="h-4 w-4" />,
+      label: '平台管理'
+    },
+    {
+      href: '/miniapp',
+      icon: <AppWindow className="h-4 w-4" />,
+      label: '小程序管理'
+    },
+    {
+      href: '/wecom',
+      icon: <Building2 className="h-4 w-4" />,
+      label: '企业微信'
+    },
+    {
+      href: '/settings',
+      icon: <Settings className="h-4 w-4" />,
+      label: '系统设置'
+    }
+  ];
+
   return (
     <div className={cn('pb-12 h-full', className)}>
-      {/* 主侧边栏 - 使用 group/sidebar 来控制展开效果 */}
       <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col bg-white border-r transition-all duration-300 overflow-hidden group/sidebar relative z-[1001]">
         <div className="h-[48px] flex items-center border-b">
-          {/* Logo 容器固定宽度 */}
           <div className="w-[57px] flex items-center justify-center flex-shrink-0">
             <Image
               src="/logo.svg"
@@ -127,7 +198,6 @@ export function Sidebar({ className }: SidebarProps) {
               priority
             />
           </div>
-          {/* 系统名称 */}
           <div className="w-0 group-hover/sidebar:w-auto overflow-hidden transition-all duration-300">
             <p className="whitespace-nowrap text-[13px] font-medium truncate">
               CRM系统
@@ -136,26 +206,26 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
 
         <nav className="flex-1 px-2 py-2 space-y-1">
-          {navigation.map((item) => (
-            <div key={item.name}>
-              <Link
-                href={item.href}
+          {menus.map((menu) => (
+            <div key={menu.href}>
+              <div
+                onClick={() => handleMenuClick(menu.href)}
                 className={cn(
-                  'flex items-center rounded-md',
-                  (item.matchPaths?.some(path => pathname.startsWith(path)) || pathname === item.href)
+                  'flex items-center rounded-md cursor-pointer',
+                  pathname.startsWith(menu.href)
                     ? 'bg-primary/10 text-primary'
                     : 'text-gray-700 hover:bg-gray-50'
                 )}
               >
                 <div className="w-[40px] h-[40px] flex items-center justify-center flex-shrink-0">
-                  <item.icon className="h-4 w-4" />
+                  {menu.icon}
                 </div>
                 <div className="w-0 group-hover/sidebar:w-auto overflow-hidden transition-all duration-300">
                   <p className="whitespace-nowrap group-hover/sidebar:ml-2 text-[13px] font-medium truncate">
-                    {item.name}
+                    {menu.label}
                   </p>
                 </div>
-              </Link>
+              </div>
             </div>
           ))}
         </nav>

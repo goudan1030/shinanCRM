@@ -1,0 +1,72 @@
+import { NextResponse } from 'next/server';
+import pool from '@/lib/mysql';
+
+export async function GET(request: Request) {
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // 获取会员增长趋势
+    const [memberTrend] = await pool.execute(
+      `SELECT 
+        DATE_FORMAT(created_at, '%m月%d日') as date,
+        COUNT(*) as value
+      FROM members
+      WHERE created_at >= ? AND created_at <= ?
+      GROUP BY DATE(created_at)
+      ORDER BY DATE(created_at)`,
+      [thirtyDaysAgo.toISOString(), now.toISOString()]
+    );
+
+    // 获取收入趋势
+    const [incomeTrend] = await pool.execute(
+      `SELECT 
+        DATE_FORMAT(created_at, '%m月%d日') as date,
+        COALESCE(SUM(amount), 0) as value
+      FROM income_records
+      WHERE created_at >= ? AND created_at <= ?
+      GROUP BY DATE(created_at)
+      ORDER BY DATE(created_at)`,
+      [thirtyDaysAgo.toISOString(), now.toISOString()]
+    );
+
+    // 填充没有数据的日期
+    const trends = new Map();
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const dateStr = `${date.getMonth() + 1}月${date.getDate()}日`;
+      trends.set(dateStr, {
+        month: dateStr,
+        memberValue: 0,
+        incomeValue: 0
+      });
+    }
+
+    // 更新实际数据
+    memberTrend.forEach((item: any) => {
+      if (trends.has(item.date)) {
+        trends.get(item.date).memberValue = Number(item.value);
+      }
+    });
+
+    incomeTrend.forEach((item: any) => {
+      if (trends.has(item.date)) {
+        trends.get(item.date).incomeValue = Number(item.value);
+      }
+    });
+
+    // 转换为数组并按日期排序
+    const result = Array.from(trends.values()).reverse();
+
+    return NextResponse.json({
+      memberTrend: result.map(item => ({ month: item.month, value: item.memberValue })),
+      incomeTrend: result.map(item => ({ month: item.month, value: item.incomeValue }))
+    });
+  } catch (error) {
+    console.error('获取趋势数据失败:', error);
+    return NextResponse.json(
+      { error: '获取趋势数据失败' },
+      { status: 500 }
+    );
+  }
+}

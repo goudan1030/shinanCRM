@@ -31,6 +31,7 @@ export function MemberFilter() {
             placeholder="搜索会员编号/微信/手机号"
             value={searchParams.get('keyword') || ''}
             onChange={(e) => {
+              console.log('关键词搜索变更:', e.target.value);
               router.push(pathname + '?' + createQueryString('keyword', e.target.value));
             }}
             className="text-[13px]"
@@ -42,6 +43,7 @@ export function MemberFilter() {
           <Select
             value={searchParams.get('type') || 'all'}
             onValueChange={(value) => {
+              console.log('会员类型变更:', value);
               router.push(pathname + '?' + createQueryString('type', value));
             }}
           >
@@ -62,6 +64,7 @@ export function MemberFilter() {
           <Select
             value={searchParams.get('status') || 'all'}
             onValueChange={(value) => {
+              console.log('会员状态变更:', value);
               router.push(pathname + '?' + createQueryString('status', value));
             }}
           >
@@ -78,4 +81,4 @@ export function MemberFilter() {
       </div>
     </div>
   );
-} 
+}

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +16,6 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const router = useRouter();
   const { toast } = useToast();
-  const supabase = createClientComponentClient();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -27,18 +25,40 @@ export function LoginForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    console.log('=== 开始提交登录表单 ===');
+    console.log('表单数据:', { email: formData.email, passwordProvided: !!formData.password });
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password
+      console.log('发送登录请求...');
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
       });
 
-      if (error) throw error;
+      const data = await response.json();
+      console.log('收到服务器响应:', { status: response.status });
 
+      if (!response.ok) {
+        console.log('✗ 请求失败:', data.error);
+        throw new Error(data.error || '登录失败');
+      }
+
+      if (data.error) {
+        console.log('✗ 服务器返回错误:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('✓ 登录成功，准备跳转...');
       router.push('/dashboard');
       router.refresh();
     } catch (error) {
+      console.error('✗ 登录过程出错:', error);
       toast({
         variant: 'destructive',
         title: '登录失败',
@@ -46,6 +66,7 @@ export function LoginForm({
       });
     } finally {
       setLoading(false);
+      console.log('=== 登录表单提交完成 ===');
     }
   };
 

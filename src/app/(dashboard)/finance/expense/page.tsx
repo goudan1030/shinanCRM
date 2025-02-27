@@ -45,40 +45,20 @@ export default function ExpensePage() {
 
   const fetchRecords = useCallback(async () => {
     try {
-      let query = supabase
-        .from('expense_records')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * pageSize, (currentPage * pageSize) - 1);
-    
-      if (searchKeyword) {
-        query = query.or(
-          `notes.ilike.%${searchKeyword}%`
-        );
-      }
-    
-      if (monthFilter && monthFilter !== 'all') {
-        const year = parseInt(yearFilter);
-        const month = parseInt(monthFilter);
-        const startDate = new Date(year, month - 1, 1).toISOString();
-        const endDate = new Date(year, month, 0).toISOString();
-        query = query.gte('expense_date', startDate).lte('expense_date', endDate);
-      } else {
-        const year = parseInt(yearFilter);
-        const startDate = new Date(year, 0, 1).toISOString();
-        const endDate = new Date(year, 11, 31).toISOString();
-        query = query.gte('expense_date', startDate).lte('expense_date', endDate);
-      }
-    
-      const { data, error, count } = await query;
-    
-      if (error) throw error;
-    
-      setRecords(data || []);
-      if (count !== null) {
-        setTotalCount(count);
-        setTotalPages(Math.ceil(count / pageSize));
-      }
+      const searchParams = new URLSearchParams();
+      searchParams.append('page', currentPage.toString());
+      searchParams.append('pageSize', pageSize.toString());
+      if (searchKeyword) searchParams.append('searchKeyword', searchKeyword);
+      if (monthFilter) searchParams.append('month', monthFilter);
+      if (yearFilter) searchParams.append('year', yearFilter);
+
+      const response = await fetch(`/api/finance/expense/list?${searchParams.toString()}`);
+      if (!response.ok) throw new Error('获取数据失败');
+      
+      const data = await response.json();
+      setRecords(data.records || []);
+      setTotalCount(data.total);
+      setTotalPages(data.totalPages);
     } catch (error) {
       console.error('获取支出记录失败:', error);
       toast({
@@ -399,16 +379,23 @@ export default function ExpensePage() {
 
                 setNewExpenseLoading(true);
                 try {
-                  const { error } = await supabase
-                    .from('expense_records')
-                    .insert([{
+                  const response = await fetch('/api/finance/expense', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
                       expense_date: newExpenseData.expense_date,
                       amount: parseFloat(newExpenseData.amount),
                       notes: newExpenseData.notes || null,
                       operator_id: session?.user?.id
-                    }]);
-
-                  if (error) throw error;
+                    })
+                  });
+                  
+                  if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || '创建失败');
+                  }
 
                   toast({
                     title: '创建成功',
@@ -464,12 +451,18 @@ export default function ExpensePage() {
 
                 setDeleteLoading(true);
                 try {
-                  const { error } = await supabase
-                    .from('expense_records')
-                    .delete()
-                    .eq('id', selectedRecordId);
+                  const response = await fetch('/api/finance/expense/delete', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id: selectedRecordId })
+                  });
 
-                  if (error) throw error;
+                  if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '删除失败');
+                  }
 
                   toast({
                     title: '删除成功',
@@ -551,16 +544,23 @@ export default function ExpensePage() {
 
                 setEditLoading(true);
                 try {
-                  const { error } = await supabase
-                    .from('expense_records')
-                    .update({
+                  const response = await fetch('/api/finance/expense/update', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      id: selectedRecordId,
                       expense_date: editExpenseData.expense_date,
                       amount: parseFloat(editExpenseData.amount),
                       notes: editExpenseData.notes || null
                     })
-                    .eq('id', selectedRecordId);
+                  });
 
-                  if (error) throw error;
+                  if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || '更新失败');
+                  }
 
                   toast({
                     title: '更新成功',

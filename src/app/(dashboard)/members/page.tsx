@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,8 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Session } from '@supabase/auth-helpers-nextjs';
 import { Skeleton } from "@/components/ui/skeleton";
+import { Suspense } from 'react';
+import { useDataTable } from '@/hooks/use-data-table';
 
 interface Member {
   id: string;
@@ -85,119 +86,197 @@ const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'sexual_orientation', label: '性取向' },
   { key: 'remaining_matches', label: '剩余匹配次数' },
   { key: 'created_at', label: '创建时间' },
-  { key: 'actions', label: '操作' }
+  { key: 'self_description', label: '个人说明' },
+  { key: 'partner_requirement', label: '择偶要求' },
+  { key: 'actions', label: '操作' }  // 将actions列固定在最后
 ];
 
 function MembersPageContent() {
   const { toast } = useToast();
   const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const { updateFilters } = useDataTable({
+    tableName: 'members',
+    pageSize: 25,
+    defaultSort: { column: 'created_at', ascending: false }
+  });
+
   const [members, setMembers] = useState<Member[]>([]);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [selectedMemberType, setSelectedMemberType] = useState<string | null>(null);
   const [upgradeType, setUpgradeType] = useState<'ONE_TIME' | 'ANNUAL'>('ONE_TIME');
-  const [upgradeDate, setUpgradeDate] = useState<Date>(new Date());
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>([
-    'member_no', 'wechat', 'phone', 'type', 'status', 'remaining_matches', 'actions'
-  ]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [genderFilter, setGenderFilter] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [upgradeDate, setUpgradeDate] = useState(new Date());
+  const [memberCounts, setMemberCounts] = useState({ NORMAL: 0, ONE_TIME: 0, ANNUAL: 0 });
+  const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedColumns = localStorage.getItem('memberTableColumns');
+      if (savedColumns) {
+        const parsedColumns = JSON.parse(savedColumns);
+        // 确保操作列始终在最后
+        const columnsWithoutActions = parsedColumns.filter((col: string) => col !== 'actions');
+        return [...columnsWithoutActions, 'actions'];
+      }
+    }
+    // 默认显示所有列，操作列在最后
+    const defaultColumns = availableColumns.map(col => col.key).filter(col => col !== 'actions');
+    return [...defaultColumns, 'actions'];
+  });
+
+  const handleColumnChange = (columns: ColumnKey[]) => {
+    // 确保操作列始终在最后
+    const columnsWithoutActions = columns.filter(col => col !== 'actions');
+    const finalColumns = [...columnsWithoutActions, 'actions'];
+    setSelectedColumns(finalColumns);
+    localStorage.setItem('memberTableColumns', JSON.stringify(finalColumns));
+  };
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
-  const pageSize = 25;
-  const searchParams = useSearchParams();
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [searchKeyword, setSearchKeyword] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.column-selector')) {
-        setIsColumnSelectorOpen(false);
+  const fetchMembers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString()
+      });
+
+      if (statusFilter) queryParams.set('status', statusFilter);
+      if (genderFilter) queryParams.set('gender', genderFilter);
+      if (searchTerm) queryParams.set('search', searchTerm);
+
+      // 获取URL中的type参数
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlType = urlParams.get('type');
+      const currentType = urlType || typeFilter;
+
+      // 添加调试日志
+      console.log('会员列表请求参数:', {
+        queryParams: Object.fromEntries(queryParams.entries()),
+        currentType,
+        apiUrl: '/api/members' + (currentType ? `/${currentType.toLowerCase()}` : '')
+      });
+
+      // 根据会员类型调用不同的 API
+      let apiUrl = '/api/members';
+      if (currentType) {
+        switch (currentType) {
+          case 'NORMAL':
+            apiUrl = '/api/members/normal';
+            break;
+          case 'ONE_TIME':
+            apiUrl = '/api/members/one-time';
+            break;
+          case 'ANNUAL':
+            apiUrl = '/api/members/annual';
+            break;
+          default:
+            apiUrl = '/api/members';
+        }
       }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+      const response = await fetch(`${apiUrl}?${queryParams}`);
+      const data = await response.json();
 
-  const handleColumnChange = (columns: ColumnKey[]) => {
-    if (columns.length === 0) {
-      // 至少保留一个字段
-      return;
+      // 添加响应数据调试日志
+      console.log('会员列表响应数据:', {
+        status: response.status,
+        total: data,
+        recordCount: data.data?.length
+      });
+
+      if (!response.ok) {
+        throw new Error(data.error || '获取会员列表失败');
+      }
+
+      setMembers(data.data);
+      setTotal(data.total);
+      setMemberCounts(data.memberCounts || { NORMAL: 0, ONE_TIME: 0, ANNUAL: 0 });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: '获取会员列表失败',
+        description: error instanceof Error ? error.message : '未知错误'
+      });
+    } finally {
+      setLoading(false);
     }
-    // 确保操作列始终在最后
-    const columnsWithoutActions = columns.filter(col => col !== 'actions');
-    if (columns.includes('actions')) {
-      setSelectedColumns([...columnsWithoutActions, 'actions']);
-    } else {
-      setSelectedColumns(columnsWithoutActions);
+  }, [page, pageSize, statusFilter, typeFilter, genderFilter, searchTerm, toast]);
+
+  const handleMemberAction = async (memberId: string, action: string, type?: string) => {
+    try {
+      const response = await fetch(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action, type })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '操作失败');
+      }
+
+      toast({
+        title: '操作成功',
+        description: '会员状态已更新'
+      });
+
+      fetchMembers();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: '操作失败',
+        description: error instanceof Error ? error.message : '未知错误'
+      });
     }
   };
 
   useEffect(() => {
     if (!isLoading && !session) {
       router.push('/login');
+      return;
     }
-  }, [isLoading, session, router]);
 
-  const fetchMembers = useCallback(async () => {
-    try {
-      setLoading(true);
-      let query = supabase
-        .from('members')
-        .select('*', { count: 'exact' });
-
-      if (searchKeyword) {
-        query = query.or(`member_no.ilike.%${searchKeyword}%,wechat.ilike.%${searchKeyword}%,phone.ilike.%${searchKeyword}%`);
-      }
-
-      const type = searchParams.get('type');
-      const status = searchParams.get('status');
-
-      if (type && type !== 'all') {
-        query = query.eq('type', type);
-      }
-
-      if (status && status !== 'all') {
-        query = query.eq('status', status);
-      }
-
-      const start = (currentPage - 1) * pageSize;
-      const end = start + pageSize - 1;
-      query = query.range(start, end).order('created_at', { ascending: false });
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      setMembers(data || []);
-      setTotalCount(count || 0);
-      setTotalPages(Math.ceil((count || 0) / pageSize));
-    } catch (error) {
-      console.error('获取会员列表失败:', error);
-      toast({
-        variant: 'destructive',
-        title: '获取失败',
-        description: error instanceof Error ? error.message : '获取会员列表失败，请重试'
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, pageSize, searchParams, supabase, toast, searchKeyword]);
+    fetchMembers();
+  }, [isLoading, session, router, fetchMembers]);
 
   useEffect(() => {
-    if (session) {
-      fetchMembers();
-    }
-  }, [session, fetchMembers]);
+    console.log('筛选条件变化:', {
+      statusFilter,
+      typeFilter,
+      genderFilter,
+      searchTerm
+    });
+    fetchMembers();
+  }, [statusFilter, typeFilter, genderFilter, searchTerm, fetchMembers]);
+
+  useEffect(() => {
+    const newFilters = {
+      status: statusFilter,
+      type: typeFilter,
+      gender: genderFilter,
+      search: searchTerm
+    };
+    updateFilters(newFilters);
+  }, [statusFilter, typeFilter, genderFilter, searchTerm, updateFilters]);
 
   const getMemberTypeText = (type: string, remainingMatches: number): string => {
     switch (type) {
@@ -304,8 +383,11 @@ function MembersPageContent() {
     }
   };
 
+  const totalPages = Math.ceil(total / pageSize);
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    setPage(page);
   };
 
   const getColumnWidth = (columnKey: ColumnKey): string => {
@@ -371,13 +453,23 @@ function MembersPageContent() {
 
     setMatchLoading(true);
     try {
-      const { error } = await supabase.rpc('match_members', {
-        p_member_id: memberId,
-        p_target_member_no: targetMemberNo,
-        p_matched_by: session?.user?.id
+      const response = await fetch('/api/members/match', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          memberId,
+          targetMemberNo,
+          matchedBy: session?.user?.id
+        })
       });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '会员匹配失败');
+      }
 
       toast({
         title: '会员匹配成功',
@@ -415,13 +507,22 @@ function MembersPageContent() {
 
     setActivateLoading(true);
     try {
-      const { error } = await supabase.rpc('activate_member', {
-        p_member_id: memberId,
-        p_reason: activateReason,
-        p_activated_by: session?.user?.id
+      const response = await fetch(`/api/members/${memberId}/activate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': session?.user?.id || ''
+        },
+        body: JSON.stringify({
+          reason: activateReason,
+          notes: ''
+        })
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '会员激活失败');
+      }
 
       toast({
         title: '会员激活成功',
@@ -455,12 +556,19 @@ function MembersPageContent() {
 
     setRevokeLoading(true);
     try {
-      const { error } = await supabase.rpc('revoke_member', {
-        p_member_id: memberId,
-        p_reason: revokeReason
+      const response = await fetch(`/api/members/${memberId}/revoke`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: revokeReason })
       });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '会员撤销失败');
+      }
 
       toast({
         title: '会员撤销成功',
@@ -487,20 +595,28 @@ function MembersPageContent() {
     
     setUpgradeLoading(true);
     try {
-      const paymentTime = upgradeDate.toISOString();
+      const paymentTime = upgradeDate.toISOString().slice(0, 19).replace('T', ' ');
       const expiryTime = upgradeType === 'ANNUAL' 
-        ? new Date(upgradeDate.getFullYear() + 1, upgradeDate.getMonth(), upgradeDate.getDate() - 1).toISOString()
+        ? new Date(upgradeDate.getFullYear() + 1, upgradeDate.getMonth(), upgradeDate.getDate() - 1).toISOString().slice(0, 19).replace('T', ' ')
         : null;
       
-      const { error: transactionError } = await supabase.rpc('upgrade_member', {
-        p_member_id: selectedMemberId,
-        p_type: upgradeType,
-        p_payment_time: paymentTime,
-        p_expiry_time: expiryTime,
-        p_notes: `${new Date().toLocaleString('zh-CN')} 将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
+      const response = await fetch(`/api/members/${selectedMemberId}/upgrade`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: upgradeType,
+          payment_time: paymentTime,
+          expiry_time: expiryTime,
+          notes: `${new Date().toLocaleString('zh-CN')} 将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
+        })
       });
 
-      if (transactionError) throw transactionError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '会员升级失败');
+      }
 
       toast({
         title: '会员升级成功',
@@ -524,11 +640,15 @@ function MembersPageContent() {
   const handleDelete = async (memberId: string) => {
     setDeleteLoading(true);
     try {
-      const { error } = await supabase.rpc('delete_member', {
-        p_member_id: memberId
+      const response = await fetch(`/api/members/${memberId}/delete`, {
+        method: 'DELETE',
       });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '删除失败');
+      }
 
       toast({
         title: '删除成功',
@@ -651,7 +771,31 @@ function MembersPageContent() {
           <DialogHeader>
             <DialogTitle>匹配会员</DialogTitle>
             <DialogDescription>
-              请输入目标会员编号
+              <div className="flex items-center space-x-4 mb-4 mt-[50px] bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center space-x-8">
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-blue-600">{memberCounts.NORMAL}</div>
+                    <div className="text-sm text-gray-600">普通会员</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-green-600">{memberCounts.ONE_TIME}</div>
+                    <div className="text-sm text-gray-600">一次性会员</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-semibold text-purple-600">{memberCounts.ANNUAL}</div>
+                    <div className="text-sm text-gray-600">年费会员</div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <label className="text-sm font-medium">目标会员编号</label>
+                <Input
+                  value={targetMemberNo}
+                  onChange={(e) => setTargetMemberNo(e.target.value)}
+                  placeholder="请输入目标会员编号"
+                  className="w-full"
+                />
+              </div>
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -792,7 +936,11 @@ function MembersPageContent() {
               <Input
                 placeholder="搜索会员编号/微信/手机"
                 value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
+                onChange={(e) => {
+                  setSearchKeyword(e.target.value);
+                  setSearchTerm(e.target.value);
+                  fetchMembers();
+                }}
                 className="w-[240px]"
               />
               <Button 
@@ -906,6 +1054,18 @@ function MembersPageContent() {
                                       撤销
                                     </Button>
                                   </>
+                                )}
+                                {member.status === 'REVOKED' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedMemberId(member.id);
+                                      setActivateDialogOpen(true);
+                                    }}
+                                  >
+                                    激活
+                                  </Button>
                                 )}
                                 {member.status === 'REVOKED' && (
                                   <Button

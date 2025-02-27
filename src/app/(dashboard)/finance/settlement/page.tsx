@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -11,21 +10,19 @@ import { useAuth } from '@/contexts/auth-context';
 import { Pagination } from '@/components/ui/pagination';
 import { SearchFilter } from '@/components/ui/settlement';
 import { LoadingRow, EmptyRow, SettlementRow } from '@/components/ui/settlement';
-import { Session } from '@supabase/auth-helpers-nextjs';
 
 interface SettlementRecord {
-  id: string;
+  id: number;
   settlement_date: string;
   amount: number;
   notes: string;
-  operator_id: string;
+  operator_id: number;
   created_at: string;
 }
 
 export default function SettlementPage() {
   const { toast } = useToast();
-  const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
-  const supabase = createClientComponentClient();
+  const { session, isLoading } = useAuth();
   const [records, setRecords] = useState<SettlementRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -39,40 +36,29 @@ export default function SettlementPage() {
 
   const fetchRecords = useCallback(async () => {
     try {
-      let query = supabase
-        .from('settlement_records')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * pageSize, (currentPage * pageSize) - 1);
-    
+      const params = new URLSearchParams();
+      params.append('page', currentPage.toString());
+      params.append('pageSize', pageSize.toString());
       if (searchKeyword) {
-        query = query.or(
-          `settlement_date.ilike.%${searchKeyword}%`
-        );
+        params.append('keyword', searchKeyword);
       }
-    
       if (monthFilter && monthFilter !== 'all') {
-        const year = parseInt(yearFilter);
-        const month = parseInt(monthFilter);
-        const startDate = new Date(year, month - 1, 1).toISOString();
-        const endDate = new Date(year, month, 0).toISOString();
-        query = query.gte('settlement_date', startDate).lte('settlement_date', endDate);
+        params.append('month', monthFilter);
+        params.append('year', yearFilter);
       } else {
-        const year = parseInt(yearFilter);
-        const startDate = new Date(year, 0, 1).toISOString();
-        const endDate = new Date(year, 11, 31).toISOString();
-        query = query.gte('settlement_date', startDate).lte('settlement_date', endDate);
+        params.append('year', yearFilter);
       }
-    
-      const { data, error, count } = await query;
-    
-      if (error) throw error;
-    
-      setRecords(data || []);
-      if (count !== null) {
-        setTotalCount(count);
-        setTotalPages(Math.ceil(count / pageSize));
+
+      const response = await fetch(`/api/finance/settlement/list?${params.toString()}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '获取数据失败');
       }
+
+      setRecords(data.records || []);
+      setTotalCount(data.total || 0);
+      setTotalPages(Math.ceil((data.total || 0) / pageSize));
     } catch (error) {
       console.error('获取结算记录失败:', error);
       toast({
@@ -83,7 +69,7 @@ export default function SettlementPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, monthFilter, pageSize, searchKeyword, supabase, toast, yearFilter]);
+  }, [currentPage, monthFilter, pageSize, searchKeyword, toast, yearFilter]);
 
   useEffect(() => {
     if (session) {
@@ -92,80 +78,25 @@ export default function SettlementPage() {
   }, [session, fetchRecords]);
 
   const [newExpenseDialogOpen, setNewExpenseDialogOpen] = useState(false);
-  const [newExpenseData, setNewExpenseData] = useState({
-    expense_date: new Date().toISOString().split('T')[0],
-    amount: ''
-  });
-  const [newExpenseLoading, setNewExpenseLoading] = useState(false);
-  const [unsettledAmount, setUnsettledAmount] = useState(0);
-
-  const fetchUnsettledAmount = useCallback(async () => {
-    try {
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-      // 获取当月收入
-      const { data: monthlyIncomeData } = await supabase
-        .from('income_records')
-        .select('amount')
-        .gte('payment_date', firstDayOfMonth.toISOString())
-        .lte('payment_date', lastDayOfMonth.toISOString());
-
-      const monthlyIncome = monthlyIncomeData?.reduce((sum, record) => sum + record.amount, 0) || 0;
-
-      // 获取当月支出
-      const { data: monthlyExpenseData } = await supabase
-        .from('expense_records')
-        .select('amount')
-        .gte('expense_date', firstDayOfMonth.toISOString())
-        .lte('expense_date', lastDayOfMonth.toISOString());
-
-      const monthlyExpense = monthlyExpenseData?.reduce((sum, record) => sum + record.amount, 0) || 0;
-
-      // 获取当月已结算金额
-      const { data: settledData } = await supabase
-        .from('settlement_records')
-        .select('amount')
-        .gte('settlement_date', firstDayOfMonth.toISOString())
-        .lte('settlement_date', lastDayOfMonth.toISOString());
-
-      const settledAmount = settledData?.reduce((sum, record) => sum + record.amount, 0) || 0;
-
-      // 获取当月通过WECHAT_ZHANG支付的金额
-      const { data: wechatZhangData } = await supabase
-        .from('income_records')
-        .select('amount')
-        .eq('payment_method', 'WECHAT_ZHANG')
-        .gte('payment_date', firstDayOfMonth.toISOString())
-        .lte('payment_date', lastDayOfMonth.toISOString());
-
-      const wechatZhangAmount = wechatZhangData?.reduce((sum, record) => sum + record.amount, 0) || 0;
-
-      // 计算待结算金额：(本月收入 - 本月支出)/2 - WECHAT_ZHANG支付金额 - 已结算金额
-      const unsettled = ((monthlyIncome - monthlyExpense) / 2) - wechatZhangAmount - settledAmount;
-      setUnsettledAmount(unsettled);
-    } catch (error) {
-      console.error('获取待结算金额失败:', error);
-    }
-  }, [supabase]);
-
-  useEffect(() => {
-    if (session && newExpenseDialogOpen) {
-      fetchUnsettledAmount();
-    }
-  }, [session, newExpenseDialogOpen, fetchUnsettledAmount]);
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [editExpenseData, setEditExpenseData] = useState({
     expense_date: '',
     amount: '',
     notes: ''
   });
-  const [editLoading, setEditLoading] = useState(false);
+  const [unsettledAmount, setUnsettledAmount] = useState(0);
+  const [newExpenseData, setNewExpenseData] = useState({
+    expense_date: new Date().toISOString().split('T')[0],
+    amount: ''
+  });
+  const [newExpenseLoading, setNewExpenseLoading] = useState(false);
+
+
+
 
   useEffect(() => {
     if (session) {
@@ -375,15 +306,20 @@ export default function SettlementPage() {
 
                 setNewExpenseLoading(true);
                 try {
-                  const { error } = await supabase
-                    .from('settlement_records')
-                    .insert([{
+                  const response = await fetch('/api/finance/settlement/create', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
                       settlement_date: newExpenseData.expense_date,
                       amount: parseFloat(newExpenseData.amount),
                       operator_id: session?.user?.id
-                    }]);
+                    })
+                  });
 
-                  if (error) throw error;
+                  const result = await response.json();
+                  if (!response.ok) throw new Error(result.error);
 
                   toast({
                     title: '创建成功',
@@ -438,12 +374,16 @@ export default function SettlementPage() {
 
                 setDeleteLoading(true);
                 try {
-                  const { error } = await supabase
-                    .from('settlement_records')
-                    .delete()
-                    .eq('id', selectedRecordId);
+                  const response = await fetch('/api/finance/settlement/delete', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id: selectedRecordId })
+                  });
 
-                  if (error) throw error;
+                  const result = await response.json();
+                  if (!response.ok) throw new Error(result.error);
 
                   toast({
                     title: '删除成功',
@@ -517,15 +457,20 @@ export default function SettlementPage() {
 
                 setEditLoading(true);
                 try {
-                  const { error } = await supabase
-                    .from('settlement_records')
-                    .update({
+                  const response = await fetch('/api/finance/settlement/update', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      id: selectedRecordId,
                       settlement_date: editExpenseData.expense_date,
                       amount: parseFloat(editExpenseData.amount)
                     })
-                    .eq('id', selectedRecordId);
+                  });
 
-                  if (error) throw error;
+                  const result = await response.json();
+                  if (!response.ok) throw new Error(result.error);
 
                   toast({
                     title: '编辑成功',

@@ -98,11 +98,21 @@ export default function ProfilePage() {
     setSuccess(null);
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password.new
+      const response = await fetch('/api/auth/password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: password.current,
+          newPassword: password.new
+        })
       });
 
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData);
+      }
       
       setSuccess('密码更新成功');
       setPassword({ current: '', new: '', confirm: '' });

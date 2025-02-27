@@ -64,45 +64,24 @@ export default function IncomePage() {
 
   const fetchRecords = useCallback(async () => {
     try {
-      let query = supabase
-        .from('income_records')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * pageSize, (currentPage * pageSize) - 1);
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        searchKeyword: searchKeyword,
+        paymentMethod: paymentMethodFilter,
+        month: monthFilter,
+        year: yearFilter
+      });
 
-      if (searchKeyword) {
-        query = query.or(
-          `member_no.ilike.%${searchKeyword}%,notes.ilike.%${searchKeyword}%`
-        );
+      const response = await fetch(`/api/finance/income/list?${queryParams}`);
+      if (!response.ok) {
+        throw new Error('获取数据失败');
       }
 
-      if (paymentMethodFilter && paymentMethodFilter !== 'all') {
-        query = query.eq('payment_method', paymentMethodFilter);
-      }
-
-      if (monthFilter && monthFilter !== 'all') {
-        const year = parseInt(yearFilter);
-        const month = parseInt(monthFilter);
-        const startDate = new Date(year, month - 1, 1).toISOString();
-        const endDate = new Date(year, month, 0).toISOString();
-        query = query.gte('payment_date', startDate).lte('payment_date', endDate);
-      } else {
-        // 当月份选择"全部"时，仍然按照年份筛选
-        const year = parseInt(yearFilter);
-        const startDate = new Date(year, 0, 1).toISOString();
-        const endDate = new Date(year, 11, 31).toISOString();
-        query = query.gte('payment_date', startDate).lte('payment_date', endDate);
-      }
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      setRecords(data || []);
-      if (count) {
-        setTotalCount(count);
-        setTotalPages(Math.ceil(count / pageSize));
-      }
+      const data = await response.json();
+      setRecords(data.records || []);
+      setTotalCount(data.total);
+      setTotalPages(data.totalPages);
     } catch (error) {
       console.error('获取收入记录失败:', error);
       toast({
@@ -113,7 +92,7 @@ export default function IncomePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, monthFilter, pageSize, paymentMethodFilter, searchKeyword, supabase, toast, yearFilter]);
+  }, [currentPage, monthFilter, pageSize, paymentMethodFilter, searchKeyword, toast, yearFilter]);
 
   useEffect(() => {
     if (session) {
@@ -471,18 +450,25 @@ export default function IncomePage() {
 
                 setNewIncomeLoading(true);
                 try {
-                  const { error } = await supabase
-                    .from('income_records')
-                    .insert([{
+                  const response = await fetch('/api/finance/income', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
                       member_no: newIncomeData.member_no,
                       payment_date: newIncomeData.payment_date,
                       payment_method: newIncomeData.payment_method,
                       amount: parseFloat(newIncomeData.amount),
                       notes: newIncomeData.notes || null,
                       operator_id: session?.user?.id
-                    }]);
+                    })
+                  });
 
-                  if (error) throw error;
+                  if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '创建失败');
+                  }
 
                   toast({
                     title: '创建成功',
@@ -540,12 +526,18 @@ export default function IncomePage() {
 
                 setDeleteLoading(true);
                 try {
-                  const { error } = await supabase
-                    .from('income_records')
-                    .delete()
-                    .eq('id', selectedRecordId);
+                  const response = await fetch('/api/finance/income/delete', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id: selectedRecordId })
+                  });
 
-                  if (error) throw error;
+                  if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '删除失败');
+                  }
 
                   toast({
                     title: '删除成功',
@@ -553,7 +545,6 @@ export default function IncomePage() {
                   });
 
                   setDeleteDialogOpen(false);
-                  setSelectedRecordId(null);
                   fetchRecords();
                 } catch (error) {
                   console.error('删除收入记录失败:', error);
@@ -669,18 +660,25 @@ export default function IncomePage() {
 
                 setEditLoading(true);
                 try {
-                  const { error } = await supabase
-                    .from('income_records')
-                    .update({
+                  const response = await fetch('/api/finance/income/update', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      id: selectedRecordId,
                       member_no: editIncomeData.member_no,
                       payment_date: editIncomeData.payment_date,
                       payment_method: editIncomeData.payment_method,
                       amount: parseFloat(editIncomeData.amount),
                       notes: editIncomeData.notes || null
                     })
-                    .eq('id', selectedRecordId);
+                  });
 
-                  if (error) throw error;
+                  if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '更新失败');
+                  }
 
                   toast({
                     title: '更新成功',
@@ -688,7 +686,6 @@ export default function IncomePage() {
                   });
 
                   setEditDialogOpen(false);
-                  setSelectedRecordId(null);
                   fetchRecords();
                 } catch (error) {
                   console.error('更新收入记录失败:', error);

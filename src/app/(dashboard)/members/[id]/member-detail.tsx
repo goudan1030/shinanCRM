@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
@@ -71,78 +70,42 @@ interface MemberDetailProps {
   memberId: string;
 }
 
+const getChildrenPlanText = (childrenPlan: string) => {
+  switch (childrenPlan) {
+    case 'TOGETHER':
+      return '一起要';
+    case 'SEPARATE':
+      return '各自要';
+    case 'NEGOTIABLE':
+      return '互相协商';
+    case 'DONT_WANT':
+      return '不要';
+    default:
+      return '未知';
+  }
+};
+
+const getMarriageCertText = (marriageCert: string) => {
+  switch (marriageCert) {
+    case 'WANT':
+      return '要';
+    case 'DONT_WANT':
+      return '不要';
+    case 'NEGOTIATE':
+      return '互相协商';
+    default:
+      return '未知';
+  }
+};
+
 export default function MemberDetail({ memberId }: MemberDetailProps) {
   const { toast } = useToast();
   const { session, isLoading } = useAuth();
   const router = useRouter();
-  const supabase = createClientComponentClient();
   const [member, setMember] = useState<Member | null>(null);
   const [operationLogs, setOperationLogs] = useState<MemberOperationLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchMember = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .eq('id', memberId)
-        .single();
-
-      if (error) throw error;
-      setMember(data);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '获取会员信息失败',
-        description: error instanceof Error ? error.message : '未知错误'
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [memberId, supabase, toast]);
-
-  const fetchMemberOperationLogs = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('member_operation_logs')
-        .select('*')
-        .eq('member_id', memberId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setOperationLogs(data || []);
-    } catch (error) {
-      console.error('获取会员操作记录失败:', error);
-      toast({
-        variant: 'destructive',
-        title: '获取会员操作记录失败',
-        description: '无法加载操作记录，请重试'
-      });
-    }
-  }, [memberId, supabase, toast]);
-
-  useEffect(() => {
-    if (!isLoading && !session) {
-      router.push('/login');
-    }
-  }, [isLoading, session, router]);
-
-  useEffect(() => {
-    if (session) {
-      fetchMember();
-      fetchMemberOperationLogs();
-    }
-  }, [session, fetchMember, fetchMemberOperationLogs]);
-
-  if (loading) {
-    return <div>加载中...</div>;
-  }
-
-  if (!member) {
-    return <div>会员不存在</div>;
-  }
-
-  // 添加字段映射函数
   const getEducationText = (education: string) => {
     switch (education) {
       case 'HIGH_SCHOOL':
@@ -156,37 +119,66 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
       case 'PHD':
         return '博士';
       default:
-        return education;
+        return '未知';
     }
   };
+  const fetchMember = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/members/${memberId}`);
+      const data = await response.json();
 
-  const getChildrenPlanText = (plan: string) => {
-    switch (plan) {
-      case 'TOGETHER':
-        return '一起要';
-      case 'SEPARATE':
-        return '各自要';
-      case 'NEGOTIABLE':
-        return '互相协商';
-      case 'DONT_WANT':
-        return '不要';
-      default:
-        return plan;
-    }
-  };
+      if (!response.ok) {
+        throw new Error(data.error || '获取会员信息失败');
+      }
 
-  const getMarriageCertText = (cert: string) => {
-    switch (cert) {
-      case 'WANT':
-        return '要';
-      case 'DONT_WANT':
-        return '不要';
-      case 'NEGOTIABLE':
-        return '互相协商';
-      default:
-        return cert;
+      setMember(data);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: '获取会员信息失败',
+        description: error instanceof Error ? error.message : '未知错误'
+      });
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [memberId, toast]);
+
+  const fetchOperationLogs = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/members/${memberId}/logs`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '获取操作日志失败');
+      }
+
+      setOperationLogs(data);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: '获取操作日志失败',
+        description: error instanceof Error ? error.message : '未知错误'
+      });
+    }
+  }, [memberId, toast]);
+
+  useEffect(() => {
+    if (!isLoading && !session) {
+      router.push('/login');
+      return;
+    }
+
+    fetchMember();
+    fetchOperationLogs();
+  }, [isLoading, session, router, fetchMember, fetchOperationLogs]);
+
+  if (loading) {
+    return <div>加载中...</div>;
+  }
+
+  if (!member) {
+    return <div>会员不存在</div>;
+  }
 
   return (
     <div className="container mx-auto px-4">
@@ -239,39 +231,43 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
         <Card className="p-6">
           <h2 className="text-[13px] font-bold mb-6">操作记录</h2>
           <div className="space-y-4">
-            {operationLogs.map((log) => (
-              <div key={log.id} className="border-b pb-4">
-                <div className="text-[13px] font-semibold mb-2">{operationTypeMap[log.operation_type] || log.operation_type}</div>
-                <div className="text-[13px] text-gray-600">
-                  <div>操作时间：{new Date(log.created_at).toLocaleString()}</div>
-                  {log.old_values && (
-                    <div className="mt-2">
-                      <div className="text-[13px] font-medium">修改前：</div>
-                      <pre className="text-[13px] bg-gray-50 p-2 rounded mt-1">
-                        {JSON.stringify(formatValuesObject(log.old_values), null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {log.new_values && (
-                    <div className="mt-2">
-                      <div className="text-[13px] font-medium">修改后：</div>
-                      <pre className="text-[13px] bg-gray-50 p-2 rounded mt-1">
-                        {JSON.stringify(formatValuesObject(log.new_values), null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {log.reason && (
-                    <div className="mt-2">
-                      <div className="text-[13px] font-medium">原因：</div>
-                      <div className="text-[13px] mt-1">{log.reason}</div>
-                    </div>
-                  )}
+            {operationLogs.length > 0 ? (
+              operationLogs.map((log) => (
+                <div key={log.id} className="border-b pb-4">
+                  <div className="text-[13px] font-semibold mb-2">{operationTypeMap[log.operation_type] || log.operation_type}</div>
+                  <div className="text-[13px] text-gray-600">
+                    <div>操作时间：{new Date(log.created_at).toLocaleString()}</div>
+                    {log.old_values && (
+                      <div className="mt-2">
+                        <div className="text-[13px] font-medium">修改前：</div>
+                        <pre className="text-[13px] bg-gray-50 p-2 rounded mt-1">
+                          {JSON.stringify(formatValuesObject(log.old_values), null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {log.new_values && (
+                      <div className="mt-2">
+                        <div className="text-[13px] font-medium">修改后：</div>
+                        <pre className="text-[13px] bg-gray-50 p-2 rounded mt-1">
+                          {JSON.stringify(formatValuesObject(log.new_values), null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {log.reason && (
+                      <div className="mt-2">
+                        <div className="text-[13px] font-medium">原因：</div>
+                        <div className="text-[13px] mt-1">{log.reason}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="text-[13px] text-gray-500 text-center py-4">暂无操作记录</div>
+            )}
           </div>
         </Card>
       </div>
     </div>
   );
-} 
+}

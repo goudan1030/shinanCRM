@@ -29,7 +29,6 @@ export default function MiniappConfigPage() {
   const { session, isLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const supabase = createClientComponentClient();
   const [isConfigLoading, setIsConfigLoading] = useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({    resolver: zodResolver(formSchema),
@@ -49,15 +48,11 @@ export default function MiniappConfigPage() {
     async function fetchConfig() {
       try {
         setIsConfigLoading(true);
-        const { data, error } = await supabase
-          .from('miniapp_config')
-          .select('*')
-          .single();
+        const response = await fetch('/api/miniapp/config');
+        const data = await response.json();
 
-        if (error) {
-          if (error.code !== 'PGRST116') { // PGRST116 means no rows returned
-            throw error;
-          }
+        if (!response.ok) {
+          throw new Error(data.error || '获取配置失败');
         }
 
         if (data) {
@@ -81,7 +76,7 @@ export default function MiniappConfigPage() {
     if (session) {
       fetchConfig();
     }
-  }, [session, supabase, toast, form]);
+  }, [session, toast, form]);
 
   if (isLoading || isConfigLoading) {
     return (
@@ -96,16 +91,22 @@ export default function MiniappConfigPage() {
     form.setValue('appsecret', values.appsecret);
 
     try {
-      const { error } = await supabase
-        .from('miniapp_config')
-        .upsert({
-          id: 1, // 使用固定ID，确保只有一条配置记录
+      const response = await fetch('/api/miniapp/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           appid: values.appid,
-          appsecret: values.appsecret,
-          updated_at: new Date().toISOString()
-        });
+          appsecret: values.appsecret
+        })
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '保存失败');
+      }
 
       toast({
         title: '保存成功',

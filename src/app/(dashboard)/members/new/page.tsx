@@ -135,28 +135,23 @@ export default function NewMemberPage() {
       // 根据性别设置初始匹配次数
       const initialRemainingMatches = submitData.gender === 'female' ? 1 : 0;
 
-      const { error } = await supabase
-        .from('members')
-        .insert([{
+      const response = await fetch('/api/members/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
           ...submitData,
           type: 'NORMAL',
           status: 'ACTIVE',
-          remaining_matches: initialRemainingMatches  // 根据性别设置初始匹配次数
-        }]);
+          remaining_matches: initialRemainingMatches
+        })
+      });
 
-      if (error) {
-        // 根据不同的错误类型显示相应的提示信息
-        if (error.code === '23505') {
-          throw new Error('会员编号或联系方式已存在，请检查后重试');
-        } else if (error.code === '23502') {
-          const columnMatch = error.message.match(/column "([^"]+)" of relation/);
-          const column = columnMatch ? columnMatch[1] : null;
-          const fieldLabel = requiredFields.find(f => f.field === column)?.label || column;
-          throw new Error(`${fieldLabel}不能为空`);
-        } else {
-          console.error('保存失败:', error);
-          throw new Error(`保存失败: ${error.message}`);
-        }
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || '创建会员失败');
       }
 
       toast({
