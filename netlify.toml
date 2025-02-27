@@ -1,13 +1,29 @@
 [build]
   command = "npm run build"
   publish = ".next"
-
-[build.environment]
-  NEXT_USE_NETLIFY_EDGE = "1"
-  NODE_VERSION = "18"
+  environment = { NODE_VERSION = "18" }
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NEXT_USE_NETLIFY_EDGE = "true"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# 添加重定向规则
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# 添加 headers 配置
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
 
 [functions]
   node_bundler = "esbuild" 

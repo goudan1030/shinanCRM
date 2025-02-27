@@ -3,8 +3,10 @@ const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    unoptimized: true, // 禁用图片优化以支持 Netlify
     domains: ['placeholder.com'], // 如果还需要使用占位图片
   },
+  output: 'standalone', // 使用独立输出模式
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,

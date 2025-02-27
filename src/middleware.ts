@@ -51,18 +51,18 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // 处理静态文件
+  if (pathname.match(/\.(jpg|jpeg|png|gif|ico|css|js)$/)) {
+    return NextResponse.next();
+  }
+
   return NextResponse.next();
 }
 
 // 配置中间件匹配的路由
 export const config = {
   matcher: [
-    /*
-     * 匹配所有路由除了：
-     * - api/auth/login (登录API)
-     * - _next (Next.js资源)
-     * - favicon.ico, png, svg等静态资源
-     */
-    '/((?!api/auth/login|_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // 排除静态文件和API路由
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
