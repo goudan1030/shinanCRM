@@ -202,6 +202,13 @@ export default function NewsPage() {
     }
   };
 
+  // 在显示图片时添加前缀
+  const getImageUrl = (base64: string) => {
+    if (!base64) return '';
+    if (base64.startsWith('data:image')) return base64;
+    return `data:image/jpeg;base64,${base64}`;
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -238,13 +245,11 @@ export default function NewsPage() {
             {articles.map((article) => (
               <TableRow key={article.id}>
                 <TableCell>
-                  <div className="w-[80px] h-[40px] relative">
-                    <img 
-                      src={article.cover_url} 
-                      alt={article.title}
-                      className="absolute inset-0 w-full h-full object-cover rounded"
-                    />
-                  </div>
+                  <img
+                    src={article.cover_url}
+                    alt={article.title}
+                    className="w-[80px] h-[60px] object-cover rounded"
+                  />
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">

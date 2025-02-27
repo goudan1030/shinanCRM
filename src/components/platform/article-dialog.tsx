@@ -70,33 +70,27 @@ export function ArticleDialog({
     if (file) {
       try {
         // 压缩图片
-        const compressedBlob = await compressImage(file);
-        const compressedFile = new File([compressedBlob], file.name, {
-          type: 'image/jpeg'
-        });
+        const compressedBlob = await compressImage(file, 800);
+        
+        // 转换为 Base64
+        const reader = new FileReader();
+        reader.readAsDataURL(compressedBlob);
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          // 检查是否已经是 Base64 格式
+          if (!base64data.startsWith('data:image/')) {
+            throw new Error('图片格式转换失败');
+          }
+          setImagePreview(base64data);
+          form.setValue('cover_url', base64data);
+        };
 
-        const formData = new FormData();
-        formData.append('file', compressedFile);
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || '上传失败');
-        }
-
-        setImagePreview(result.url);
-        form.setValue('cover_url', result.url);
       } catch (error) {
-        console.error('图片上传失败:', error);
+        console.error('图片处理失败:', error);
         toast({
           variant: "destructive",
           title: "上传失败",
-          description: error instanceof Error ? error.message : "图片上传失败，请重试"
+          description: error instanceof Error ? error.message : "图片处理失败，请重试"
         });
       }
     }
@@ -172,11 +166,11 @@ export function ArticleDialog({
                         onChange={handleImageChange}
                       />
                       {imagePreview && (
-                        <div className="relative w-40 h-20">
-                          <img 
+                        <div className="mt-2">
+                          <img
                             src={imagePreview}
-                            alt="预览" 
-                            className="w-full h-full object-cover rounded"
+                            alt="Preview"
+                            className="max-h-[200px] object-contain"
                           />
                         </div>
                       )}
