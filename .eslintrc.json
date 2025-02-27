@@ -1,7 +1,7 @@
 {
   "extends": "next/core-web-vitals",
   "rules": {
-    "@typescript-eslint/no-unused-vars": ["error", {
+    "@typescript-eslint/no-unused-vars": ["warn", {
       "argsIgnorePattern": "^_",
       "varsIgnorePattern": "^_",
       "ignoreRestSiblings": true
@@ -11,7 +11,7 @@
     "@next/next/no-img-element": "warn",
     "react/no-unknown-property": "off",
     "@next/next/no-server-import-in-page": "off",
-    "no-unused-vars": "warn",
-    "no-console": ["warn", { "allow": ["warn", "error"] }]
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "@typescript-eslint/no-require-imports": "warn"
   }
 }

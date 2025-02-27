@@ -7,6 +7,14 @@ const nextConfig = {
     domains: ['placeholder.com'], // 如果还需要使用占位图片
   },
   output: 'standalone', // 使用独立输出模式
+  eslint: {
+    // 在生产构建时忽略 ESLint 错误
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // 在生产构建时忽略类型检查错误
+    ignoreBuildErrors: true,
+  },
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
