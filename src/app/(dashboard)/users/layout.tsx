@@ -1,3 +1,9 @@
+'use client';
+
+import { Suspense } from 'react';
+import { ThreeColumnLayout } from '@/components/layout/three-column-layout';
+import { Sidebar } from '@/components/layout/sidebar';
+import { UserFilter } from '@/components/user/user-filter';
 import type { Metadata } from 'next';
 import { ReactNode } from "react";
 
@@ -6,19 +12,35 @@ export const metadata: Metadata = {
   description: "管理系统用户",
 };
 
-interface UsersLayoutProps {
-  children: ReactNode;
+function UsersLayoutContent({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ThreeColumnLayout 
+      sidebarContent={<Sidebar />}
+      middleContent={<UserFilter />}
+      useThreeColumns={true}
+      className="bg-gray-50"
+    >
+      {children}
+    </ThreeColumnLayout>
+  );
 }
 
-export default function UsersLayout({ children }: UsersLayoutProps) {
+export default function UsersLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold tracking-tight">用户管理</h2>
-        </div>
-        {children}
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">加载中...</p>
       </div>
-    </div>
+    }>
+      <UsersLayoutContent>{children}</UsersLayoutContent>
+    </Suspense>
   );
 } 

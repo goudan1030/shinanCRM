@@ -114,15 +114,32 @@ function UsersPageContent() {
         pageSize: pageSize.toString()
       });
       
-      if (searchTerm) {
+      // 从URL获取搜索参数
+      const urlSearchParams = new URLSearchParams(window.location.search);
+      const urlSearch = urlSearchParams.get('search');
+      const urlStatus = urlSearchParams.get('status');
+      const urlMemberType = urlSearchParams.get('memberType');
+      
+      // 设置本地状态
+      if (urlSearch) {
+        setSearchKeyword(urlSearch);
+        setSearchTerm(urlSearch);
+        params.append('search', urlSearch);
+      } else if (searchTerm) {
         params.append('search', searchTerm);
       }
       
-      if (statusFilter) {
+      if (urlStatus && urlStatus !== 'all') {
+        setStatusFilter(urlStatus);
+        params.append('status', urlStatus);
+      } else if (statusFilter) {
         params.append('status', statusFilter);
       }
       
-      if (memberTypeFilter) {
+      if (urlMemberType && urlMemberType !== 'all') {
+        setMemberTypeFilter(urlMemberType);
+        params.append('memberType', urlMemberType);
+      } else if (memberTypeFilter) {
         params.append('memberType', memberTypeFilter);
       }
       
@@ -158,6 +175,18 @@ function UsersPageContent() {
 
     fetchUsers();
   }, [isLoading, session, router, fetchUsers]);
+
+  // 监听URL参数变化
+  useEffect(() => {
+    const handleRouteChange = () => {
+      fetchUsers();
+    };
+
+    window.addEventListener('popstate', handleRouteChange);
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, [fetchUsers]);
 
   // 处理用户删除
   const handleDelete = async (userId: number) => {
@@ -338,7 +367,7 @@ function UsersPageContent() {
         </div>
 
         {/* 工具栏 */}
-        <div className="flex items-center space-x-4 mb-4 flex-wrap gap-2">
+        <div className="flex items-center justify-end mb-4">
           <div className="relative column-selector">
             <Button
               variant="outline"
@@ -361,7 +390,7 @@ function UsersPageContent() {
               显示字段
             </Button>
             {isColumnSelectorOpen && (
-              <div className="column-selector absolute top-[40px] left-0 bg-white border rounded-md shadow-lg p-4 z-[1000] w-[280px]">
+              <div className="column-selector absolute top-[40px] right-0 bg-white border rounded-md shadow-lg p-4 z-[1000] w-[280px]">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b pb-2">
                     <h3 className="font-medium text-sm">选择显示字段</h3>
@@ -393,63 +422,11 @@ function UsersPageContent() {
             )}
           </div>
           
-          <Input
-            placeholder="搜索手机号/用户名/昵称"
-            value={searchKeyword}
-            onChange={(e) => {
-              setSearchKeyword(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                setSearchTerm(searchKeyword);
-              }
-            }}
-            className="w-[240px]"
-          />
-          
-          <Button onClick={() => setSearchTerm(searchKeyword)}>搜索</Button>
-          
-          <Select value={statusFilter || 'all'} onValueChange={(value) => setStatusFilter(value === 'all' ? null : value)}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">所有状态</SelectItem>
-              <SelectItem value="active">已激活</SelectItem>
-              <SelectItem value="not-logged-in">未登录</SelectItem>
-              <SelectItem value="need-setup">需设置</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={memberTypeFilter || 'all'} onValueChange={(value) => setMemberTypeFilter(value === 'all' ? null : value)}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="用户类型" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">所有类型</SelectItem>
-              <SelectItem value="普通用户">普通用户</SelectItem>
-              <SelectItem value="一次性用户">一次性用户</SelectItem>
-              <SelectItem value="年费用户">年费用户</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setSearchKeyword('');
-              setSearchTerm('');
-              setStatusFilter(null);
-              setMemberTypeFilter(null);
-            }}
-          >
-            重置
-          </Button>
-          
-          <div className="flex-1"></div>
-          
-          <Link href="/users/new">
-            <Button>新增用户</Button>
-          </Link>
+          <div className="ml-4">
+            <Link href="/users/new">
+              <Button>新增用户</Button>
+            </Link>
+          </div>
         </div>
 
         {loading ? (
