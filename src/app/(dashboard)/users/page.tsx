@@ -607,13 +607,6 @@ function UsersPageContent() {
                           >
                             编辑
                           </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => handleDelete(user.id as number)}
-                          >
-                            删除
-                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -624,6 +617,13 @@ function UsersPageContent() {
                           >
                             <Plus className="h-3 w-3 mr-1" />
                             增加刷新次数
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleDelete(user.id as number)}
+                          >
+                            删除
                           </Button>
                         </div>
                       </td>
