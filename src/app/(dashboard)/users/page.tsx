@@ -16,7 +16,7 @@ import Image from 'next/image';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Settings } from 'lucide-react';
+import { Settings, Plus } from 'lucide-react';
 
 // 定义用户接口，对应数据库users表结构
 interface User {
@@ -160,6 +160,12 @@ function UsersPageContent() {
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>([
     'phone', 'username', 'nickname', 'status', 'member_type', 'created_at', 'refresh_count', 'actions'
   ]);
+  
+  // 增加刷新次数对话框状态
+  const [refreshDialogOpen, setRefreshDialogOpen] = useState(false);
+  const [refreshCount, setRefreshCount] = useState<number>(1);
+  const [refreshUserId, setRefreshUserId] = useState<number | null>(null);
+  const [refreshUserName, setRefreshUserName] = useState<string>('');
 
   // 从本地存储加载列配置
   useEffect(() => {
@@ -216,6 +222,79 @@ function UsersPageContent() {
   const handleDelete = async (userId: number) => {
     setSelectedUserId(userId);
     setDeleteDialogOpen(true);
+  };
+
+  // 打开增加刷新次数对话框
+  const openRefreshDialog = (userId: number, userName: string) => {
+    setRefreshUserId(userId);
+    setRefreshUserName(userName || '该用户');
+    setRefreshCount(1);
+    setRefreshDialogOpen(true);
+  };
+
+  // 提交增加刷新次数
+  const submitRefreshCount = async () => {
+    if (!refreshUserId) return;
+    
+    try {
+      setLoading(true);
+      
+      // 获取当前用户信息
+      const response = await fetch(`/api/users/${refreshUserId}`);
+      if (!response.ok) {
+        throw new Error('获取用户信息失败');
+      }
+      
+      const userData = await response.json();
+      if (!userData.success || !userData.user) {
+        throw new Error('获取用户信息失败');
+      }
+      
+      // 计算新的刷新次数
+      const currentCount = userData.user.refresh_count || 0;
+      const newCount = currentCount + refreshCount;
+      
+      // 更新用户刷新次数
+      const updateResponse = await fetch(`/api/users/${refreshUserId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refresh_count: newCount
+        }),
+      });
+      
+      if (!updateResponse.ok) {
+        throw new Error('更新刷新次数失败');
+      }
+      
+      // 更新本地状态
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === refreshUserId 
+            ? { ...user, refresh_count: newCount } 
+            : user
+        )
+      );
+      
+      toast({
+        title: "更新成功",
+        description: `已为${refreshUserName}增加${refreshCount}次刷新次数`
+      });
+      
+      // 关闭对话框
+      setRefreshDialogOpen(false);
+    } catch (error) {
+      console.error('增加刷新次数失败:', error);
+      toast({
+        variant: "destructive",
+        title: "更新失败",
+        description: error instanceof Error ? error.message : "增加刷新次数失败，请重试"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 确认删除
@@ -535,6 +614,17 @@ function UsersPageContent() {
                           >
                             删除
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openRefreshDialog(
+                              user.id as number,
+                              user.username || user.nickname || user.phone
+                            )}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            增加刷新次数
+                          </Button>
                         </div>
                       </td>
                     )}
@@ -567,6 +657,45 @@ function UsersPageContent() {
               onClick={confirmDelete}
             >
               删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* 增加刷新次数对话框 */}
+      <Dialog open={refreshDialogOpen} onOpenChange={setRefreshDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>增加刷新次数</DialogTitle>
+            <DialogDescription>
+              为 {refreshUserName} 增加刷新次数。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex items-center space-x-4">
+              <Label htmlFor="refresh-count" className="flex-shrink-0">增加次数：</Label>
+              <Input
+                id="refresh-count"
+                type="number"
+                value={refreshCount}
+                onChange={(e) => setRefreshCount(Math.max(1, parseInt(e.target.value) || 1))}
+                min="1"
+                className="flex-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setRefreshDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button 
+              onClick={submitRefreshCount}
+              disabled={loading}
+            >
+              {loading ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>
         </DialogContent>
