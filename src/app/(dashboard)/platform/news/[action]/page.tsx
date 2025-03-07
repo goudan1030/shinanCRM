@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Editor } from '@tinymce/tinymce-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,7 +41,6 @@ export default function NewsEditPage() {
   const id = searchParams.get('id');
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>('');
-  const editorRef = useRef<any>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -69,9 +67,6 @@ export default function NewsEditPage() {
           
           if (result.success) {
             const article = result.data;
-            if (editorRef.current) {
-              editorRef.current.setContent(article.content);
-            }
             form.reset({
               title: article.title,
               cover_url: article.cover_url,
@@ -137,7 +132,7 @@ export default function NewsEditPage() {
   };
 
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
-    const content = editorRef.current?.getContent();
+    const content = values.content;
     
     // 如果没有内容但有链接，不需要验证内容
     if (!content && !values.link_url) {
@@ -185,10 +180,6 @@ export default function NewsEditPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleEditorChange = (content: string) => {
-    form.setValue('content', content);
   };
 
   return (
@@ -259,47 +250,10 @@ export default function NewsEditPage() {
                 <FormItem>
                   <FormLabel>文章内容</FormLabel>
                   <FormControl>
-                    <Editor
-                      apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY}
-                      onInit={(evt, editor) => editorRef.current = editor}
-                      initialValue={field.value}
-                      onEditorChange={handleEditorChange}
-                      init={{
-                        height: 500,
-                        menubar: true,
-                        plugins: [
-                          'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                          'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                          'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-                        ],
-                        toolbar: 'undo redo | blocks | ' +
-                          'bold italic forecolor | alignleft aligncenter ' +
-                          'alignright alignjustify | bullist numlist outdent indent | ' +
-                          'image media | removeformat | help',
-                        content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
-                        images_upload_handler: async (blobInfo) => {
-                          try {
-                            const formData = new FormData();
-                            formData.append('file', blobInfo.blob(), blobInfo.filename());
-
-                            const response = await fetch('/api/upload', {
-                              method: 'POST',
-                              body: formData
-                            });
-
-                            const result = await response.json();
-
-                            if (!response.ok) {
-                              throw new Error(result.error || '上传失败');
-                            }
-
-                            return result.url;
-                          } catch (error) {
-                            console.error('编辑器图片上传失败:', error);
-                            throw new Error('图片上传失败');
-                          }
-                        }
-                      }}
+                    <Textarea 
+                      placeholder="请输入文章内容" 
+                      className="min-h-[300px]" 
+                      {...field} 
                     />
                   </FormControl>
                   <FormMessage />

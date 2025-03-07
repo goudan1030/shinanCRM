@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Editor } from '@tinymce/tinymce-react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,7 +47,6 @@ export function ArticleDialog({
 }: ArticleDialogProps) {
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>(initialData?.cover_url || '');
-  const editorRef = useRef<any>(null);
   const isEditing = !!initialData;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -103,7 +101,7 @@ export function ArticleDialog({
         await onSubmit({
           ...values,
           id: initialData?.id,
-          content: editorRef.current?.getContent()
+          content: values.content
         });
       } finally {
         setLoading(false);
@@ -114,9 +112,6 @@ export function ArticleDialog({
   const resetForm = () => {
     form.reset();
     setImagePreview('');
-    if (editorRef.current) {
-      editorRef.current.setContent('');
-    }
   };
 
   return (
@@ -188,46 +183,10 @@ export function ArticleDialog({
                 <FormItem>
                   <FormLabel>文章内容</FormLabel>
                   <FormControl>
-                    <Editor
-                      apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY}
-                      onInit={(evt, editor) => editorRef.current = editor}
-                      initialValue={field.value}
-                      init={{
-                        height: 400,
-                        menubar: false,
-                        plugins: [
-                          'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                          'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                          'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-                        ],
-                        toolbar: 'undo redo | blocks | ' +
-                          'bold italic forecolor | alignleft aligncenter ' +
-                          'alignright alignjustify | bullist numlist outdent indent | ' +
-                          'image media | removeformat | help',
-                        content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
-                        images_upload_handler: async (blobInfo) => {
-                          try {
-                            const formData = new FormData();
-                            formData.append('file', blobInfo.blob(), blobInfo.filename());
-
-                            const response = await fetch('/api/upload', {
-                              method: 'POST',
-                              body: formData
-                            });
-
-                            const result = await response.json();
-
-                            if (!response.ok) {
-                              throw new Error(result.error || '上传失败');
-                            }
-
-                            return result.url;
-                          } catch (error) {
-                            console.error('编辑器图片上传失败:', error);
-                            throw new Error('图片上传失败');
-                          }
-                        }
-                      }}
+                    <Textarea 
+                      placeholder="请输入文章内容" 
+                      className="min-h-[300px]" 
+                      {...field} 
                     />
                   </FormControl>
                   <FormMessage />
