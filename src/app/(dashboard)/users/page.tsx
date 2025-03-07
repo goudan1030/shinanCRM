@@ -12,33 +12,47 @@ import { useToast } from '@/components/ui/use-toast';
 import { Session } from '@supabase/auth-helpers-nextjs';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense } from 'react';
+import Image from 'next/image';
 
+// 用户接口定义，与数据库表匹配
 interface User {
-  id: string;
-  email: string;
-  username: string;
-  role: string;
-  status: string;
-  created_at: string;
-  last_login: string;
-  department: string;
+  id: number;
   phone: string;
-  [key: string]: string | number;
+  status: 'not-logged-in' | 'need-setup' | 'active';
+  username: string | null;
+  nickname: string | null;
+  password: string | null;
+  avatar: string | null;
+  notification_enabled: number;
+  created_at: string;
+  updated_at: string;
+  last_login_at: string | null;
+  registered: number;
+  refresh_count: number;
+  member_type: '普通会员' | '一次性会员' | '年费会员';
+  [key: string]: any;
 }
 
 // 定义可用的列
-type ColumnKey = 'email' | 'username' | 'role' | 'status' | 'department' | 'phone' | 'created_at' | 'last_login' | 'actions';
+type ColumnKey = 'id' | 'phone' | 'status' | 'username' | 'nickname' | 'avatar' | 
+                 'notification_enabled' | 'created_at' | 'updated_at' | 'last_login_at' | 
+                 'registered' | 'refresh_count' | 'member_type' | 'actions';
 
 // 可用列定义
 const availableColumns: { key: ColumnKey; label: string }[] = [
-  { key: 'email', label: '邮箱' },
-  { key: 'username', label: '用户名' },
-  { key: 'role', label: '角色' },
-  { key: 'status', label: '状态' },
-  { key: 'department', label: '部门' },
+  { key: 'id', label: 'ID' },
   { key: 'phone', label: '手机号' },
+  { key: 'nickname', label: '昵称' },
+  { key: 'username', label: '用户名' },
+  { key: 'status', label: '状态' },
+  { key: 'avatar', label: '头像' },
+  { key: 'notification_enabled', label: '通知' },
   { key: 'created_at', label: '创建时间' },
-  { key: 'last_login', label: '最后登录' },
+  { key: 'updated_at', label: '更新时间' },
+  { key: 'last_login_at', label: '最后登录' },
+  { key: 'registered', label: '完善资料' },
+  { key: 'refresh_count', label: '刷新次数' },
+  { key: 'member_type', label: '会员类型' },
   { key: 'actions', label: '操作' }
 ];
 
@@ -53,126 +67,77 @@ function UsersPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [memberTypeFilter, setMemberTypeFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [memberTypeCounts, setMemberTypeCounts] = useState<Record<string, number>>({});
   const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(() => {
     if (typeof window !== 'undefined') {
       const savedColumns = localStorage.getItem('userTableColumns');
       if (savedColumns) {
-        const parsedColumns = JSON.parse(savedColumns);
-        // 确保操作列始终在最后
-        const columnsWithoutActions = parsedColumns.filter((col: string) => col !== 'actions');
-        return [...columnsWithoutActions, 'actions'];
+        try {
+          const parsedColumns = JSON.parse(savedColumns);
+          // 确保操作列始终在最后
+          const columnsWithoutActions = parsedColumns.filter((col: string) => col !== 'actions');
+          return [...columnsWithoutActions, 'actions'] as ColumnKey[];
+        } catch (e) {
+          // 如果解析失败，使用默认值
+        }
       }
     }
     // 默认显示列
-    return ['email', 'username', 'role', 'status', 'department', 'created_at', 'actions'];
+    return ['id', 'phone', 'nickname', 'username', 'status', 'member_type', 'created_at', 'actions'];
   });
 
   const handleColumnChange = (columns: ColumnKey[]) => {
     // 确保操作列始终在最后
     const columnsWithoutActions = columns.filter(col => col !== 'actions');
-    const finalColumns = [...columnsWithoutActions, 'actions'];
+    const finalColumns = [...columnsWithoutActions, 'actions'] as ColumnKey[];
     setSelectedColumns(finalColumns);
     localStorage.setItem('userTableColumns', JSON.stringify(finalColumns));
   };
 
-  // 模拟获取用户数据
+  // 获取用户数据
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       
-      // 模拟API调用延迟
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 构建查询参数
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString()
+      });
       
-      // 模拟用户数据
-      const mockUsers: User[] = [
-        {
-          id: '1',
-          email: 'admin@example.com',
-          username: '管理员',
-          role: 'admin',
-          status: 'active',
-          department: '技术部',
-          phone: '13800138000',
-          created_at: '2024-01-01',
-          last_login: '2024-06-01'
-        },
-        {
-          id: '2',
-          email: 'manager@example.com',
-          username: '经理',
-          role: 'manager',
-          status: 'active',
-          department: '市场部',
-          phone: '13800138001',
-          created_at: '2024-02-01',
-          last_login: '2024-05-28'
-        },
-        {
-          id: '3',
-          email: 'staff@example.com',
-          username: '工作人员',
-          role: 'staff',
-          status: 'active',
-          department: '客服部',
-          phone: '13800138002',
-          created_at: '2024-03-01',
-          last_login: '2024-05-30'
-        },
-        {
-          id: '4',
-          email: 'guest@example.com',
-          username: '访客',
-          role: 'guest',
-          status: 'inactive',
-          department: '销售部',
-          phone: '13800138003',
-          created_at: '2024-04-01',
-          last_login: '2024-04-15'
-        },
-        {
-          id: '5',
-          email: 'viewer@example.com',
-          username: '查看者',
-          role: 'viewer',
-          status: 'inactive',
-          department: '财务部',
-          phone: '13800138004',
-          created_at: '2024-05-01',
-          last_login: '2024-05-10'
-        }
-      ];
-      
-      // 应用筛选
-      let filteredUsers = mockUsers;
-      
-      if (roleFilter) {
-        filteredUsers = filteredUsers.filter(user => user.role === roleFilter);
+      if (searchTerm) {
+        params.append('search', searchTerm);
       }
       
       if (statusFilter) {
-        filteredUsers = filteredUsers.filter(user => user.status === statusFilter);
+        params.append('status', statusFilter);
       }
       
-      if (searchTerm) {
-        const keyword = searchTerm.toLowerCase();
-        filteredUsers = filteredUsers.filter(
-          user => 
-            user.email.toLowerCase().includes(keyword) || 
-            user.username.toLowerCase().includes(keyword) ||
-            user.phone.includes(keyword)
-        );
+      if (memberTypeFilter) {
+        params.append('memberType', memberTypeFilter);
       }
       
-      setUsers(filteredUsers);
-      setTotal(filteredUsers.length);
+      // 调用API获取数据
+      const response = await fetch(`/api/users?${params.toString()}`);
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || '获取用户列表失败');
+      }
+      
+      setUsers(result.data);
+      setTotal(result.total);
+      setStatusCounts(result.statusCounts || {});
+      setMemberTypeCounts(result.memberTypeCounts || {});
       setLoading(false);
     } catch (error) {
       console.error('获取用户失败:', error);
@@ -183,7 +148,7 @@ function UsersPageContent() {
       });
       setLoading(false);
     }
-  }, [page, pageSize, roleFilter, statusFilter, searchTerm, toast]);
+  }, [page, pageSize, statusFilter, memberTypeFilter, searchTerm, toast]);
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -194,12 +159,8 @@ function UsersPageContent() {
     fetchUsers();
   }, [isLoading, session, router, fetchUsers]);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [roleFilter, statusFilter, searchTerm, fetchUsers]);
-
   // 处理用户删除
-  const handleDelete = async (userId: string) => {
+  const handleDelete = async (userId: number) => {
     setSelectedUserId(userId);
     setDeleteDialogOpen(true);
   };
@@ -210,16 +171,22 @@ function UsersPageContent() {
     
     setDeleteLoading(true);
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch(`/api/users/${selectedUserId}`, {
+        method: 'DELETE'
+      });
       
-      // 更新本地状态
-      setUsers(prevUsers => prevUsers.filter(user => user.id !== selectedUserId));
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || '删除用户失败');
+      }
       
       toast({
         title: "删除成功",
         description: "用户已成功删除"
       });
+      
+      fetchUsers();
     } catch (error) {
       console.error('删除用户失败:', error);
       toast({
@@ -234,34 +201,22 @@ function UsersPageContent() {
     }
   };
 
-  // 获取角色文本
-  const getRoleText = (role: string): string => {
-    const roleMap: Record<string, string> = {
-      'admin': '管理员',
-      'manager': '经理',
-      'staff': '工作人员',
-      'guest': '访客',
-      'viewer': '查看者'
-    };
-    return roleMap[role] || role;
-  };
-
   // 获取状态文本和样式
   const getStatusInfo = (status: string): { text: string; className: string } => {
     switch (status) {
       case 'active':
         return { 
-          text: '正常', 
+          text: '已激活', 
           className: 'bg-green-100 text-green-800' 
         };
-      case 'inactive':
+      case 'not-logged-in':
         return { 
-          text: '禁用', 
-          className: 'bg-red-100 text-red-800' 
+          text: '未登录', 
+          className: 'bg-gray-100 text-gray-800' 
         };
-      case 'pending':
+      case 'need-setup':
         return { 
-          text: '待审核', 
+          text: '需设置', 
           className: 'bg-yellow-100 text-yellow-800' 
         };
       default:
@@ -274,25 +229,45 @@ function UsersPageContent() {
 
   const getColumnWidth = (columnKey: ColumnKey): string => {
     switch (columnKey) {
-      case 'email':
-        return 'min-w-[200px]';
-      case 'username':
-        return 'min-w-[120px]';
-      case 'role':
-      case 'status':
-        return 'min-w-[100px]';
-      case 'department':
-        return 'min-w-[120px]';
+      case 'id':
+        return 'w-[60px]';
       case 'phone':
         return 'min-w-[120px]';
+      case 'nickname':
+      case 'username':
+        return 'min-w-[120px]';
+      case 'status':
+        return 'min-w-[100px]';
+      case 'avatar':
+        return 'w-[80px]';
+      case 'notification_enabled':
+        return 'w-[80px]';
+      case 'registered':
+        return 'w-[100px]';
+      case 'refresh_count':
+        return 'w-[100px]';
+      case 'member_type':
+        return 'min-w-[120px]';
       case 'created_at':
-      case 'last_login':
-        return 'min-w-[150px]';
+      case 'updated_at':
+      case 'last_login_at':
+        return 'min-w-[160px]';
       case 'actions':
         return 'w-[150px]';
       default:
         return 'min-w-[120px]';
     }
+  };
+
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return '未知';
+    return new Date(dateString).toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const totalPages = Math.ceil(total / pageSize);
@@ -331,7 +306,39 @@ function UsersPageContent() {
       </Dialog>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center space-x-4 mb-4">
+        {/* 统计信息卡片 */}
+        <div className="flex items-center gap-4 mb-4">
+          <div className="bg-white p-4 rounded-md border flex items-center gap-4 flex-1">
+            <div className="text-center">
+              <div className="text-lg font-semibold text-blue-600">{statusCounts['active'] || 0}</div>
+              <div className="text-sm text-gray-600">已激活</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-gray-600">{statusCounts['not-logged-in'] || 0}</div>
+              <div className="text-sm text-gray-600">未登录</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-yellow-600">{statusCounts['need-setup'] || 0}</div>
+              <div className="text-sm text-gray-600">需设置</div>
+            </div>
+            <div className="border-l h-10 mx-2"></div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-green-600">{memberTypeCounts['普通会员'] || 0}</div>
+              <div className="text-sm text-gray-600">普通会员</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-orange-600">{memberTypeCounts['一次性会员'] || 0}</div>
+              <div className="text-sm text-gray-600">一次性会员</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-purple-600">{memberTypeCounts['年费会员'] || 0}</div>
+              <div className="text-sm text-gray-600">年费会员</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 工具栏 */}
+        <div className="flex items-center space-x-4 mb-4 flex-wrap gap-2">
           <div className="relative column-selector">
             <Button
               variant="outline"
@@ -387,28 +394,20 @@ function UsersPageContent() {
           </div>
           
           <Input
-            placeholder="搜索邮箱/用户名/手机号"
+            placeholder="搜索手机号/用户名/昵称"
             value={searchKeyword}
             onChange={(e) => {
               setSearchKeyword(e.target.value);
-              setSearchTerm(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setSearchTerm(searchKeyword);
+              }
             }}
             className="w-[240px]"
           />
           
-          <Select value={roleFilter || 'all'} onValueChange={(value) => setRoleFilter(value === 'all' ? null : value)}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="角色" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">所有角色</SelectItem>
-              <SelectItem value="admin">管理员</SelectItem>
-              <SelectItem value="manager">经理</SelectItem>
-              <SelectItem value="staff">工作人员</SelectItem>
-              <SelectItem value="guest">访客</SelectItem>
-              <SelectItem value="viewer">查看者</SelectItem>
-            </SelectContent>
-          </Select>
+          <Button onClick={() => setSearchTerm(searchKeyword)}>搜索</Button>
           
           <Select value={statusFilter || 'all'} onValueChange={(value) => setStatusFilter(value === 'all' ? null : value)}>
             <SelectTrigger className="w-[120px]">
@@ -416,9 +415,21 @@ function UsersPageContent() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">所有状态</SelectItem>
-              <SelectItem value="active">正常</SelectItem>
-              <SelectItem value="inactive">禁用</SelectItem>
-              <SelectItem value="pending">待审核</SelectItem>
+              <SelectItem value="active">已激活</SelectItem>
+              <SelectItem value="not-logged-in">未登录</SelectItem>
+              <SelectItem value="need-setup">需设置</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={memberTypeFilter || 'all'} onValueChange={(value) => setMemberTypeFilter(value === 'all' ? null : value)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="会员类型" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">所有类型</SelectItem>
+              <SelectItem value="普通会员">普通会员</SelectItem>
+              <SelectItem value="一次性会员">一次性会员</SelectItem>
+              <SelectItem value="年费会员">年费会员</SelectItem>
             </SelectContent>
           </Select>
           
@@ -427,8 +438,8 @@ function UsersPageContent() {
             onClick={() => {
               setSearchKeyword('');
               setSearchTerm('');
-              setRoleFilter(null);
               setStatusFilter(null);
+              setMemberTypeFilter(null);
             }}
           >
             重置
@@ -447,20 +458,22 @@ function UsersPageContent() {
               <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b">
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">邮箱</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">用户名</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">角色</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">ID</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">手机号</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">昵称</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">会员类型</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {Array.from({ length: 5 }).map((_, index) => (
                     <tr key={index} className="border-b">
-                      <td className="px-4 py-3"><Skeleton className="h-4 w-[180px]" /></td>
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-[40px]" /></td>
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-[120px]" /></td>
                       <td className="px-4 py-3"><Skeleton className="h-4 w-[100px]" /></td>
-                      <td className="px-4 py-3"><Skeleton className="h-4 w-[80px]" /></td>
                       <td className="px-4 py-3"><Skeleton className="h-4 w-[60px]" /></td>
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-[100px]" /></td>
                       <td className="px-4 py-3"><Skeleton className="h-4 w-[120px]" /></td>
                     </tr>
                   ))}
@@ -491,12 +504,32 @@ function UsersPageContent() {
                     <tr key={user.id} className="border-b hover:bg-muted/30">
                       {selectedColumns.map((columnKey) => (
                         <td key={columnKey} className="px-4 py-3 text-sm">
-                          {columnKey === 'role' ? (
-                            getRoleText(user.role)
+                          {columnKey === 'id' ? (
+                            user.id
                           ) : columnKey === 'status' ? (
                             <span className={`px-2 py-1 rounded-full text-xs ${getStatusInfo(user.status).className}`}>
                               {getStatusInfo(user.status).text}
                             </span>
+                          ) : columnKey === 'created_at' || columnKey === 'updated_at' || columnKey === 'last_login_at' ? (
+                            formatDate(user[columnKey])
+                          ) : columnKey === 'notification_enabled' ? (
+                            user.notification_enabled === 1 ? '已启用' : '已禁用'
+                          ) : columnKey === 'registered' ? (
+                            user.registered === 1 ? '已完善' : '未完善'
+                          ) : columnKey === 'avatar' ? (
+                            user.avatar ? (
+                              <div className="w-10 h-10 relative">
+                                <Image
+                                  src={user.avatar}
+                                  alt={user.nickname || user.username || '用户头像'}
+                                  width={40}
+                                  height={40}
+                                  className="rounded-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              '无头像'
+                            )
                           ) : columnKey === 'actions' ? (
                             <div className="flex items-center gap-2">
                               <Button
@@ -515,7 +548,7 @@ function UsersPageContent() {
                               </Button>
                             </div>
                           ) : (
-                            user[columnKey]
+                            user[columnKey] || '-'
                           )}
                         </td>
                       ))}
@@ -540,17 +573,31 @@ function UsersPageContent() {
                     上一页
                   </Button>
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }).map((_, index) => (
-                      <Button
-                        key={index + 1}
-                        variant={currentPage === index + 1 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handlePageChange(index + 1)}
-                        className="w-8 h-8 p-0"
-                      >
-                        {index + 1}
-                      </Button>
-                    ))}
+                    {Array.from({ length: Math.min(5, totalPages) }).map((_, index) => {
+                      // 计算当前显示的页码
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = index + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = index + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + index;
+                      } else {
+                        pageNum = currentPage - 2 + index;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
                   </div>
                   <Button
                     variant="outline"
@@ -580,4 +627,4 @@ export default function UsersPage() {
       <UsersPageContent />
     </Suspense>
   );
-} 
+}
