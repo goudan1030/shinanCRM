@@ -29,7 +29,7 @@ interface User {
   last_login_at: string | null;
   registered: number;
   refresh_count: number;
-  member_type: '普通会员' | '一次性会员' | '年费会员';
+  member_type: '普通用户' | '一次性用户' | '年费用户';
   [key: string]: any;
 }
 
@@ -52,7 +52,7 @@ const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'last_login_at', label: '最后登录' },
   { key: 'registered', label: '完善资料' },
   { key: 'refresh_count', label: '刷新次数' },
-  { key: 'member_type', label: '会员类型' },
+  { key: 'member_type', label: '用户类型' },
   { key: 'actions', label: '操作' }
 ];
 
@@ -323,16 +323,16 @@ function UsersPageContent() {
             </div>
             <div className="border-l h-10 mx-2"></div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-green-600">{memberTypeCounts['普通会员'] || 0}</div>
-              <div className="text-sm text-gray-600">普通会员</div>
+              <div className="text-lg font-semibold text-green-600">{memberTypeCounts['普通用户'] || 0}</div>
+              <div className="text-sm text-gray-600">普通用户</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-orange-600">{memberTypeCounts['一次性会员'] || 0}</div>
-              <div className="text-sm text-gray-600">一次性会员</div>
+              <div className="text-lg font-semibold text-orange-600">{memberTypeCounts['一次性用户'] || 0}</div>
+              <div className="text-sm text-gray-600">一次性用户</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-purple-600">{memberTypeCounts['年费会员'] || 0}</div>
-              <div className="text-sm text-gray-600">年费会员</div>
+              <div className="text-lg font-semibold text-purple-600">{memberTypeCounts['年费用户'] || 0}</div>
+              <div className="text-sm text-gray-600">年费用户</div>
             </div>
           </div>
         </div>
@@ -423,13 +423,13 @@ function UsersPageContent() {
           
           <Select value={memberTypeFilter || 'all'} onValueChange={(value) => setMemberTypeFilter(value === 'all' ? null : value)}>
             <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="会员类型" />
+              <SelectValue placeholder="用户类型" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">所有类型</SelectItem>
-              <SelectItem value="普通会员">普通会员</SelectItem>
-              <SelectItem value="一次性会员">一次性会员</SelectItem>
-              <SelectItem value="年费会员">年费会员</SelectItem>
+              <SelectItem value="普通用户">普通用户</SelectItem>
+              <SelectItem value="一次性用户">一次性用户</SelectItem>
+              <SelectItem value="年费用户">年费用户</SelectItem>
             </SelectContent>
           </Select>
           
@@ -462,7 +462,7 @@ function UsersPageContent() {
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">手机号</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">昵称</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">会员类型</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">用户类型</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
                   </tr>
                 </thead>
