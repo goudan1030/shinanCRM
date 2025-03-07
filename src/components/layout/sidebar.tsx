@@ -51,6 +51,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
 const navigation: NavigationItem[] = [
   { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
   { name: '会员管理', href: '/members', icon: Users },
+  { name: '用户管理', href: '/users', icon: User },
   {
     name: '收支管理',
     href: '/finance/income',
@@ -156,6 +157,11 @@ export function Sidebar({ className }: SidebarProps) {
       href: '/members',
       icon: <Users className="h-4 w-4" />,
       label: '会员管理'
+    },
+    {
+      href: '/users',
+      icon: <User className="h-4 w-4" />,
+      label: '用户管理'
     },
     {
       href: '/finance',
