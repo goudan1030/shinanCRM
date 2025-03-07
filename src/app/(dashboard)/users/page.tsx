@@ -13,6 +13,10 @@ import { Session } from '@supabase/auth-helpers-nextjs';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense } from 'react';
 import Image from 'next/image';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Settings } from 'lucide-react';
 
 // 定义用户接口，对应数据库users表结构
 interface User {
@@ -51,6 +55,96 @@ const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'actions', label: '操作' }
 ];
 
+// 列选择器组件
+function ColumnSelector({ 
+  visibleColumns, 
+  setVisibleColumns 
+}: { 
+  visibleColumns: ColumnKey[]; 
+  setVisibleColumns: (columns: ColumnKey[]) => void 
+}) {
+  // 本地状态，用于跟踪选中的列
+  const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(visibleColumns);
+  
+  // 处理列选择变更
+  const handleColumnChange = (column: ColumnKey, checked: boolean) => {
+    if (checked) {
+      // 添加列
+      setSelectedColumns(prev => [...prev, column]);
+    } else {
+      // 移除列，但确保至少保留一列
+      if (selectedColumns.length > 1) {
+        setSelectedColumns(prev => prev.filter(col => col !== column));
+      }
+    }
+  };
+  
+  // 应用选择
+  const applySelection = () => {
+    // 确保 'actions' 列始终可见
+    if (!selectedColumns.includes('actions')) {
+      setSelectedColumns(prev => [...prev, 'actions']);
+    }
+    setVisibleColumns(selectedColumns);
+    
+    // 保存到本地存储
+    localStorage.setItem('userTableVisibleColumns', JSON.stringify(selectedColumns));
+  };
+  
+  // 重置为默认设置
+  const resetToDefault = () => {
+    const defaultColumns: ColumnKey[] = ['phone', 'username', 'nickname', 'status', 'member_type', 'created_at', 'refresh_count', 'actions'];
+    setSelectedColumns(defaultColumns);
+    setVisibleColumns(defaultColumns);
+    localStorage.setItem('userTableVisibleColumns', JSON.stringify(defaultColumns));
+  };
+  
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="ml-2">
+          <Settings className="h-4 w-4 mr-2" />
+          显示字段
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72">
+        <div className="space-y-4">
+          <h4 className="font-medium">选择要显示的列</h4>
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {availableColumns.map(column => (
+              <div key={column.key} className="flex items-center space-x-2">
+                <Checkbox 
+                  id={`column-${column.key}`} 
+                  checked={selectedColumns.includes(column.key)}
+                  onCheckedChange={(checked: boolean | 'indeterminate') => 
+                    handleColumnChange(column.key, checked === true)
+                  }
+                  disabled={column.key === 'actions'} // 操作列始终可见
+                />
+                <Label 
+                  htmlFor={`column-${column.key}`}
+                  className={column.key === 'actions' ? 'opacity-70' : ''}
+                >
+                  {column.label}
+                  {column.key === 'actions' && ' (必选)'}
+                </Label>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between pt-2">
+            <Button variant="outline" size="sm" onClick={resetToDefault}>
+              恢复默认
+            </Button>
+            <Button size="sm" onClick={applySelection}>
+              应用
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function UsersPageContent() {
   const { toast } = useToast();
   const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
@@ -66,6 +160,23 @@ function UsersPageContent() {
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>([
     'phone', 'username', 'nickname', 'status', 'member_type', 'created_at', 'refresh_count', 'actions'
   ]);
+
+  // 从本地存储加载列配置
+  useEffect(() => {
+    const savedColumns = localStorage.getItem('userTableVisibleColumns');
+    if (savedColumns) {
+      try {
+        const parsed = JSON.parse(savedColumns) as ColumnKey[];
+        // 确保操作列始终可见
+        if (!parsed.includes('actions')) {
+          parsed.push('actions');
+        }
+        setVisibleColumns(parsed);
+      } catch (e) {
+        console.error('解析存储的列配置失败:', e);
+      }
+    }
+  }, []);
 
   // 获取用户数据
   const fetchUsers = useCallback(async () => {
@@ -217,9 +328,15 @@ function UsersPageContent() {
         
         <div className="flex-1" />
         
-        <Button onClick={() => router.push('/users/new')}>
-          新增用户
-        </Button>
+        <div className="flex items-center">
+          <Button onClick={() => router.push('/users/new')}>
+            新增用户
+          </Button>
+          <ColumnSelector 
+            visibleColumns={visibleColumns} 
+            setVisibleColumns={setVisibleColumns} 
+          />
+        </div>
       </div>
       
       {/* 用户表格 */}
