@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import path from 'path';
 
 export async function POST(request: Request) {
   try {
@@ -34,25 +32,16 @@ export async function POST(request: Request) {
     // 获取文件的字节数据
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // 生成唯一的文件名
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
-    const filename = `${uniqueSuffix}-${file.name}`;
-
-    // 确保上传目录存在
-    const uploadDir = path.join(process.cwd(), 'public/uploads/chatgroups');
-    await ensureDir(uploadDir);
-
-    // 写入文件
-    const filepath = path.join(uploadDir, filename);
-    await writeFile(filepath, buffer);
-
-    // 返回可访问的URL
-    const imageUrl = `/uploads/chatgroups/${filename}`;
+    
+    // 将文件内容转换为Base64编码
+    const base64Data = buffer.toString('base64');
+    
+    // 构建完整的data URI格式
+    const dataUri = `data:${file.type};base64,${base64Data}`;
 
     return NextResponse.json({
       success: true,
-      url: imageUrl
+      url: dataUri
     });
 
   } catch (error) {
@@ -61,16 +50,5 @@ export async function POST(request: Request) {
       { success: false, error: '群聊二维码上传失败' },
       { status: 500 }
     );
-  }
-}
-
-// 确保目录存在的辅助函数
-async function ensureDir(dirPath: string) {
-  try {
-    await import('fs/promises').then(fs => fs.mkdir(dirPath, { recursive: true }));
-  } catch (error) {
-    if ((error as any).code !== 'EEXIST') {
-      throw error;
-    }
   }
 } 
