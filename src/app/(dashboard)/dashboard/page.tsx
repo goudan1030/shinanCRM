@@ -66,7 +66,7 @@ export default function DashboardPage() {
         }
         const monthlyIncome = incomeData.amount;
 
-        // 获取当月支出
+        // 获取当月支出 - 这个接口需要改为API调用，暂时保留
         const { data: expenseData } = await supabase
           .from('expense_records')
           .select('amount')
@@ -75,36 +75,25 @@ export default function DashboardPage() {
 
         const monthlyExpense = expenseData?.reduce((sum, record) => sum + (record.amount || 0), 0) || 0;
 
-        // 获取当月已结算金额
-        const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
-        const lastDayStr = lastDayOfMonth.toISOString().split('T')[0];
+        // 获取当月已结算金额 - 通过API从MySQL获取
+        const settlementResponse = await fetch('/api/dashboard/settlement/monthly');
+        if (!settlementResponse.ok) {
+          throw new Error('Failed to fetch monthly settlement amount');
+        }
+        const settlementData = await settlementResponse.json();
+        const settledAmount = settlementData.amount || 0;
         
-        console.log('查询结算记录时间范围:', firstDayStr, '至', lastDayStr);
-        
-        const { data: settledData, error: settledError } = await supabase
-          .from('settlement_records')
-          .select('amount, settlement_date')
-          .gte('settlement_date', firstDayStr)
-          .lte('settlement_date', lastDayStr);
-        
-        console.log('查询到的结算记录:', settledData, '错误:', settledError);
-        
-        const settledAmount = settledData?.reduce((sum, record) => {
-          console.log('结算记录:', record);
-          return sum + Number(record.amount);
-        }, 0) || 0;
-        
-        console.log('计算的已结算总金额:', settledAmount);
+        console.log('从API获取的已结算金额:', settledAmount);
 
-        // 获取当月通过WECHAT_ZHANG支付的金额
-        const { data: wechatZhangData } = await supabase
-          .from('income_records')
-          .select('amount')
-          .eq('payment_method', 'WECHAT_ZHANG')
-          .gte('created_at', firstDayOfMonth.toISOString())
-          .lte('created_at', lastDayOfMonth.toISOString());
-
-        const wechatZhangAmount = wechatZhangData?.reduce((sum, record) => sum + record.amount, 0) || 0;
+        // 获取当月通过WECHAT_ZHANG支付的金额 - 通过API从MySQL获取
+        const wechatZhangResponse = await fetch('/api/dashboard/income/wechat-zhang');
+        if (!wechatZhangResponse.ok) {
+          throw new Error('Failed to fetch WECHAT_ZHANG payment amount');
+        }
+        const wechatZhangData = await wechatZhangResponse.json();
+        const wechatZhangAmount = wechatZhangData.amount || 0;
+        
+        console.log('从API获取的微信张支付金额:', wechatZhangAmount);
 
         // 计算待结算金额：(本月收入 - 本月支出)/2 - WECHAT_ZHANG支付金额 - 已结算金额
         const unsettledAmount = ((monthlyIncome - monthlyExpense) / 2) - wechatZhangAmount - settledAmount;
