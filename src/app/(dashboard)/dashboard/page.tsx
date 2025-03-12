@@ -76,13 +76,25 @@ export default function DashboardPage() {
         const monthlyExpense = expenseData?.reduce((sum, record) => sum + (record.amount || 0), 0) || 0;
 
         // 获取当月已结算金额
-        const { data: settledData } = await supabase
+        const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
+        const lastDayStr = lastDayOfMonth.toISOString().split('T')[0];
+        
+        console.log('查询结算记录时间范围:', firstDayStr, '至', lastDayStr);
+        
+        const { data: settledData, error: settledError } = await supabase
           .from('settlement_records')
-          .select('amount')
-          .gte('created_at', firstDayOfMonth.toISOString())
-          .lte('created_at', lastDayOfMonth.toISOString());
-
-        const settledAmount = settledData?.reduce((sum, record) => sum + record.amount, 0) || 0;
+          .select('amount, settlement_date')
+          .gte('settlement_date', firstDayStr)
+          .lte('settlement_date', lastDayStr);
+        
+        console.log('查询到的结算记录:', settledData, '错误:', settledError);
+        
+        const settledAmount = settledData?.reduce((sum, record) => {
+          console.log('结算记录:', record);
+          return sum + Number(record.amount);
+        }, 0) || 0;
+        
+        console.log('计算的已结算总金额:', settledAmount);
 
         // 获取当月通过WECHAT_ZHANG支付的金额
         const { data: wechatZhangData } = await supabase
