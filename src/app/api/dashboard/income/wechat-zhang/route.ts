@@ -11,9 +11,12 @@ export async function GET() {
     console.log('微信张支付API查询范围:', firstDayOfMonth, '至', lastDayOfMonth);
 
     // 查询当月通过WECHAT_ZHANG支付的金额
+    // 注意：根据数据库实际情况，可能需要调整字段名和条件
     const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT SUM(amount) as total FROM income_records WHERE payment_method = ? AND DATE(created_at) >= ? AND DATE(created_at) <= ?',
-      ['WECHAT_ZHANG', firstDayOfMonth, lastDayOfMonth]
+      `SELECT SUM(amount) as total FROM income_records 
+       WHERE payment_method = 'WECHAT_ZHANG'
+       AND (DATE(created_at) >= ? AND DATE(created_at) <= ?)`,
+      [firstDayOfMonth, lastDayOfMonth]
     );
 
     console.log('微信张支付API查询结果:', rows);
@@ -25,7 +28,7 @@ export async function GET() {
   } catch (error) {
     console.error('获取当月微信张支付金额失败:', error);
     return NextResponse.json(
-      { error: '获取当月微信张支付金额失败' },
+      { success: false, error: '获取当月微信张支付金额失败' },
       { status: 500 }
     );
   }
