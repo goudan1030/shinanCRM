@@ -138,7 +138,7 @@ export default function ChatGroupsPage() {
   };
 
   // 处理图片上传
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -152,16 +152,42 @@ export default function ChatGroupsPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      setImagePreview(result);
+    try {
+      // 创建FormData对象并添加文件
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // 发送到上传API
+      const response = await fetch('/api/platform/chatgroups/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '上传图片失败');
+      }
+
+      // 设置图片URL和预览
+      setImagePreview(result.url);
       setCurrentGroup(prev => ({
         ...prev,
-        qrcode_image: result
+        qrcode_image: result.url
       }));
-    };
-    reader.readAsDataURL(file);
+
+      toast({
+        title: "上传成功",
+        description: "二维码图片已上传"
+      });
+    } catch (error) {
+      console.error('上传图片失败:', error);
+      toast({
+        variant: "destructive",
+        title: "上传失败",
+        description: error instanceof Error ? error.message : "上传图片失败，请重试"
+      });
+    }
   };
 
   // 表单提交
