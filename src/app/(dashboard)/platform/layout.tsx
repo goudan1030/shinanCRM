@@ -42,6 +42,14 @@ export default function PlatformLayout({
         >
           <span className="text-[13px]">资讯管理</span>
         </Link>
+        <Link
+          href="/platform/chatgroups"
+          className={`flex items-center rounded-md py-2 px-3 ${
+            pathname === '/platform/chatgroups' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+          }`}
+        >
+          <span className="text-[13px]">群聊管理</span>
+        </Link>
       </div>
     </div>
   );
