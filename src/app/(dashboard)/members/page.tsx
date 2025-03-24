@@ -206,6 +206,7 @@ function MembersPageContent() {
 
       setMembers(data.data);
       setTotal(data.total);
+      setTotalCount(data.total);
       setMemberCounts(data.memberCounts || { NORMAL: 0, ONE_TIME: 0, ANNUAL: 0 });
     } catch (error) {
       toast({
