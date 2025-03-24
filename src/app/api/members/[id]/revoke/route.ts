@@ -8,7 +8,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     // 获取当前会员信息
     const [memberRows] = await pool.execute(
-      'SELECT status FROM members WHERE id = ?',
+      'SELECT id, status FROM members WHERE id = ?',
       [params.id]
     );
 
@@ -20,6 +20,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
 
     const member = memberRows[0];
+    const memberId = member.id;
 
     // 验证会员状态
     if (member.status !== 'ACTIVE') {
@@ -37,7 +38,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       // 更新会员状态
       await connection.execute(
         'UPDATE members SET status = "REVOKED", updated_at = NOW() WHERE id = ?',
-        [params.id]
+        [memberId]
       );
 
       // 记录撤销操作
@@ -45,7 +46,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         `INSERT INTO member_operation_logs (
           member_id, operation_type, notes, created_at
         ) VALUES (?, 'REVOKE', ?, NOW())`,
-        [params.id, reason]
+        [memberId, reason]
       );
 
       await connection.commit();
