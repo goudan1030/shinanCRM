@@ -6,24 +6,27 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const data = await request.json();
     const { reason } = data;
     
-    // 获取会员ID（UUID格式）
-    const memberId = params.id;
-    console.log('会员ID:', memberId);
+    // 获取会员UUID
+    const memberUuid = params.id;
+    console.log('会员UUID:', memberUuid);
 
-    // 获取当前会员信息
-    const [memberRows] = await pool.execute(
-      'SELECT id, status FROM members WHERE id = ?',
-      [memberId]
+    // 首先使用UUID查找会员的数字ID
+    const [idRows] = await pool.execute(
+      'SELECT id, status FROM members WHERE uuid = ? OR old_id = ?',
+      [memberUuid, memberUuid]
     );
 
-    if (!memberRows[0]) {
+    if (!idRows[0]) {
       return NextResponse.json(
         { error: '会员不存在' },
         { status: 404 }
       );
     }
 
-    const member = memberRows[0];
+    const member = idRows[0];
+    const memberId = member.id; // 获取数字类型的ID
+    
+    console.log('找到会员ID:', memberId, '类型:', typeof memberId);
 
     // 验证会员状态
     if (member.status !== 'ACTIVE') {
