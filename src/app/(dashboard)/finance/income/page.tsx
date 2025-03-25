@@ -260,18 +260,16 @@ export default function IncomePage() {
           </div>
           
           <div className="space-y-6 h-[calc(100vh-88px)] overflow-auto mt-[38px]">
-            {totalPages > 1 && (
-              <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[534px] right-0 bg-white z-50 px-4">
-                <div className="text-sm text-gray-500">
-                  共 {totalCount} 条记录
-                </div>
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
+            <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[534px] right-0 bg-white z-50 px-4">
+              <div className="text-sm text-gray-500">
+                共 {totalCount} 条记录
               </div>
-            )}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
 
             <div className="bg-white">
               <div className="overflow-x-auto">

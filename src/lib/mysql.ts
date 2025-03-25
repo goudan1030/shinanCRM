@@ -4,6 +4,7 @@ import mysql from 'mysql2/promise';
 const pool = mysql.createPool({
   // 初始化连接池配置
   host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '3306', 10),
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'sncrm',
@@ -22,6 +23,7 @@ export { pool };
 export function createClient() {
   return mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'sncrm'

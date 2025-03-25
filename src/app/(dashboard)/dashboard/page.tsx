@@ -66,14 +66,15 @@ export default function DashboardPage() {
         }
         const monthlyIncome = incomeData.amount;
 
-        // 获取当月支出 - 这个接口需要改为API调用，暂时保留
-        const { data: expenseData } = await supabase
-          .from('expense_records')
-          .select('amount')
-          .gte('expense_date', firstDayOfMonth.toISOString())
-          .lte('expense_date', lastDayOfMonth.toISOString());
-
-        const monthlyExpense = expenseData?.reduce((sum, record) => sum + (record.amount || 0), 0) || 0;
+        // 获取当月支出 - 通过API从MySQL获取
+        const expenseResponse = await fetch('/api/dashboard/expense/monthly');
+        if (!expenseResponse.ok) {
+          throw new Error('Failed to fetch monthly expense');
+        }
+        const expenseData = await expenseResponse.json();
+        const monthlyExpense = expenseData.amount || 0;
+        
+        console.log('从API获取的当月支出:', monthlyExpense);
 
         // 获取当月已结算金额 - 通过API从MySQL获取
         const settlementResponse = await fetch('/api/dashboard/settlement/monthly');
@@ -95,8 +96,8 @@ export default function DashboardPage() {
         
         console.log('从API获取的微信张支付金额:', wechatZhangAmount);
 
-        // 计算待结算金额：(本月收入 - 本月支出)/2 - WECHAT_ZHANG支付金额 - 已结算金额
-        const unsettledAmount = ((monthlyIncome - monthlyExpense) / 2) - wechatZhangAmount - settledAmount;
+        // 计算待结算金额：当月总收入减去当月总支出之后，然后除以2，再减去当月已结算金额
+        const unsettledAmount = (monthlyIncome - monthlyExpense) / 2 - settledAmount;
 
         // 获取趋势数据
         const trendsResponse = await fetch('/api/dashboard/trends');

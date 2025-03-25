@@ -191,7 +191,7 @@ export function Sidebar({ className }: SidebarProps) {
   ];
 
   return (
-    <div className={cn('pb-12 h-full', className)}>
+    <div className={cn('h-full', className)}>
       <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col bg-white border-r transition-all duration-300 overflow-hidden group/sidebar relative z-[1001]">
         <div className="h-[48px] flex items-center border-b">
           <div className="w-[57px] flex items-center justify-center flex-shrink-0">
@@ -211,7 +211,7 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         </div>
 
-        <nav className="flex-1 px-2 py-2 space-y-1">
+        <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto">
           {menus.map((menu) => (
             <div key={menu.href}>
               <div
@@ -236,7 +236,7 @@ export function Sidebar({ className }: SidebarProps) {
           ))}
         </nav>
 
-        <div className="px-2 h-[48px] flex items-center border-t">
+        <div className="px-2 h-[48px] mt-auto flex items-center border-t">
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full outline-none">
               <div className={cn(
@@ -263,7 +263,7 @@ export function Sidebar({ className }: SidebarProps) {
                 </div>
               </div>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
+            <DropdownMenuContent align="end" className="w-[200px] z-[1002]">
               <DropdownMenuItem onClick={() => router.push('/settings/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>个人信息</span>

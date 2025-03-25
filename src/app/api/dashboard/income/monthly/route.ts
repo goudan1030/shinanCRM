@@ -3,15 +3,27 @@ import pool from '@/lib/mysql';
 
 export async function GET() {
   try {
+    // 获取当前日期，手动构建日期字符串避免时区问题
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10) + ' 00:00:00';
-    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10) + ' 23:59:59';
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    // 当月第一天
+    const firstDayStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    
+    // 当月最后一天
+    const lastDay = new Date(year, month + 1, 0);
+    const lastDayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
 
-    // 查询当月收入总额
+    console.log('当月收入API查询范围(UTC修正):', firstDayStr, '至', lastDayStr);
+
+    // 查询当月收入总额 - 按照支付日期(payment_date)统计
     const [result] = await pool.execute(
-      'SELECT SUM(amount) as total FROM income_records WHERE created_at >= ? AND created_at <= ?',
-      [firstDayOfMonth, lastDayOfMonth]
+      'SELECT SUM(amount) as total FROM income_records WHERE payment_date >= ? AND payment_date <= ?',
+      [firstDayStr, lastDayStr]
     );
+
+    console.log('当月收入API查询结果:', result);
 
     return NextResponse.json({ amount: result[0].total || 0 });
   } catch (error) {

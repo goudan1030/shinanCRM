@@ -3,8 +3,15 @@ import pool from '@/lib/mysql';
 
 export async function GET(request: Request) {
   try {
+    // 获取当前日期和30天前的日期
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    // 手动格式化日期，避免时区问题
+    const nowStr = now.toISOString().split('T')[0];
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+    
+    console.log('趋势数据API查询范围:', thirtyDaysAgoStr, '至', nowStr);
 
     // 获取会员增长趋势
     const [memberTrend] = await pool.execute(
@@ -15,19 +22,19 @@ export async function GET(request: Request) {
       WHERE created_at >= ? AND created_at <= ?
       GROUP BY DATE(created_at)
       ORDER BY DATE(created_at)`,
-      [thirtyDaysAgo.toISOString(), now.toISOString()]
+      [thirtyDaysAgoStr, nowStr]
     );
 
-    // 获取收入趋势
+    // 获取收入趋势 - 使用payment_date作为统计依据
     const [incomeTrend] = await pool.execute(
       `SELECT 
-        DATE_FORMAT(created_at, '%m月%d日') as date,
+        DATE_FORMAT(payment_date, '%m月%d日') as date,
         COALESCE(SUM(amount), 0) as value
       FROM income_records
-      WHERE created_at >= ? AND created_at <= ?
-      GROUP BY DATE(created_at)
-      ORDER BY DATE(created_at)`,
-      [thirtyDaysAgo.toISOString(), now.toISOString()]
+      WHERE payment_date >= ? AND payment_date <= ?
+      GROUP BY payment_date
+      ORDER BY payment_date`,
+      [thirtyDaysAgoStr, nowStr]
     );
 
     // 填充没有数据的日期

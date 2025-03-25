@@ -9,11 +9,14 @@ interface PaginationProps {
 }
 
 export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+  // 如果总页数为0，显示为1页
+  const effectiveTotalPages = Math.max(1, totalPages);
+  
   const renderPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    const endPage = Math.min(effectiveTotalPages, startPage + maxVisiblePages - 1);
 
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
@@ -53,7 +56,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         size="sm"
         className="h-[26px]"
         onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
+        disabled={currentPage === effectiveTotalPages || effectiveTotalPages === 0}
       >
         下一页
       </Button>

@@ -89,10 +89,11 @@ src/
 
 ```env
 # 数据库配置
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=sncrm
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=h5_cloud_user
+DB_PASSWORD=mc72TNcMmy6HCybH
+DB_NAME=h5_cloud_db
 
 # Supabase配置
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
@@ -101,6 +102,25 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 # JWT配置
 JWT_SECRET=your-jwt-secret
 ```
+
+### 连接到阿里云MySQL数据库
+
+由于系统使用阿里云MySQL数据库，您需要建立SSH隧道以便本地开发环境能够连接到远程数据库：
+
+1. 编辑 `scripts/setup-db-tunnel.sh` 文件，填入正确的阿里云服务器信息
+2. 运行隧道脚本：
+   ```bash
+   ./scripts/setup-db-tunnel.sh
+   ```
+3. 保持运行隧道的终端窗口开启
+4. 在另一个终端窗口启动开发服务器：
+   ```bash
+   npm run dev
+   ```
+
+隧道建立后，应用将通过127.0.0.1:3306连接到阿里云MySQL数据库。
+
+**注意**：在生产环境部署时，应用直接连接到阿里云数据库，无需隧道。
 
 ## 部署
 

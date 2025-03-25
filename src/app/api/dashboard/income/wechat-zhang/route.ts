@@ -4,19 +4,26 @@ import { RowDataPacket } from 'mysql2';
 
 export async function GET() {
   try {
+    // 获取当前日期，手动构建日期字符串避免时区问题
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    // 当月第一天
+    const firstDayStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    
+    // 当月最后一天
+    const lastDay = new Date(year, month + 1, 0);
+    const lastDayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
 
-    console.log('微信张支付API查询范围:', firstDayOfMonth, '至', lastDayOfMonth);
+    console.log('微信张支付API查询范围(UTC修正):', firstDayStr, '至', lastDayStr);
 
-    // 查询当月通过WECHAT_ZHANG支付的金额
-    // 注意：根据数据库实际情况，可能需要调整字段名和条件
+    // 查询当月通过WECHAT_ZHANG支付的金额，使用支付日期payment_date
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT SUM(amount) as total FROM income_records 
        WHERE payment_method = 'WECHAT_ZHANG'
-       AND (DATE(created_at) >= ? AND DATE(created_at) <= ?)`,
-      [firstDayOfMonth, lastDayOfMonth]
+       AND payment_date >= ? AND payment_date <= ?`,
+      [firstDayStr, lastDayStr]
     );
 
     console.log('微信张支付API查询结果:', rows);
