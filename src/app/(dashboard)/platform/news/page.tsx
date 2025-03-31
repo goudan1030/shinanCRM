@@ -18,6 +18,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { useRouter } from 'next/navigation';
 import { CollectDialog } from '@/components/platform/collect-dialog';
+import { Pagination } from '@/components/ui/pagination';
 
 export default function NewsPage() {
   const { toast } = useToast();
@@ -27,14 +28,20 @@ export default function NewsPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [openCollectDialog, setOpenCollectDialog] = useState(false);
   const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 10;
 
   // 获取文章列表
   const fetchArticles = async () => {
     try {
-      const response = await fetch('/api/platform/article');
+      const response = await fetch(`/api/platform/article?page=${currentPage}&pageSize=${pageSize}`);
       const result = await response.json();
       if (result.success) {
         setArticles(result.data);
+        setTotalPages(result.totalPages);
+        setTotalCount(result.total);
       }
     } catch (error) {
       console.error('获取文章列表失败:', error);
@@ -43,7 +50,7 @@ export default function NewsPage() {
 
   useEffect(() => {
     fetchArticles();
-  }, []);
+  }, [currentPage]);
 
   // 添加操作函数
   const handleEdit = (article: any) => {
@@ -312,6 +319,19 @@ export default function NewsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      {totalPages > 1 && (
+        <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[294px] right-0 bg-white z-50 px-4">
+          <div className="text-sm text-gray-500">
+            共 {totalCount} 条记录
+          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
 
       <ArticleDialog 
         open={openDialog}

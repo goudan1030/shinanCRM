@@ -4,15 +4,30 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 
 // 获取文章列表
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    const offset = (page - 1) * pageSize;
+
+    // 获取总数
+    const [countResult] = await pool.execute(
+      'SELECT COUNT(*) as total FROM articles'
+    );
+    const total = countResult[0].total;
+
+    // 获取分页数据
     const [rows] = await pool.execute(
-      'SELECT * FROM articles ORDER BY is_top DESC, sort_order DESC, created_at DESC'
+      'SELECT * FROM articles ORDER BY is_top DESC, sort_order DESC, created_at DESC LIMIT ? OFFSET ?',
+      [pageSize, offset]
     );
     
     return NextResponse.json({
       success: true,
-      data: rows
+      data: rows,
+      total,
+      totalPages: Math.ceil(total / pageSize)
     });
   } catch (error) {
     console.error('获取文章列表失败:', error);
