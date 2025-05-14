@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Pagination } from '@/components/ui/pagination';
 import { SearchFilter } from '@/components/ui/settlement';
@@ -18,6 +18,15 @@ interface SettlementRecord {
   notes: string;
   operator_id: number;
   created_at: string;
+}
+
+interface CalculationDetails {
+  period: string;
+  monthlyIncome: number;
+  monthlyExpense: number;
+  profitToSettle: number;
+  settledAmount: number;
+  amountToSettle: number;
 }
 
 export default function SettlementPage() {
@@ -33,6 +42,12 @@ export default function SettlementPage() {
 
   const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
+
+  // 自动结算相关状态
+  const [autoSettleDialogOpen, setAutoSettleDialogOpen] = useState(false);
+  const [autoSettleLoading, setAutoSettleLoading] = useState(false);
+  const [calculationDetails, setCalculationDetails] = useState<CalculationDetails | null>(null);
+  const [autoSettleSuccess, setAutoSettleSuccess] = useState(false);
 
   const fetchRecords = useCallback(async () => {
     try {
@@ -95,8 +110,51 @@ export default function SettlementPage() {
   });
   const [newExpenseLoading, setNewExpenseLoading] = useState(false);
 
+  // 执行自动结算
+  const handleAutoSettle = async () => {
+    setAutoSettleLoading(true);
+    setCalculationDetails(null);
+    setAutoSettleSuccess(false);
 
+    try {
+      const response = await fetch('/api/finance/settlement/auto', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          operator_id: session?.user?.id
+        })
+      });
 
+      const result = await response.json();
+
+      if (!response.ok) {
+        setCalculationDetails(result.calculationDetails || null);
+        throw new Error(result.message || result.error || '自动结算失败');
+      }
+
+      setCalculationDetails(result.calculationDetails);
+      setAutoSettleSuccess(true);
+      
+      toast({
+        title: '自动结算成功',
+        description: `已创建结算记录，金额: ¥${Number(result.calculationDetails.amountToSettle).toLocaleString()}`
+      });
+      
+      // 刷新结算记录
+      fetchRecords();
+    } catch (error) {
+      console.error('自动结算失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '自动结算失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
+    } finally {
+      setAutoSettleLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (session) {
@@ -108,36 +166,8 @@ export default function SettlementPage() {
   if (isLoading || loading) {
     return (
       <div className="flex flex-col h-screen overflow-hidden">
-        <div className="flex-1 flex">
-          {/* 二级菜单区域 */}
-          <div className="hidden md:block fixed left-[57px] top-0 h-[calc(100vh-0px)] w-[240px] bg-white border-r z-[5]">
-            <div className="flex h-[48px] items-center px-6 border-b">
-              <h1 className="text-2xl font-semibold text-gray-900">收支管理</h1>
-            </div>
-            <div className="space-y-1 p-2">
-              <Link
-                href="/finance/income"
-                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
-              >
-                <span className="text-[13px]">收入管理</span>
-              </Link>
-              <Link
-                href="/finance/expense"
-                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
-              >
-                <span className="text-[13px]">支出管理</span>
-              </Link>
-              <Link
-                href="/finance/settlement"
-                className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
-              >
-                <span className="text-[13px]">结算管理</span>
-              </Link>
-            </div>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">加载中...</p>
-          </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">加载中...</p>
         </div>
       </div>
     );
@@ -146,40 +176,12 @@ export default function SettlementPage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <div className="flex-1 flex">
-        {/* 二级菜单区域 */}
-        <div className="hidden md:block fixed left-[57px] top-0 h-[calc(100vh-0px)] w-[240px] bg-white border-r z-[5]">
-          <div className="flex h-[48px] items-center px-6 border-b">
-            <h1 className="text-2xl font-semibold text-gray-900">收支管理</h1>
-          </div>
-          <div className="space-y-1 p-2">
-            <Link
-              href="/finance/income"
-              className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
-            >
-              <span className="text-[13px]">收入管理</span>
-            </Link>
-            <Link
-              href="/finance/expense"
-              className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
-            >
-              <span className="text-[13px]">支出管理</span>
-            </Link>
-            <Link
-              href="/finance/settlement"
-              className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
-            >
-              <span className="text-[13px]">结算管理</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* 操作功能区域 */}
+        {/* 操作功能区域 - 应该位于内容区域的左侧而非二级菜单下 */}
         <div className="w-[240px] border-r border-gray-200 bg-white fixed left-[297px] top-[48px] bottom-0 z-[5]">
           <div className="flex flex-col p-4 space-y-4">
             <SearchFilter
               searchKeyword={searchKeyword}
               setSearchKeyword={setSearchKeyword}
-
               yearFilter={yearFilter}
               setYearFilter={setYearFilter}
               monthFilter={monthFilter}
@@ -189,9 +191,9 @@ export default function SettlementPage() {
         </div>
 
         {/* 主要内容区域 */}
-        <div className="flex-1 overflow-hidden ml-[240px]">
+        <div className="flex-1 overflow-hidden ml-[537px]">
           {/* 固定在顶部的操作区域 */}
-          <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[534px] z-50">
+          <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[537px] z-[60]">
             <Button
               onClick={() => setNewExpenseDialogOpen(true)}
               size="sm"
@@ -199,11 +201,19 @@ export default function SettlementPage() {
             >
               新增结算
             </Button>
+            <Button
+              onClick={() => setAutoSettleDialogOpen(true)}
+              size="sm"
+              variant="outline"
+              className="h-[28px]"
+            >
+              自动结算
+            </Button>
           </div>
           
           <div className="space-y-6 h-[calc(100vh-88px)] overflow-auto mt-[38px]">
             {totalPages > 1 && (
-              <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[534px] right-0 bg-white z-50 px-4">
+              <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[537px] right-0 bg-white z-50 px-4">
                 <div className="text-sm text-gray-500">
                   共 {totalCount} 条记录
                 </div>
@@ -215,41 +225,77 @@ export default function SettlementPage() {
               </div>
             )}
 
-            <div className="bg-white">
+            <div className="bg-white shadow-sm rounded-sm">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr className="sticky top-0 bg-[#f2f2f2] z-40">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">结算日期</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">结算金额</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">创建时间</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
+                    <tr className="sticky top-0 bg-[#f9fafb] z-40 border-b border-gray-200">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">结算日期</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">结算金额</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-200">
                     {loading ? (
-                      <LoadingRow />
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                          <div className="flex items-center justify-center">
+                            <div className="w-5 h-5 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mr-2"></div>
+                            加载中...
+                          </div>
+                        </td>
+                      </tr>
                     ) : records.length === 0 ? (
-                      <EmptyRow />
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                          暂无数据
+                        </td>
+                      </tr>
                     ) : (
                       records.map((record) => (
-                        <SettlementRow
-                          key={record.id}
-                          record={record}
-                          onEdit={() => {
-                            setSelectedRecordId(record.id);
-                            setEditExpenseData({
-                              expense_date: record.settlement_date.split('T')[0],
-                              amount: record.amount.toString(),
-                              notes: record.notes || ''
-                            });
-                            setEditDialogOpen(true);
-                          }}
-                          onDelete={() => {
-                            setSelectedRecordId(record.id);
-                            setDeleteDialogOpen(true);
-                          }}
-                        />
+                        <tr key={record.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(record.settlement_date).toLocaleDateString('zh-CN')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
+                            ¥{record.amount.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(record.created_at).toLocaleString('zh-CN')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                            <div className="flex items-center justify-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedRecordId(record.id);
+                                  setEditExpenseData({
+                                    expense_date: record.settlement_date.split('T')[0],
+                                    amount: record.amount.toString(),
+                                    notes: record.notes || ''
+                                  });
+                                  setEditDialogOpen(true);
+                                }}
+                                className="h-8 px-2 text-primary hover:bg-primary/10"
+                              >
+                                编辑
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedRecordId(record.id);
+                                  setDeleteDialogOpen(true);
+                                }}
+                                className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                              >
+                                删除
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
                       ))
                     )}
                   </tbody>
@@ -259,6 +305,80 @@ export default function SettlementPage() {
           </div>
         </div>
       </div>
+
+      {/* 自动结算对话框 */}
+      <Dialog open={autoSettleDialogOpen} onOpenChange={setAutoSettleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>自动结算</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {calculationDetails ? (
+              <div className="space-y-3">
+                <h3 className="text-md font-medium">{autoSettleSuccess ? '结算成功' : '结算详情'}</h3>
+                <div className="border rounded-md p-3 space-y-2 bg-gray-50">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">结算期间:</span>
+                    <span className="text-sm font-medium">{calculationDetails.period}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">当月收入:</span>
+                    <span className="text-sm font-medium">¥{calculationDetails.monthlyIncome.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">当月支出:</span>
+                    <span className="text-sm font-medium">¥{calculationDetails.monthlyExpense.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">应结算金额 (营业额的50%):</span>
+                    <span className="text-sm font-medium">¥{calculationDetails.profitToSettle.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">已结算金额:</span>
+                    <span className="text-sm font-medium">¥{calculationDetails.settledAmount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center font-medium">
+                    <span className="text-sm text-gray-600">本次结算金额:</span>
+                    <span className="text-sm font-medium text-primary">¥{calculationDetails.amountToSettle.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {autoSettleSuccess && (
+                  <p className="text-sm text-green-600">
+                    结算记录已成功创建，可以在列表中查看。
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                系统将自动计算当月待结算金额并创建结算记录。
+                <br />
+                结算金额计算公式: (当月收入 - 当月支出) / 2 - 已结算金额
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAutoSettleDialogOpen(false);
+                setCalculationDetails(null);
+                setAutoSettleSuccess(false);
+              }}
+            >
+              {autoSettleSuccess ? '关闭' : '取消'}
+            </Button>
+            {!autoSettleSuccess && (
+              <Button
+                onClick={handleAutoSettle}
+                disabled={autoSettleLoading}
+              >
+                {autoSettleLoading ? '结算中...' : '开始结算'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={newExpenseDialogOpen} onOpenChange={setNewExpenseDialogOpen}>
         <DialogContent>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/auth-context';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -120,36 +120,8 @@ export default function IncomePage() {
   if (isLoading || loading) {
     return (
       <div className="flex flex-col h-screen overflow-hidden">
-        <div className="flex-1 flex">
-          {/* 二级菜单区域 */}
-          <div className="hidden md:block fixed left-[57px] top-0 h-[calc(100vh-0px)] w-[240px] bg-white border-r z-[5]">
-            <div className="flex h-[48px] items-center px-6 border-b">
-              <h1 className="text-2xl font-semibold text-gray-900">收支管理</h1>
-            </div>
-            <div className="space-y-1 p-2">
-              <Link
-                href="/finance/income"
-                className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
-              >
-                <span className="text-[13px]">收入管理</span>
-              </Link>
-              <Link
-                href="/finance/expense"
-                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
-              >
-                <span className="text-[13px]">支出管理</span>
-              </Link>
-              <Link
-                href="/finance/settlement"
-                className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
-              >
-                <span className="text-[13px]">结算管理</span>
-              </Link>
-            </div>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">加载中...</p>
-          </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">加载中...</p>
         </div>
       </div>
     );
@@ -158,34 +130,8 @@ export default function IncomePage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <div className="flex-1 flex">
-        {/* 二级菜单区域 */}
-        <div className="hidden md:block fixed left-[57px] top-0 h-[calc(100vh-0px)] w-[240px] bg-white border-r z-[5]">
-          <div className="flex h-[48px] items-center px-6 border-b">
-            <h1 className="text-2xl font-semibold text-gray-900">收支管理</h1>
-          </div>
-          <div className="space-y-1 p-2">
-            <Link
-              href="/finance/income"
-              className="flex items-center rounded-md py-2 px-3 bg-primary/10 text-primary"
-            >
-              <span className="text-[13px]">收入管理</span>
-            </Link>
-            <Link
-              href="/finance/expense"
-              className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
-            >
-              <span className="text-[13px]">支出管理</span>
-            </Link>
-            <Link
-              href="/finance/settlement"
-              className="flex items-center rounded-md py-2 px-3 hover:bg-primary/10 hover:text-primary"
-            >
-              <span className="text-[13px]">结算管理</span>
-            </Link>
-          </div>
-        </div>
 
-        {/* 操作功能区域 */}
+        {/* 操作功能区域 - 应该位于内容区域的左侧而非二级菜单下 */}
         <div className="w-[240px] border-r border-gray-200 bg-white fixed left-[297px] top-[48px] bottom-0 z-[5]">
           <div className="flex flex-col p-4 space-y-4">
             <div className="space-y-2">
@@ -247,9 +193,9 @@ export default function IncomePage() {
         </div>
 
         {/* 主要内容区域 */}
-        <div className="flex-1 overflow-hidden ml-[240px]">
+        <div className="flex-1 overflow-hidden ml-[537px]">
           {/* 固定在顶部的操作区域 */}
-          <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[534px] z-50">
+          <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[537px] z-[60]">
             <Button
               onClick={() => setNewIncomeDialogOpen(true)}
               size="sm"
@@ -260,7 +206,7 @@ export default function IncomePage() {
           </div>
           
           <div className="space-y-6 h-[calc(100vh-88px)] overflow-auto mt-[38px]">
-            <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[534px] right-0 bg-white z-50 px-4">
+            <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[537px] right-0 bg-white z-50 px-4">
               <div className="text-sm text-gray-500">
                 共 {totalCount} 条记录
               </div>
@@ -271,76 +217,81 @@ export default function IncomePage() {
               />
             </div>
 
-            <div className="bg-white">
+            <div className="bg-white shadow-sm rounded-sm">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr className="sticky top-0 bg-[#f2f2f2] z-40">
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">会员编号</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">支付日期</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">支付方式</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">金额</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">备注</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">创建时间</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
+                    <tr className="sticky top-0 bg-[#f9fafb] z-40 border-b border-gray-200">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">会员编号</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支付日期</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支付方式</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">金额</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">备注</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-200">
                     {loading ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
-                          加载中...
+                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                          <div className="flex items-center justify-center">
+                            <div className="w-5 h-5 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mr-2"></div>
+                            加载中...
+                          </div>
                         </td>
                       </tr>
                     ) : records.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
+                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
                           暂无数据
                         </td>
                       </tr>
                     ) : (
                       records.map((record) => (
-                        <tr key={record.id} className="hover:bg-gray-50 h-[48px]">
-                          <td className="px-4 py-2 text-sm text-gray-900">{record.member_no}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">
+                        <tr key={record.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.member_no}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(record.payment_date).toLocaleDateString('zh-CN')}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{getPaymentMethodText(record.payment_method)}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">¥{record.amount.toLocaleString()}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{record.notes || '-'}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getPaymentMethodText(record.payment_method)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">¥{record.amount.toLocaleString()}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-[200px] truncate">{record.notes || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(record.created_at).toLocaleString('zh-CN')}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-900 space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedRecordId(record.id);
-                                setEditIncomeData({
-                                  member_no: record.member_no,
-                                  payment_date: record.payment_date.split('T')[0],
-                                  payment_method: record.payment_method,
-                                  amount: record.amount.toString(),
-                                  notes: record.notes || ''
-                                });
-                                setEditDialogOpen(true);
-                              }}
-                              className="h-8 px-2 text-primary"
-                            >
-                              编辑
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedRecordId(record.id);
-                                setDeleteDialogOpen(true);
-                              }}
-                              className="h-8 px-2 text-destructive"
-                            >
-                              删除
-                            </Button>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                            <div className="flex items-center justify-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedRecordId(record.id);
+                                  setEditIncomeData({
+                                    member_no: record.member_no,
+                                    payment_date: record.payment_date.split('T')[0],
+                                    payment_method: record.payment_method,
+                                    amount: record.amount.toString(),
+                                    notes: record.notes || ''
+                                  });
+                                  setEditDialogOpen(true);
+                                }}
+                                className="h-8 px-2 text-primary hover:bg-primary/10"
+                              >
+                                编辑
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedRecordId(record.id);
+                                  setDeleteDialogOpen(true);
+                                }}
+                                className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                              >
+                                删除
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))
