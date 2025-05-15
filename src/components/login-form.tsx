@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -22,11 +23,15 @@ export function LoginForm({
     password: ''
   });
 
+  // 获取原始URL，如果有的话
+  const returnTo = searchParams.get('from') || '/dashboard';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     console.log('=== 开始提交登录表单 ===');
     console.log('表单数据:', { email: formData.email, passwordProvided: !!formData.password });
+    console.log('登录成功后将跳转到:', returnTo);
 
     try {
       console.log('发送登录请求...');
@@ -54,9 +59,14 @@ export function LoginForm({
         throw new Error(data.error);
       }
 
-      console.log('✓ 登录成功，准备跳转...');
-      router.push('/dashboard');
-      router.refresh();
+      console.log('✓ 登录成功，准备跳转到:', returnTo);
+      
+      // 添加一个短暂延迟以确保cookie已设置
+      setTimeout(() => {
+        router.push(returnTo);
+        router.refresh();
+      }, 100);
+      
     } catch (error) {
       console.error('✗ 登录过程出错:', error);
       toast({

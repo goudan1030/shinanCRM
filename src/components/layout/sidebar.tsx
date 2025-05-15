@@ -94,7 +94,6 @@ const navigation: NavigationItem[] = [
       { name: '数据同步', href: '/wecom/sync' }
     ]
   },
-  { name: '操作日志', href: '/logs', icon: ClipboardList },
   {
     name: '系统设置',
     href: '/settings/profile',
@@ -195,11 +194,6 @@ export function Sidebar({ className }: SidebarProps) {
       href: '/wecom',
       icon: <Building2 className="h-4 w-4" />,
       label: '企业微信'
-    },
-    {
-      href: '/logs',
-      icon: <ClipboardList className="h-4 w-4" />,
-      label: '操作日志'
     },
     {
       href: '/settings',

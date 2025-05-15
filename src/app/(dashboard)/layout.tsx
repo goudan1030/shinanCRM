@@ -26,7 +26,6 @@ const titleMap: TitleMap = {
   '/miniapp/review': '审核发布',
   '/wecom/config': '企业微信配置',
   '/wecom/sync': '数据同步',
-  '/logs': '操作日志',
   '/system': '缓存管理',
   '/system/cache': '缓存管理'
 };

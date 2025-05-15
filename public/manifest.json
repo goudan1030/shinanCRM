@@ -33,19 +33,5 @@
     }
   ],
   "related_applications": [],
-  "prefer_related_applications": false,
-  "screenshots": [
-    {
-      "src": "/static/screenshots/dashboard.jpg",
-      "type": "image/jpeg",
-      "sizes": "1280x720",
-      "form_factor": "wide"
-    },
-    {
-      "src": "/static/screenshots/mobile.jpg",
-      "type": "image/jpeg",
-      "sizes": "750x1334",
-      "form_factor": "narrow"
-    }
-  ]
+  "prefer_related_applications": false
 } 

@@ -1,11 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
-import { operationTypeMap, formatValuesObject } from '@/lib/operation-log-utils';
 import { ArrowLeft, Copy, CheckCircle2, Edit } from 'lucide-react';
 import Link from 'next/link';
 
@@ -55,17 +53,7 @@ interface MemberValues {
   [key: string]: string | number | null;
 }
 
-interface MemberOperationLog {
-  id: string;
-  member_id: string;
-  operation_type: string;
-  old_values: MemberValues;
-  new_values: MemberValues;
-  reason: string | null;
-  created_at: string;
-  operator_id: string;
-  operator_email?: string;
-}
+
 
 interface MemberDetailProps {
   memberId: string;
@@ -73,32 +61,22 @@ interface MemberDetailProps {
 
 const getChildrenPlanText = (childrenPlan: string) => {
   switch (childrenPlan) {
-    case 'BOTH':
-    case 'TOGETHER':
-      return '一起要';
-    case 'SEPARATE':
-      return '各自要';
-    case 'NEGOTIATE':
-    case 'NEGOTIABLE':
-      return '互相协商';
-    case 'NONE':
-    case 'DONT_WANT':
-      return '不要孩子';
-    default:
-      return '未知';
+    case 'NONE': return '不要小孩';
+    case 'WANT': return '要小孩';
+    case 'ALREADY': return '已有小孩';
+    case 'ACCEPTED': return '接受对方有小孩';
+    case 'UNDETERMINED': return '待定';
+    default: return childrenPlan;
   }
 };
 
 const getMarriageCertText = (marriageCert: string) => {
   switch (marriageCert) {
-    case 'WANT':
-      return '要';
-    case 'DONT_WANT':
-      return '不要';
-    case 'NEGOTIATE':
-      return '互相协商';
-    default:
-      return '未知';
+    case 'MUST': return '必须领证';
+    case 'OPEN': return '开放讨论';
+    case 'NEED_TIME': return '需要时间考虑';
+    case 'UNDETERMINED': return '待定';
+    default: return marriageCert;
   }
 };
 
@@ -107,68 +85,50 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
   const { session, isLoading } = useAuth();
   const router = useRouter();
   const [member, setMember] = useState<Member | null>(null);
-  const [operationLogs, setOperationLogs] = useState<MemberOperationLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
 
   const getEducationText = (education: string) => {
-    switch (education) {
-      case 'HIGH_SCHOOL':
-        return '高中';
-      case 'COLLEGE':
-        return '大专';
-      case 'BACHELOR':
-        return '本科';
-      case 'MASTER':
-        return '硕士';
-      case 'PHD':
-        return '博士';
-      default:
-        return '未知';
-    }
+    const educationMap: Record<string, string> = {
+      'HIGH_SCHOOL': '高中及以下',
+      'JUNIOR_COLLEGE': '大专',
+      'BACHELOR': '本科',
+      'MASTER': '硕士',
+      'DOCTOR': '博士及以上',
+      'OVERSEAS': '海外留学'
+    };
+    return educationMap[education] || education;
   };
 
   const getHouseCarText = (houseCar: string) => {
-    switch (houseCar) {
-      case 'NEITHER':
-        return '无房无车';
-      case 'HOUSE_ONLY':
-        return '有房无车';
-      case 'CAR_ONLY':
-        return '无房有车';
-      case 'BOTH':
-        return '有房有车';
-      default:
-        return '未知';
-    }
+    const houseCarMap: Record<string, string> = {
+      'BOTH': '有房有车',
+      'HOUSE': '有房无车',
+      'CAR': '有车无房',
+      'NONE': '无房无车',
+      'FUTURE_PLAN': '有购房计划',
+      'RENTING': '租房'
+    };
+    return houseCarMap[houseCar] || houseCar;
   };
 
   const getMarriageHistoryText = (marriageHistory: string) => {
-    switch (marriageHistory) {
-      case 'YES':
-        return '有婚史';
-      case 'NO':
-        return '无婚史';
-      default:
-        return '未知';
-    }
+    const marriageHistoryMap: Record<string, string> = {
+      'NEVER': '未婚',
+      'DIVORCED': '离异',
+      'WIDOWED': '丧偶'
+    };
+    return marriageHistoryMap[marriageHistory] || marriageHistory;
   };
 
   const getSexualOrientationText = (sexualOrientation: string) => {
-    switch (sexualOrientation) {
-      case 'STRAIGHT_MALE':
-        return '直男';
-      case 'STRAIGHT_FEMALE':
-        return '直女';
-      case 'LES':
-        return 'LES';
-      case 'GAY':
-        return 'GAY';
-      case 'ASEXUAL':
-        return '无性恋';
-      default:
-        return '未知';
-    }
+    const orientationMap: Record<string, string> = {
+      'STRAIGHT': '异性恋',
+      'GAY': '同性恋',
+      'BISEXUAL': '双性恋',
+      'OTHER': '其他'
+    };
+    return orientationMap[sexualOrientation] || sexualOrientation;
   };
   
   const fetchMember = useCallback(async () => {
@@ -192,24 +152,7 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
     }
   }, [memberId, toast]);
 
-  const fetchOperationLogs = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/members/${memberId}/logs`);
-      const data = await response.json() as MemberOperationLog[];
 
-      if (!response.ok) {
-        throw new Error((data as any).error || '获取操作日志失败');
-      }
-
-      setOperationLogs(data);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '获取操作日志失败',
-        description: error instanceof Error ? error.message : '未知错误'
-      });
-    }
-  }, [memberId, toast]);
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -218,8 +161,7 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
     }
 
     fetchMember();
-    fetchOperationLogs();
-  }, [isLoading, session, router, fetchMember, fetchOperationLogs]);
+  }, [isLoading, session, router, fetchMember]);
 
   // 复制会员信息
   const copyMemberInfo = useCallback(() => {
@@ -468,50 +410,6 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
             </tbody>
           </table>
         </div>
-      </div>
-      
-      {/* 操作日志 */}
-      <div className="mt-8">
-        <div className="flex items-center gap-2 mb-4 py-2 border-b">
-          <h2 className="text-lg font-semibold">操作日志</h2>
-          </div>
-        
-        <div className="bg-white rounded shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr className="border-b">
-                <th className="px-4 py-3 text-left font-medium">项目名称</th>
-                <th className="px-4 py-3 text-left font-medium">操作人</th>
-                <th className="px-4 py-3 text-left font-medium">创建时间</th>
-              </tr>
-            </thead>
-            <tbody>
-            {operationLogs.length > 0 ? (
-              operationLogs.map((log) => (
-                  <tr key={log.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3">{operationTypeMap[log.operation_type] || log.operation_type}</td>
-                    <td className="px-4 py-3">{log.operator_email || '未知'}</td>
-                    <td className="px-4 py-3">{new Date(log.created_at).toLocaleString('zh-CN')}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
-                    暂无操作记录
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          
-          {operationLogs.length > 0 && (
-            <div className="px-4 py-3 flex items-center justify-center border-t">
-              <div className="text-sm">
-                共 {operationLogs.length} 项数据
-                      </div>
-                      </div>
-                    )}
-                  </div>
       </div>
     </div>
   );
