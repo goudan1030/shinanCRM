@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, ChangeEvent } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/ui/use-toast';
@@ -12,6 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import Link from 'next/link';
 import { Session } from '@supabase/auth-helpers-nextjs';
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from 'next/navigation';
+import { useRefresh } from '@/hooks/use-refresh';
+
+// 输入事件处理类型定义
+type HandleInputChange = (e: ChangeEvent<HTMLInputElement>, field: string) => void;
 
 interface ExpenseRecord {
   id: string;
@@ -28,10 +33,20 @@ interface EditExpenseData {
   notes: string;
 }
 
+// 定义API响应的类型
+interface ExpenseListResponse {
+  records?: ExpenseRecord[];
+  total: number;
+  totalPages: number;
+  error?: string;
+}
+
 export default function ExpensePage() {
   const { toast } = useToast();
   const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
-  const supabase = createClientComponentClient();
+  const router = useRouter();
+  const { refreshData, createNoCacheRequest } = useRefresh();
+  
   const [records, setRecords] = useState<ExpenseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -45,20 +60,26 @@ export default function ExpensePage() {
 
   const fetchRecords = useCallback(async () => {
     try {
+      setLoading(true);
       const searchParams = new URLSearchParams();
       searchParams.append('page', currentPage.toString());
       searchParams.append('pageSize', pageSize.toString());
       if (searchKeyword) searchParams.append('searchKeyword', searchKeyword);
       if (monthFilter) searchParams.append('month', monthFilter);
       if (yearFilter) searchParams.append('year', yearFilter);
+      // 添加时间戳，避免缓存
+      searchParams.append('_t', Date.now().toString());
 
-      const response = await fetch(`/api/finance/expense/list?${searchParams.toString()}`);
+      // 使用createNoCacheRequest创建防缓存请求
+      const { url, options } = createNoCacheRequest(`/api/finance/expense/list?${searchParams.toString()}`);
+      const response = await fetch(url, options);
+      
       if (!response.ok) throw new Error('获取数据失败');
       
-      const data = await response.json();
+      const data = await response.json() as ExpenseListResponse;
       setRecords(data.records || []);
-      setTotalCount(data.total);
-      setTotalPages(data.totalPages);
+      setTotalCount(data.total || 0);
+      setTotalPages(data.totalPages || 1);
     } catch (error) {
       console.error('获取支出记录失败:', error);
       toast({
@@ -69,7 +90,7 @@ export default function ExpensePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, monthFilter, searchKeyword, supabase, toast, yearFilter]);
+  }, [currentPage, monthFilter, searchKeyword, toast, yearFilter, createNoCacheRequest]);
 
   useEffect(() => {
     if (session) {
@@ -96,12 +117,22 @@ export default function ExpensePage() {
   });
   const [editLoading, setEditLoading] = useState(false);
 
-  useEffect(() => {
-    if (session) {
-      fetchRecords();
-    }
-  }, [session, fetchRecords]);
-  
+  // 输入变更处理
+  const handleNewExpenseChange: HandleInputChange = (e, field) => {
+    const value = e.target.value;
+    setNewExpenseData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditExpenseChange: HandleInputChange = (e, field) => {
+    const value = e.target.value;
+    setEditExpenseData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // 处理搜索输入变化
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchKeyword(value);
+  };
 
   if (isLoading || loading) {
     return (
@@ -125,7 +156,7 @@ export default function ExpensePage() {
               <Input 
                 placeholder="搜索备注"
                 value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
+                onChange={handleSearchChange}
                 className="w-full"
               />
             </div>
@@ -285,7 +316,7 @@ export default function ExpensePage() {
               <Input
                 type="date"
                 value={newExpenseData.expense_date}
-                onChange={(e) => setNewExpenseData({ ...newExpenseData, expense_date: e.target.value })}
+                onChange={(e) => handleNewExpenseChange(e, 'expense_date')}
               />
             </div>
             <div className="space-y-2">
@@ -293,7 +324,7 @@ export default function ExpensePage() {
               <Input
                 type="number"
                 value={newExpenseData.amount}
-                onChange={(e) => setNewExpenseData({ ...newExpenseData, amount: e.target.value })}
+                onChange={(e) => handleNewExpenseChange(e, 'amount')}
                 placeholder="请输入金额"
               />
             </div>
@@ -301,7 +332,7 @@ export default function ExpensePage() {
               <label className="text-sm font-medium">备注</label>
               <Input
                 value={newExpenseData.notes}
-                onChange={(e) => setNewExpenseData({ ...newExpenseData, notes: e.target.value })}
+                onChange={(e) => handleNewExpenseChange(e, 'notes')}
                 placeholder="请输入备注"
               />
             </div>
@@ -327,9 +358,13 @@ export default function ExpensePage() {
 
                 setNewExpenseLoading(true);
                 try {
+                  // 使用防缓存请求
+                  const { options } = createNoCacheRequest('/api/finance/expense');
                   const response = await fetch('/api/finance/expense', {
+                    ...options,
                     method: 'POST',
                     headers: {
+                      ...options.headers,
                       'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -342,12 +377,12 @@ export default function ExpensePage() {
                   
                   if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.message || '创建失败');
+                    throw new Error((error as {message?: string}).message || '创建失败');
                   }
 
                   toast({
                     title: '创建成功',
-                    description: '收入记录已保存'
+                    description: '支出记录已保存'
                   });
 
                   setNewExpenseDialogOpen(false);
@@ -356,9 +391,11 @@ export default function ExpensePage() {
                     amount: '',
                     notes: ''
                   });
-                  fetchRecords();
+                  
+                  // 使用刷新数据函数确保获取最新数据
+                  refreshData(fetchRecords);
                 } catch (error) {
-                  console.error('创建收入记录失败:', error);
+                  console.error('创建支出记录失败:', error);
                   toast({
                     variant: 'destructive',
                     title: '创建失败',
@@ -382,7 +419,7 @@ export default function ExpensePage() {
             <DialogTitle>删除确认</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-gray-500">确定要删除这条收入记录吗？此操作不可撤销。</p>
+            <p className="text-sm text-gray-500">确定要删除这条支出记录吗？此操作不可撤销。</p>
           </div>
           <DialogFooter>
             <Button
@@ -399,9 +436,13 @@ export default function ExpensePage() {
 
                 setDeleteLoading(true);
                 try {
+                  // 使用防缓存请求
+                  const { options } = createNoCacheRequest('/api/finance/expense/delete');
                   const response = await fetch('/api/finance/expense/delete', {
+                    ...options,
                     method: 'POST',
                     headers: {
+                      ...options.headers,
                       'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ id: selectedRecordId })
@@ -409,7 +450,7 @@ export default function ExpensePage() {
 
                   if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || '删除失败');
+                    throw new Error((error as {error?: string}).error || '删除失败');
                   }
 
                   toast({
@@ -417,11 +458,14 @@ export default function ExpensePage() {
                     description: '支出记录已删除'
                   });
 
+                  // 先关闭对话框
                   setDeleteDialogOpen(false);
                   setSelectedRecordId(null);
-                  fetchRecords();
+                  
+                  // 刷新路由缓存并重新获取数据
+                  refreshData(fetchRecords);
                 } catch (error) {
-                  console.error('删除收入记录失败:', error);
+                  console.error('删除支出记录失败:', error);
                   toast({
                     variant: 'destructive',
                     title: '删除失败',
@@ -450,7 +494,7 @@ export default function ExpensePage() {
               <Input
                 type="date"
                 value={editExpenseData.expense_date}
-                onChange={(e) => setEditExpenseData({ ...editExpenseData, expense_date: e.target.value })}
+                onChange={(e) => handleEditExpenseChange(e, 'expense_date')}
               />
             </div>
             <div className="space-y-2">
@@ -458,7 +502,7 @@ export default function ExpensePage() {
               <Input
                 type="number"
                 value={editExpenseData.amount}
-                onChange={(e) => setEditExpenseData({ ...editExpenseData, amount: e.target.value })}
+                onChange={(e) => handleEditExpenseChange(e, 'amount')}
                 placeholder="请输入金额"
               />
             </div>
@@ -466,7 +510,7 @@ export default function ExpensePage() {
               <label className="text-sm font-medium">备注</label>
               <Input
                 value={editExpenseData.notes}
-                onChange={(e) => setEditExpenseData({ ...editExpenseData, notes: e.target.value })}
+                onChange={(e) => handleEditExpenseChange(e, 'notes')}
                 placeholder="请输入备注"
               />
             </div>
@@ -492,9 +536,13 @@ export default function ExpensePage() {
 
                 setEditLoading(true);
                 try {
+                  // 使用防缓存请求
+                  const { options } = createNoCacheRequest('/api/finance/expense/update');
                   const response = await fetch('/api/finance/expense/update', {
+                    ...options,
                     method: 'POST',
                     headers: {
+                      ...options.headers,
                       'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -507,7 +555,7 @@ export default function ExpensePage() {
 
                   if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.message || '更新失败');
+                    throw new Error((error as {message?: string}).message || '更新失败');
                   }
 
                   toast({
@@ -515,9 +563,12 @@ export default function ExpensePage() {
                     description: '支出记录已更新'
                   });
 
+                  // 先关闭对话框
                   setEditDialogOpen(false);
                   setSelectedRecordId(null);
-                  fetchRecords();
+                  
+                  // 刷新路由缓存并重新获取数据
+                  refreshData(fetchRecords);
                 } catch (error) {
                   console.error('更新支出记录失败:', error);
                   toast({
