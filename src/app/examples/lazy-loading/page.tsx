@@ -6,7 +6,7 @@
  * 演示如何使用懒加载组件优化性能
  */
 import React, { useState } from 'react';
-import { lazyLoad, LazyViewport, priorityLazyLoad, preloadComponents } from '@/lib/lazy-load';
+import { lazyLoad, LazyViewport, priorityLazyLoad, preloadComponents, createSkeleton } from '@/lib/lazy-load';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
