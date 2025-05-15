@@ -243,9 +243,17 @@ function MembersPageContent() {
       
       console.log('请求URL:', `${apiUrl}?${queryParams}`);
 
+      // 添加时间戳参数，确保绕过缓存获取最新数据
+      queryParams.set('_t', Date.now().toString());
+      
       const response = await fetch(`${apiUrl}?${queryParams}`, {
         credentials: 'include',  // 确保发送cookie
-        cache: 'no-store'        // 禁用缓存
+        cache: 'no-store',       // 禁用缓存
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
       
       console.log('响应状态码:', response.status);
@@ -549,7 +557,9 @@ function MembersPageContent() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': session?.user?.id || ''
+          'x-user-id': session?.user?.id || '',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({
           reason: activateReason,
@@ -567,9 +577,17 @@ function MembersPageContent() {
         description: '已将会员状态更新为激活'
       });
 
+      // 先关闭对话框和清理状态
       setActivateDialogOpen(false);
       setActivateReason('');
-      fetchMembers();
+      
+      // 刷新路由缓存
+      router.refresh();
+      
+      // 延迟一点时间后重新获取数据，确保后端更新生效
+      setTimeout(() => {
+        fetchMembers();
+      }, 300);
     } catch (error) {
       console.error('会员激活失败:', error);
       toast({
@@ -598,7 +616,9 @@ function MembersPageContent() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': session?.user?.id || ''
+          'x-user-id': session?.user?.id || '',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({ reason: revokeReason })
       });
@@ -614,9 +634,17 @@ function MembersPageContent() {
         description: '已将会员状态更新为撤销'
       });
 
+      // 先关闭对话框和清理状态
       setRevokeDialogOpen(false);
       setRevokeReason('');
-      fetchMembers();
+      
+      // 刷新路由缓存
+      router.refresh();
+      
+      // 延迟一点时间后重新获取数据
+      setTimeout(() => {
+        fetchMembers();
+      }, 300);
     } catch (error) {
       console.error('会员撤销失败:', error);
       toast({
@@ -652,7 +680,9 @@ function MembersPageContent() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': session?.user?.id || ''
+          'x-user-id': session?.user?.id || '',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({
           type: upgradeType,
@@ -672,8 +702,16 @@ function MembersPageContent() {
         description: `已将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
       });
 
+      // 关闭对话框
       setUpgradeDialogOpen(false);
-      fetchMembers();
+      
+      // 刷新路由缓存
+      router.refresh();
+      
+      // 延迟一点时间后重新获取数据，确保后端更新生效
+      setTimeout(() => {
+        fetchMembers();
+      }, 300);
     } catch (error) {
       console.error('会员升级失败:', error);
       toast({
@@ -692,7 +730,9 @@ function MembersPageContent() {
       const response = await fetch(`/api/members/${memberId}/delete`, {
         method: 'DELETE',
         headers: {
-          'x-user-id': session?.user?.id || ''
+          'x-user-id': session?.user?.id || '',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         }
       });
 
@@ -707,9 +747,17 @@ function MembersPageContent() {
         description: '会员数据已删除'
       });
 
+      // 先关闭对话框和清理状态
       setDeleteDialogOpen(false);
       setSelectedMemberId(null);
-      fetchMembers();
+      
+      // 刷新路由缓存
+      router.refresh();
+      
+      // 延迟一点时间后重新获取数据，确保后端更新生效
+      setTimeout(() => {
+        fetchMembers();
+      }, 300);
     } catch (error) {
       console.error('删除会员失败:', error);
       toast({

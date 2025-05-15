@@ -70,10 +70,18 @@ export default function IncomePage() {
         searchKeyword: searchKeyword,
         paymentMethod: paymentMethodFilter,
         month: monthFilter,
-        year: yearFilter
+        year: yearFilter,
+        _t: Date.now().toString() // 添加时间戳参数，确保每次请求都是新的
       });
 
-      const response = await fetch(`/api/finance/income/list?${queryParams}`);
+      const response = await fetch(`/api/finance/income/list?${queryParams}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
       if (!response.ok) {
         throw new Error('获取数据失败');
       }
@@ -479,6 +487,8 @@ export default function IncomePage() {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
+                      'Cache-Control': 'no-cache, no-store, must-revalidate',
+                      'Pragma': 'no-cache'
                     },
                     body: JSON.stringify({ id: selectedRecordId })
                   });
@@ -494,7 +504,14 @@ export default function IncomePage() {
                   });
 
                   setDeleteDialogOpen(false);
-                  fetchRecords();
+                  
+                  // 刷新路由缓存
+                  router.refresh();
+                  
+                  // 延迟一点时间后重新获取数据，确保后端更新生效
+                  setTimeout(() => {
+                    fetchRecords();
+                  }, 300);
                 } catch (error) {
                   console.error('删除收入记录失败:', error);
                   toast({
@@ -613,6 +630,8 @@ export default function IncomePage() {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
+                      'Cache-Control': 'no-cache, no-store, must-revalidate',
+                      'Pragma': 'no-cache'
                     },
                     body: JSON.stringify({
                       id: selectedRecordId,
@@ -635,7 +654,14 @@ export default function IncomePage() {
                   });
 
                   setEditDialogOpen(false);
-                  fetchRecords();
+                  
+                  // 刷新路由缓存
+                  router.refresh();
+                  
+                  // 延迟一点时间后重新获取数据，确保后端更新生效
+                  setTimeout(() => {
+                    fetchRecords();
+                  }, 300);
                 } catch (error) {
                   console.error('更新收入记录失败:', error);
                   toast({
