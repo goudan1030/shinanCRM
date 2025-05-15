@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # 数据库SSH隧道配置
-REMOTE_SERVER="47.101.188.32"  # 阿里云服务器IP地址
+REMOTE_SERVER="8.149.244.105"  # 阿里云服务器IP地址
 SSH_USER="root"                # SSH登录用户名
 SSH_PORT=22                    # SSH端口，默认是22
 REMOTE_DB_HOST="127.0.0.1"     # 远程数据库IP地址（如果数据库在同一服务器上，使用127.0.0.1）
 REMOTE_DB_PORT=3306            # 远程数据库端口
-LOCAL_PORT=3307                # 本地端口映射，使用3307避免与本地MySQL冲突
+LOCAL_PORT=3306                # 本地端口映射，使用3306与环境变量的配置保持一致
 
 # 检查是否已有隧道在运行
 TUNNEL_PID=$(ps aux | grep "ssh -L ${LOCAL_PORT}:${REMOTE_DB_HOST}:${REMOTE_DB_PORT}" | grep -v grep | awk '{print $2}')
@@ -39,7 +39,7 @@ fi
 # 添加提示
 echo ""
 echo "注意:"
-echo "1. 连接成功后，您的应用将能够通过127.0.0.1:3307访问远程数据库"
+echo "1. 连接成功后，您的应用将能够通过127.0.0.1:3306访问远程数据库"
 echo "2. 请保持此终端窗口开启以维持隧道连接"
 echo "3. 如需停止隧道，按Ctrl+C或运行: kill $TUNNEL_PID"
 

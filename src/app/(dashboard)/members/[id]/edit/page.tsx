@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -74,58 +74,110 @@ export default function EditMemberPage() {
     partner_requirement: ''
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [formInitialized, setFormInitialized] = useState(false);
+
+  const fetchMemberData = async () => {
+    try {
+      const localStorageKey = `editMemberFormData_${params.id}`;
+      const savedFormData = localStorage.getItem(localStorageKey);
+      
+      if (savedFormData) {
+        try {
+          const parsedData = JSON.parse(savedFormData);
+          
+          const validatedData = {
+            ...formData,
+            ...parsedData,
+            gender: parsedData.gender || '',
+            education: parsedData.education || '',
+            house_car: parsedData.house_car || '',
+            children_plan: parsedData.children_plan || '',
+            marriage_cert: parsedData.marriage_cert || '',
+            marriage_history: parsedData.marriage_history || '',
+            sexual_orientation: parsedData.sexual_orientation || ''
+          };
+          
+          setFormData(prevData => ({
+            ...prevData,
+            ...validatedData
+          }));
+          setDataLoaded(true);
+          setFormInitialized(true);
+          console.log("已从localStorage恢复编辑表单数据，包含下拉框值：", validatedData);
+          return;
+        } catch (error) {
+          console.error('解析保存的表单数据失败:', error);
+        }
+      }
+
+      const response = await fetch(`/api/members/${params.id}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '获取会员信息失败');
+      }
+
+      if (data) {
+        const loadedData = {
+          member_no: data.member_no || '',
+          nickname: data.nickname || '',
+          wechat: data.wechat || '',
+          phone: data.phone || '',
+          province: data.province || '',
+          city: data.city || '',
+          district: data.district || '',
+          hukou_province: data.hukou_province || '',
+          hukou_city: data.hukou_city || '',
+          gender: data.gender || '',
+          target_area: data.target_area || '',
+          birth_year: data.birth_year?.toString() || '',
+          height: data.height?.toString() || '',
+          weight: data.weight?.toString() || '',
+          education: data.education || '',
+          occupation: data.occupation || '',
+          house_car: data.house_car || '',
+          marriage_history: data.marriage_history || '',
+          sexual_orientation: data.sexual_orientation || '',
+          children_plan: data.children_plan || '',
+          marriage_cert: data.marriage_cert || '',
+          self_description: data.self_description || '',
+          partner_requirement: data.partner_requirement || ''
+        };
+        
+        setFormData(loadedData);
+        setDataLoaded(true);
+        setFormInitialized(true);
+        console.log("已从API获取编辑表单数据，包含下拉框值：", loadedData);
+      }
+    } catch (error) {
+      console.error('获取会员信息失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '获取会员信息失败',
+        description: '无法加载会员信息，请重试'
+      });
+      setFormInitialized(true);
+    }
+  };
 
   useEffect(() => {
-    const fetchMemberData = async () => {
-      try {
-        const response = await fetch(`/api/members/${params.id}`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || '获取会员信息失败');
-        }
-
-        if (data) {
-          setFormData({
-            member_no: data.member_no || '',
-            nickname: data.nickname || '',
-            wechat: data.wechat || '',
-            phone: data.phone || '',
-            province: data.province || '',
-            city: data.city || '',
-            district: data.district || '',
-            hukou_province: data.hukou_province || '',
-            hukou_city: data.hukou_city || '',
-            gender: data.gender || '',
-            target_area: data.target_area || '',
-            birth_year: data.birth_year?.toString() || '',
-            height: data.height?.toString() || '',
-            weight: data.weight?.toString() || '',
-            education: data.education || '',
-            occupation: data.occupation || '',
-            house_car: data.house_car || '',
-            marriage_history: data.marriage_history || '',
-            sexual_orientation: data.sexual_orientation || '',
-            children_plan: data.children_plan || '',
-            marriage_cert: data.marriage_cert || '',
-            self_description: data.self_description || '',
-            partner_requirement: data.partner_requirement || ''
-          });
-        }
-      } catch (error) {
-        console.error('获取会员信息失败:', error);
-        toast({
-          variant: 'destructive',
-          title: '获取会员信息失败',
-          description: '无法加载会员信息，请重试'
-        });
-      }
-    };
-
     if (params.id) {
       fetchMemberData();
     }
-  }, [params.id, supabase, toast]);
+  }, [params.id]);
+
+  useEffect(() => {
+    if (formInitialized && dataLoaded && params.id) {
+      try {
+        const localStorageKey = `editMemberFormData_${params.id}`;
+        localStorage.setItem(localStorageKey, JSON.stringify(formData));
+        console.log("保存编辑表单数据到localStorage，包含下拉框值：", formData);
+      } catch (error) {
+        console.error('保存表单数据到localStorage失败:', error);
+      }
+    }
+  }, [formData, dataLoaded, params.id, formInitialized]);
 
   useEffect(() => {
     if (!isLoading && !session?.user?.id) {
@@ -188,6 +240,9 @@ export default function EditMemberPage() {
         throw new Error(result.error || '更新失败');
       }
 
+      const localStorageKey = `editMemberFormData_${params.id}`;
+      localStorage.removeItem(localStorageKey);
+
       toast({
         title: '更新成功',
         description: '会员信息已更新'
@@ -217,6 +272,21 @@ export default function EditMemberPage() {
       
       if (!/^\d*$/.test(value)) {
         return;
+      }
+    }
+    
+    if (['gender', 'education', 'house_car', 'marriage_history', 'sexual_orientation', 'children_plan', 'marriage_cert'].includes(field)) {
+      console.log(`编辑页面下拉框 ${field} 值更新为:`, value);
+      
+      // 立即保存到localStorage，确保下拉框值不会丢失
+      if (formInitialized && dataLoaded && params.id) {
+        const updatedFormData = { ...formData, [field]: value };
+        try {
+          const localStorageKey = `editMemberFormData_${params.id}`;
+          localStorage.setItem(localStorageKey, JSON.stringify(updatedFormData));
+        } catch (error) {
+          console.error('保存下拉框值到localStorage失败:', error);
+        }
       }
     }
     
@@ -262,6 +332,19 @@ export default function EditMemberPage() {
     }
   };
 
+  const handleClearForm = () => {
+    if (params.id) {
+      const localStorageKey = `editMemberFormData_${params.id}`;
+      localStorage.removeItem(localStorageKey);
+      fetchMemberData();
+      
+      toast({
+        title: '表单已重置',
+        description: '所有修改已撤销，恢复原始数据'
+      });
+    }
+  };
+
   return (
     <div className="overflow-auto">
       <div className="max-w-[1200px] mx-auto p-6">
@@ -288,6 +371,13 @@ export default function EditMemberPage() {
             </Button>
             <h2 className="text-lg font-semibold">编辑会员</h2>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearForm}
+          >
+            重置表单
+          </Button>
         </div>
         <Card className="border-none shadow-none p-6">
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -314,7 +404,10 @@ export default function EditMemberPage() {
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium">性别</label>
-                    <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
+                    <Select 
+                      value={formData.gender} 
+                      onValueChange={(value) => handleInputChange('gender', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="请选择性别" />
                       </SelectTrigger>
@@ -408,7 +501,10 @@ export default function EditMemberPage() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">学历</label>
-                    <Select value={formData.education} onValueChange={(value) => handleInputChange('education', value)}>
+                    <Select 
+                      value={formData.education} 
+                      onValueChange={(value) => handleInputChange('education', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="请选择学历" />
                       </SelectTrigger>
@@ -433,7 +529,10 @@ export default function EditMemberPage() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">房车情况</label>
-                    <Select value={formData.house_car} onValueChange={(value) => handleInputChange('house_car', value)}>
+                    <Select 
+                      value={formData.house_car} 
+                      onValueChange={(value) => handleInputChange('house_car', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="请选择房车情况" />
                       </SelectTrigger>
@@ -448,7 +547,10 @@ export default function EditMemberPage() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">婚史</label>
-                    <Select value={formData.marriage_history} onValueChange={(value) => handleInputChange('marriage_history', value)}>
+                    <Select 
+                      value={formData.marriage_history} 
+                      onValueChange={(value) => handleInputChange('marriage_history', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="请选择婚史" />
                       </SelectTrigger>
@@ -461,7 +563,10 @@ export default function EditMemberPage() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">性取向</label>
-                    <Select value={formData.sexual_orientation} onValueChange={(value) => handleInputChange('sexual_orientation', value)}>
+                    <Select 
+                      value={formData.sexual_orientation} 
+                      onValueChange={(value) => handleInputChange('sexual_orientation', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="请选择性取向" />
                       </SelectTrigger>
@@ -514,29 +619,35 @@ export default function EditMemberPage() {
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium">孩子需求</label>
-                    <Select value={formData.children_plan} onValueChange={(value) => handleInputChange('children_plan', value)}>
+                    <Select 
+                      value={formData.children_plan} 
+                      onValueChange={(value) => handleInputChange('children_plan', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="请选择孩子需求" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="TOGETHER">一起要</SelectItem>
+                        <SelectItem value="BOTH">一起要</SelectItem>
                         <SelectItem value="SEPARATE">各自要</SelectItem>
-                        <SelectItem value="NEGOTIABLE">互相协商</SelectItem>
-                        <SelectItem value="DONT_WANT">不要</SelectItem>
+                        <SelectItem value="NEGOTIATE">互相协商</SelectItem>
+                        <SelectItem value="NONE">不要</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium">领证需求</label>
-                    <Select value={formData.marriage_cert} onValueChange={(value) => handleInputChange('marriage_cert', value)}>
+                    <Select 
+                      value={formData.marriage_cert} 
+                      onValueChange={(value) => handleInputChange('marriage_cert', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="请选择领证需求" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="WANT">要</SelectItem>
                         <SelectItem value="DONT_WANT">不要</SelectItem>
-                        <SelectItem value="NEGOTIABLE">互相协商</SelectItem>
+                        <SelectItem value="NEGOTIATE">互相协商</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -564,7 +675,14 @@ export default function EditMemberPage() {
               </div>
             </div>
             
-            <div className="flex justify-end">
+            <div className="flex justify-end space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearForm}
+              >
+                重置
+              </Button>
               <Button
                 type="submit"
                 disabled={loading}

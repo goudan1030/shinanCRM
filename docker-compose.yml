@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  sncrm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sncrm:latest
+    container_name: sncrm-app
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - app-network
+    volumes:
+      - ./uploads:/app/public/uploads
+      - ./logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  nginx:
+    image: nginx:alpine
+    container_name: sncrm-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./scripts/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./public:/var/www/sncrm
+    depends_on:
+      - sncrm
+    networks:
+      - app-network
+
+  certbot:
+    image: certbot/certbot
+    container_name: sncrm-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    depends_on:
+      - nginx
+
+networks:
+  app-network:
+    driver: bridge 

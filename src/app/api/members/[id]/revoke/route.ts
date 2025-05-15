@@ -1,32 +1,44 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/mysql';
+import { recordOperationLog, OperationType, TargetType, buildOperationDetail } from '@/lib/log-operations';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const data = await request.json();
-    const { reason } = data;
+    const data = await request.json() as { reason?: string; notes?: string };
+    const { reason, notes } = data;
     
-    // 获取会员UUID
-    const memberUuid = params.id;
-    console.log('会员UUID:', memberUuid);
+    // 获取会员ID
+    const memberId = params.id;
+    
+    // 获取当前用户ID和邮箱
+    const currentUserId = request.headers.get('x-user-id');
+    const userEmail = request.headers.get('x-user-email');
+    
+    if (!currentUserId) {
+      return NextResponse.json(
+        { error: '未获取到操作人信息' },
+        { status: 401 }
+      );
+    }
+    
+    console.log('会员ID:', memberId);
 
-    // 首先使用UUID查找会员的数字ID
-    const [idRows] = await pool.execute(
-      'SELECT id, status FROM members WHERE uuid = ? OR old_id = ?',
-      [memberUuid, memberUuid]
+    // 查找会员
+    const [memberRows] = await pool.execute(
+      'SELECT id, status, nickname, member_no FROM members WHERE id = ?',
+      [memberId]
     );
 
-    if (!idRows[0]) {
+    if (!memberRows || (memberRows as any[]).length === 0) {
       return NextResponse.json(
         { error: '会员不存在' },
         { status: 404 }
       );
     }
 
-    const member = idRows[0];
-    const memberId = member.id; // 获取数字类型的ID
+    const member = (memberRows as any[])[0];
     
-    console.log('找到会员ID:', memberId, '类型:', typeof memberId);
+    console.log('找到会员:', member);
 
     // 验证会员状态
     if (member.status !== 'ACTIVE') {
@@ -48,14 +60,36 @@ export async function POST(request: Request, { params }: { params: { id: string 
       );
 
       // 添加调试日志
-      console.log('执行撤销操作插入日志，member_id:', memberId, '类型:', typeof memberId);
+      console.log('执行撤销操作插入日志，member_id:', memberId);
       
-      // 记录撤销操作
+      // 记录状态变更到 member_operation_logs 表
       await connection.execute(
         `INSERT INTO member_operation_logs (
-          member_id, operation_type, notes, created_at
-        ) VALUES (?, 'REVOKE', ?, NOW())`,
-        [memberId, reason]
+          member_id, operation_type, created_at, operator_id
+        ) VALUES (?, ?, NOW(), ?)`,
+        [
+          memberId,
+          OperationType.REVOKE,
+          currentUserId
+        ]
+      );
+      
+      // 构建操作详情
+      const detail = buildOperationDetail(
+        '撤销',
+        member.nickname || member.member_no,
+        reason ? `原因: ${reason}` : undefined
+      );
+
+      // 记录到全局操作日志
+      await recordOperationLog(
+        connection,
+        OperationType.REVOKE,
+        TargetType.MEMBER,
+        memberId,
+        currentUserId,
+        detail,
+        userEmail || undefined
       );
 
       await connection.commit();

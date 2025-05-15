@@ -18,10 +18,17 @@ const titleMap: TitleMap = {
   '/finance/income': '收入管理',
   '/finance/expense': '支出管理',
   '/finance/settlement': '结算管理',
+  '/platform': '平台管理',
+  '/platform/banner': 'Banner管理',
+  '/platform/chatgroups': '群聊管理',
+  '/platform/article': '文章管理',
   '/miniapp/config': '小程序配置',
   '/miniapp/review': '审核发布',
   '/wecom/config': '企业微信配置',
-  '/wecom/sync': '数据同步'
+  '/wecom/sync': '数据同步',
+  '/logs': '操作日志',
+  '/system': '缓存管理',
+  '/system/cache': '缓存管理'
 };
 
 export default function DashboardLayout({

@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/mysql';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { recordOperationLog, OperationType, TargetType, buildOperationDetail } from '@/lib/log-operations';
 
 export async function POST(request: Request) {
   try {
+    // 获取当前用户会话信息
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id || null;
+    const userEmail = (session?.user as any)?.email || null;
+    
     const data = await request.json();
     
     // 验证必填字段
@@ -24,8 +32,8 @@ export async function POST(request: Request) {
       }
     });
 
-    // 插入数据库
-    await pool.execute(
+    // 插入会员数据
+    const [result] = await pool.execute(
       `INSERT INTO members (
         member_no, nickname, wechat, phone, type,
         gender, birth_year, height, weight,
@@ -64,10 +72,33 @@ export async function POST(request: Request) {
         data.gender === 'female' ? 1 : 0,  // 女性默认1次匹配机会，男性0次
       ]
     );
+    
+    // 获取新创建的会员ID
+    const memberId = (result as any).insertId;
+    
+    // 记录操作日志
+    if (userId) {
+      const detail = buildOperationDetail(
+        '创建',
+        `${data.nickname || data.member_no}`,
+        `会员编号: ${data.member_no}, 微信: ${data.wechat}, 手机: ${data.phone}`
+      );
+      
+      await recordOperationLog(
+        pool,
+        OperationType.CREATE,
+        TargetType.MEMBER,
+        memberId,
+        userId,
+        detail,
+        userEmail
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      message: '创建成功'
+      message: '创建成功',
+      id: memberId
     });
 
   } catch (error) {

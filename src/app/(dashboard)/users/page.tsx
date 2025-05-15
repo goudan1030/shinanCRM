@@ -161,11 +161,48 @@ function UsersPageContent() {
     'phone', 'username', 'nickname', 'status', 'member_type', 'created_at', 'refresh_count', 'actions'
   ]);
   
+  // 分页相关状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  
   // 增加刷新次数对话框状态
   const [refreshDialogOpen, setRefreshDialogOpen] = useState(false);
   const [refreshCount, setRefreshCount] = useState<number>(1);
   const [refreshUserId, setRefreshUserId] = useState<number | null>(null);
   const [refreshUserName, setRefreshUserName] = useState<string>('');
+
+  // 获取用户数据 - 将函数定义移到useEffect之前，以解决ReferenceError问题
+  const fetchUsers = useCallback(async (page = 1, size = 25) => {
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        pageSize: size.toString()
+      });
+      
+      const response = await fetch(`/api/users?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error('获取用户列表失败');
+      }
+      
+      const data = await response.json();
+      setUsers(data.users || []);
+      setTotalCount(data.total || data.users?.length || 0);
+      setTotalPages(Math.ceil((data.total || data.users?.length || 0) / size));
+      setLoading(false);
+    } catch (error) {
+      console.error('获取用户列表失败:', error);
+      toast({
+        title: '错误',
+        description: '获取用户列表失败',
+        variant: 'destructive',
+      });
+      setLoading(false);
+    }
+  }, [toast, pageSize]);
 
   // 从本地存储加载列配置
   useEffect(() => {
@@ -184,34 +221,21 @@ function UsersPageContent() {
     }
   }, []);
 
-  // 获取用户数据
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/users');
-      
-      if (!response.ok) {
-        throw new Error('获取用户列表失败');
-      }
-      
-      const data = await response.json();
-      setUsers(data.users || []);
-      setLoading(false);
-    } catch (error) {
-      console.error('获取用户失败:', error);
-      toast({
-        variant: "destructive",
-        title: "获取失败",
-        description: "获取用户列表失败"
-      });
-      setLoading(false);
-    }
-  }, [toast]);
-
   // 首次加载时获取数据
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    if (!isLoading && !session) {
+      router.push('/login');
+      return;
+    }
+
+    // 从URL获取页码参数
+    const urlParams = new URLSearchParams(window.location.search);
+    const pageParam = urlParams.get('page');
+    const initialPage = pageParam ? parseInt(pageParam, 10) : 1;
+    
+    setCurrentPage(initialPage);
+    fetchUsers(initialPage, pageSize);
+  }, [isLoading, session, router, fetchUsers, pageSize]);
 
   // 处理搜索
   const handleSearch = () => {
@@ -347,23 +371,41 @@ function UsersPageContent() {
     return registered === 1 ? '已完善' : '未完善';
   };
 
-  // 过滤用户数据
+  // 根据筛选条件构建显示的用户列表
   const filteredUsers = users.filter(user => {
-    // 搜索条件
-    const matchesSearch = searchQuery 
-      ? (user.phone?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-         user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         user.nickname?.toLowerCase().includes(searchQuery.toLowerCase()))
-      : true;
+    // 搜索条件过滤
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = 
+      !searchQuery || 
+      (user.phone && user.phone.toLowerCase().includes(searchLower)) || 
+      (user.username && user.username.toLowerCase().includes(searchLower)) || 
+      (user.nickname && user.nickname.toLowerCase().includes(searchLower));
     
     // 会员类型过滤
-    const matchesMemberType = memberType === 'all' || user.member_type === memberType;
+    const matchesMemberType = 
+      memberType === 'all' || 
+      user.member_type === memberType;
     
     // 状态过滤
-    const matchesStatus = status === 'all' || user.status === status;
+    const matchesStatus = 
+      status === 'all' || 
+      user.status === status;
     
     return matchesSearch && matchesMemberType && matchesStatus;
   });
+
+  // 处理页码变更
+  const handlePageChange = (page: number) => {
+    // 更新URL
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('page', page.toString());
+      window.history.pushState({}, '', url.toString());
+    }
+    
+    setCurrentPage(page);
+    fetchUsers(page, pageSize);
+  };
 
   return (
     <div className="space-y-4">
@@ -419,7 +461,7 @@ function UsersPageContent() {
       </div>
       
       {/* 用户表格 */}
-      <div className="rounded-md border overflow-hidden">
+      <div className="rounded-md border overflow-hidden mb-[80px]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
@@ -633,6 +675,105 @@ function UsersPageContent() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+      
+      {/* 分页 */}
+      <div className="h-[48px] flex items-center justify-between border-t fixed bottom-0 left-[57px] right-0 bg-white z-50 px-6 shadow-sm">
+        <div className="text-sm text-muted-foreground flex items-center">
+          <span className="mr-2">共 {totalCount} 条记录</span>
+          <select 
+            className="ml-2 px-2 py-1 border border-gray-300 rounded text-sm"
+            value={pageSize}
+            onChange={(e) => {
+              const newSize = Number(e.target.value);
+              setPageSize(newSize);
+              fetchUsers(1, newSize);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="10">10条/页</option>
+            <option value="25">25条/页</option>
+            <option value="50">50条/页</option>
+            <option value="100">100条/页</option>
+          </select>
+        </div>
+        <div className="flex gap-2 items-center">
+          <div className="flex items-center text-sm mr-4">
+            <span className="mr-2">跳至</span>
+            <input 
+              type="number" 
+              min="1" 
+              max={totalPages} 
+              value={currentPage}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                if (value >= 1 && value <= totalPages) {
+                  handlePageChange(value);
+                }
+              }}
+              className="w-[50px] px-2 py-1 border border-gray-300 rounded text-center"
+            />
+            <span className="ml-2">页</span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+            className="h-8 min-w-[40px] px-2"
+          >
+            <span className="sr-only">首页</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="11 17 6 12 11 7"></polyline>
+              <polyline points="18 17 13 12 18 7"></polyline>
+            </svg>
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="h-8 min-w-[40px] px-2"
+          >
+            <span className="sr-only">上一页</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </Button>
+          
+          <span className="px-4 text-sm">
+            {currentPage} / {totalPages}
+          </span>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="h-8 min-w-[40px] px-2"
+          >
+            <span className="sr-only">下一页</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            className="h-8 min-w-[40px] px-2"
+          >
+            <span className="sr-only">尾页</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="13 17 18 12 13 7"></polyline>
+              <polyline points="6 17 11 12 6 7"></polyline>
+            </svg>
+          </Button>
         </div>
       </div>
       

@@ -1,31 +1,32 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getTokenFromCookieStore, verifyToken } from '../../../../lib/token';
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const authToken = cookieStore.get('auth_token');
+    // 获取并验证Token
+    const token = await getTokenFromCookieStore();
 
-    if (!authToken) {
+    if (!token) {
       return NextResponse.json({ user: null });
     }
 
-    try {
-      const userData = JSON.parse(authToken.value);
-      // 从cookie中获取完整的用户信息
+    // 验证Token并获取用户信息
+    const userData = verifyToken(token);
+    
+    if (!userData) {
+      return NextResponse.json({ user: null });
+    }
+
+    // 返回用户信息
       return NextResponse.json({
         user: {
-          id: userData.userId,
+        id: userData.id,
           email: userData.email,
           name: userData.name,
           role: userData.role,
           avatar_url: userData.avatar_url
         }
       });
-    } catch (parseError) {
-      console.error('解析auth_token失败:', parseError);
-      return NextResponse.json({ user: null });
-    }
 
   } catch (error) {
     console.error('获取会话状态失败:', error);

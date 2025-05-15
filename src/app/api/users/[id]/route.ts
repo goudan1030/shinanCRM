@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import query from '@/lib/db';
 
 // 获取单个用户
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const userId = params.id;
-    const [users] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+    const users = await query('SELECT * FROM users WHERE id = ?', [userId]);
     const user = (users as any[])[0];
     
     if (!user) {
@@ -38,10 +38,10 @@ export async function PUT(
 ) {
   try {
     const userId = params.id;
-    const data = await request.json();
+    const data = await request.json() as Record<string, any>;
     
     // 检查用户是否存在
-    const [existingUsers] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+    const existingUsers = await query('SELECT * FROM users WHERE id = ?', [userId]);
     if ((existingUsers as any[]).length === 0) {
       return NextResponse.json(
         { success: false, error: '用户不存在' },
@@ -80,7 +80,7 @@ export async function PUT(
     values.push(userId);
     
     // 执行更新
-    await db.query(
+    await query(
       `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`,
       values
     );
@@ -107,7 +107,7 @@ export async function DELETE(
     const userId = params.id;
     
     // 检查用户是否存在
-    const [existingUsers] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+    const existingUsers = await query('SELECT * FROM users WHERE id = ?', [userId]);
     if ((existingUsers as any[]).length === 0) {
       return NextResponse.json(
         { success: false, error: '用户不存在' },
@@ -116,7 +116,7 @@ export async function DELETE(
     }
     
     // 执行删除
-    await db.query('DELETE FROM users WHERE id = ?', [userId]);
+    await query('DELETE FROM users WHERE id = ?', [userId]);
     
     return NextResponse.json({ 
       success: true, 

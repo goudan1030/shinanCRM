@@ -114,6 +114,26 @@ GET /api/members?page=1&pageSize=20&keyword=xxx&type=xxx
 }
 ```
 
+#### 1.4 导出会员数据
+```typescript
+GET /api/members/export?status=xxx&gender=xxx&type=xxx&search=xxx
+
+功能说明:
+导出会员数据为CSV格式文件，支持根据条件筛选要导出的会员记录。
+
+参数说明:
+- status: 会员状态 (可选，例如'ACTIVE'/'REVOKED')
+- gender: 性别 (可选，'male'/'female')
+- type: 会员类型 (可选，'NORMAL'/'ONE_TIME'/'ANNUAL')
+- search: 搜索关键词 (可选，搜索会员编号/微信号/手机号)
+
+响应:
+- Content-Type: text/csv; charset=utf-8
+- Content-Disposition: attachment; filename=members-export-YYYY-MM-DD.csv
+
+返回CSV格式文件，包含会员完整信息。包括会员编号、微信号、手机号、会员类型、状态、性别、出生年份、身高、体重、学历、职业、省份、城市、区县、目标区域、房车情况、户口省份、户口城市、子女计划、领证要求、婚姻历史、性取向、自我描述、伴侣要求、剩余匹配次数、创建时间、更新时间等字段。
+```
+
 ### 2. 收支管理API
 
 #### 2.1 创建收入记录

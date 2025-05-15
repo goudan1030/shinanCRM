@@ -1,39 +1,23 @@
-'use client';
+import type { Metadata } from 'next';
+import { ReactNode } from "react";
 
-import { Suspense } from 'react';
-import { ThreeColumnLayout } from '@/components/layout/three-column-layout';
-import { Sidebar } from '@/components/layout/sidebar';
-import { MemberFilter } from '@/components/member/member-filter';
+export const metadata: Metadata = {
+  title: "会员管理 - CRM系统",
+  description: "管理系统会员",
+};
 
-function MembersLayoutContent({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <ThreeColumnLayout 
-      sidebarContent={<Sidebar />}
-      middleContent={<MemberFilter />}
-      useThreeColumns={true}
-      className="bg-gray-50"
-    >
-      {children}
-    </ThreeColumnLayout>
-  );
+interface MembersLayoutProps {
+  children: ReactNode;
 }
 
 export default function MembersLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: MembersLayoutProps) {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">加载中...</p>
+    <div className="h-full flex flex-col">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        {children}
       </div>
-    }>
-      <MembersLayoutContent>{children}</MembersLayoutContent>
-    </Suspense>
+    </div>
   );
 } 

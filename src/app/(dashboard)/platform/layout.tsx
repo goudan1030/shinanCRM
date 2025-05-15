@@ -12,56 +12,50 @@ export default function PlatformLayout({
 }) {
   const pathname = usePathname();
 
-  const PlatformMenu = (
-    <div className="h-full bg-white relative z-[998]">
-      <div className="flex h-[48px] items-center px-6 border-b">
-        <h1 className="text-2xl font-semibold text-gray-900">平台管理</h1>
-      </div>
-      <div className="space-y-1 p-2">
-        <Link
-          href="/platform"
-          className={`flex items-center rounded-md py-2 px-3 ${
-            pathname === '/platform' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
-          }`}
-        >
-          <span className="text-[13px]">平台活动</span>
-        </Link>
-        <Link
-          href="/platform/banner"
-          className={`flex items-center rounded-md py-2 px-3 ${
-            pathname === '/platform/banner' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
-          }`}
-        >
-          <span className="text-[13px]">Banner管理</span>
-        </Link>
-        <Link
-          href="/platform/news"
-          className={`flex items-center rounded-md py-2 px-3 ${
-            pathname === '/platform/news' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
-          }`}
-        >
-          <span className="text-[13px]">资讯管理</span>
-        </Link>
-        <Link
-          href="/platform/chatgroups"
-          className={`flex items-center rounded-md py-2 px-3 ${
-            pathname === '/platform/chatgroups' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
-          }`}
-        >
-          <span className="text-[13px]">群聊管理</span>
-        </Link>
-      </div>
-    </div>
-  );
-
   return (
     <ThreeColumnLayout 
       sidebarContent={<Sidebar />}
-      middleContent={PlatformMenu}
-      useThreeColumns={true}
       className="bg-gray-50"
     >
-      {children}
+      <div className="flex">
+        {/* 左侧导航菜单 - 固定位置 */}
+        <div className="fixed inset-y-0 left-[57px] w-[240px] bg-white border-r z-[900]">
+          <div className="flex h-[48px] items-center px-6 border-b">
+            <h1 className="text-2xl font-semibold text-gray-900">平台管理</h1>
+          </div>
+          <div className="space-y-1 p-2">
+            <Link
+              href="/platform/banner"
+              className={`flex items-center rounded-md py-2 px-3 ${
+                pathname === '/platform/banner' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+              }`}
+            >
+              <span className="text-[13px]">Banner管理</span>
+            </Link>
+            <Link
+              href="/platform/chatgroups"
+              className={`flex items-center rounded-md py-2 px-3 ${
+                pathname === '/platform/chatgroups' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+              }`}
+            >
+              <span className="text-[13px]">群聊管理</span>
+            </Link>
+            <Link
+              href="/platform/article"
+              className={`flex items-center rounded-md py-2 px-3 ${
+                pathname === '/platform/article' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+              }`}
+            >
+              <span className="text-[13px]">文章管理</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* 主内容区域 - 添加了左边距以避开导航 */}
+        <div className="ml-[297px] w-full">
+          {children}
+        </div>
+      </div>
     </ThreeColumnLayout>
   );
 } 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +23,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { OptimizedImage } from '@/components/ui/optimized-image';
+import dynamic from 'next/dynamic';
+
+// 懒加载Dialog组件
+const LazyBannerDialog = dynamic(
+  () => import('@/components/platform/banner-dialog').then(mod => ({ default: mod.BannerDialog })),
+  {
+    loading: () => <div className="p-4 bg-slate-100 rounded-md">加载中...</div>,
+    ssr: false
+  }
+);
 
 // 分类映射
 const CATEGORY_MAP = {
@@ -46,12 +57,24 @@ export default function BannerPage() {
     try {
       const response = await fetch('/api/platform/banner');
       const result = await response.json();
-      if (result.success) {
+      if (result.status === 'success') {
         console.log('Banner数据:', result.data); // 打印获取到的数据
         setBanners(result.data);
+      } else {
+        console.error('获取Banner列表失败:', result.error);
+        toast({
+          variant: "destructive",
+          title: "获取失败",
+          description: result.error || "获取Banner列表失败"
+        });
       }
     } catch (error) {
       console.error('获取Banner列表失败:', error);
+      toast({
+        variant: "destructive",
+        title: "获取失败",
+        description: "网络错误，请稍后重试"
+      });
     }
   };
 
@@ -72,7 +95,7 @@ export default function BannerPage() {
 
       const result = await response.json();
 
-      if (!response.ok) {
+      if (result.status !== 'success') {
         throw new Error(result.error || '更新状态失败');
       }
 
@@ -110,8 +133,10 @@ export default function BannerPage() {
         method: 'DELETE'
       });
 
-      if (!response.ok) {
-        throw new Error('删除失败');
+      const result = await response.json();
+
+      if (result.status !== 'success') {
+        throw new Error(result.error || '删除失败');
       }
 
       toast({
@@ -155,13 +180,13 @@ export default function BannerPage() {
 
       const result = await response.json();
 
-      if (!response.ok) {
+      if (result.status !== 'success') {
         throw new Error(result.error || '提交失败');
       }
 
       toast({
         title: "保存成功",
-        description: "Banner信息已保存",
+        description: result.message || "Banner信息已保存",
       });
 
       setOpenDialog(false);
@@ -249,9 +274,11 @@ export default function BannerPage() {
               <TableRow key={banner.id}>
                 <TableCell>
                   <div className="w-[80px] h-[40px] relative">
-                    <img 
+                    <OptimizedImage 
                       src={banner.image_url} 
                       alt={banner.title}
+                      width={80}
+                      height={40}
                       className="absolute inset-0 w-full h-full object-cover rounded"
                     />
                   </div>
@@ -314,7 +341,7 @@ export default function BannerPage() {
         </Table>
       </Card>
 
-      <BannerDialog 
+      <LazyBannerDialog 
         open={openDialog}
         onOpenChange={setOpenDialog}
         onSubmit={handleSubmit}

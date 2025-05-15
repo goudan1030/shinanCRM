@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, AppWindow } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, AppWindow, Database, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useToast } from '@/components/ui/use-toast';
@@ -64,6 +64,17 @@ const navigation: NavigationItem[] = [
     ]
   },
   {
+    name: '平台管理',
+    href: '/platform/banner',
+    icon: Megaphone,
+    matchPaths: ['/platform', '/platform/banner', '/platform/chatgroups', '/platform/article'],
+    children: [
+      { name: 'Banner管理', href: '/platform/banner' },
+      { name: '群聊管理', href: '/platform/chatgroups' },
+      { name: '文章管理', href: '/platform/article' }
+    ]
+  },
+  {
     name: '小程序管理',
     href: '/miniapp/config',
     icon: Smartphone,
@@ -83,6 +94,7 @@ const navigation: NavigationItem[] = [
       { name: '数据同步', href: '/wecom/sync' }
     ]
   },
+  { name: '操作日志', href: '/logs', icon: ClipboardList },
   {
     name: '系统设置',
     href: '/settings/profile',
@@ -101,6 +113,7 @@ const menuRedirectMap = {
   '/miniapp': '/miniapp/config', // 小程序管理 -> 基础配置
   '/wecom': '/wecom/config', // 企业微信 -> 基础配置
   '/settings': '/settings/profile', // 系统设置 -> 个人资料
+  '/system': '/system/cache', // 缓存管理 -> 缓存管理
 };
 
 export function Sidebar({ className }: SidebarProps) {
@@ -184,9 +197,19 @@ export function Sidebar({ className }: SidebarProps) {
       label: '企业微信'
     },
     {
+      href: '/logs',
+      icon: <ClipboardList className="h-4 w-4" />,
+      label: '操作日志'
+    },
+    {
       href: '/settings',
       icon: <Settings className="h-4 w-4" />,
       label: '系统设置'
+    },
+    {
+      href: '/system',
+      icon: <Database className="h-4 w-4" />,
+      label: '缓存管理'
     }
   ];
 

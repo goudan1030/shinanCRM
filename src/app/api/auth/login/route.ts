@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { authenticateUser } from '@/lib/mysql';
-import { cookies } from 'next/headers';
+import { authenticateUser } from '../../../../lib/database';
+import { generateToken, setTokenCookie } from '../../../../lib/token';
 
 export async function POST(request: Request) {
   console.log('=== 开始处理登录请求 ===');
   try {
-    const { email, password } = await request.json();
+    const data = await request.json() as { email: string; password: string };
+    const { email, password } = data;
     console.log('收到登录请求:', { email, passwordProvided: !!password });
 
     // 验证必填字段
@@ -29,7 +30,17 @@ export async function POST(request: Request) {
         );
       }
 
-      console.log('✓ 用户验证通过，准备创建会话...');
+      console.log('✓ 用户验证通过，准备创建JWT Token...');
+      
+      // 创建JWT Token
+      const token = generateToken({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        avatar_url: user.avatar_url
+      });
+      
       // 创建响应对象
       const response = NextResponse.json({
         user: {
@@ -42,22 +53,9 @@ export async function POST(request: Request) {
         message: '登录成功'
       });
 
-      // 在响应中设置 cookie
-      const authToken = {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatar_url: user.avatar_url
-      };
-      console.log('设置认证 Cookie:', { userId: user.id, email: user.email });
-      response.cookies.set('auth_token', JSON.stringify(authToken), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 // 24小时
-      });
+      // 在响应中设置JWT Token Cookie
+      console.log('设置JWT Token Cookie:', { userId: user.id, email: user.email });
+      setTokenCookie(response, token);
 
       console.log('✓ 登录成功');
       console.log('=== 登录请求处理完成 ===');

@@ -44,6 +44,7 @@ pnpm dev
 - 会员资料查询
 - 会员状态管理
 - 匹配次数管理
+- 会员数据导出（CSV格式）
 
 ### 2. 收支管理
 - 收入管理
@@ -65,6 +66,19 @@ pnpm dev
 - 个人资料
 - 安全设置
 - 系统配置
+
+### 6. 认证系统
+- JWT Token认证
+- 基于角色的权限控制
+- 自动Token刷新
+- Edge Runtime兼容性支持
+
+### 7. 错误处理和日志系统
+- 统一的错误分类和处理机制
+- 结构化日志记录
+- 用户友好的错误提示
+- 严重错误通知机制
+- 各模块独立日志记录器
 
 ## 项目结构
 
@@ -102,6 +116,33 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 # JWT配置
 JWT_SECRET=your-jwt-secret
 ```
+
+### JWT认证系统
+
+系统采用JWT（JSON Web Token）进行用户认证和权限管理：
+
+1. **双轨制Token处理**
+   - `token.ts`: 用于API路由和服务器组件（Node.js环境）
+   - `token-edge.ts`: 用于中间件（Edge Runtime环境）
+
+2. **主要功能**
+   - 用户登录验证
+   - 基于角色的权限控制
+   - Token自动刷新
+   - 安全的Cookie存储
+
+3. **角色层级**
+   - super-admin（超级管理员）: 级别4
+   - admin（管理员）: 级别3
+   - manager（经理）: 级别2
+   - user（普通用户）: 级别1
+
+4. **安全特性**
+   - httpOnly Cookie
+   - 自动Token过期处理
+   - 敏感操作权限验证
+
+详细说明请参考 [Token认证文档](./src/docs/token认证问题修复说明.md)
 
 ### 连接到阿里云MySQL数据库
 
@@ -154,10 +195,13 @@ chore: 构建/工具相关
 
 ## 文档
 
-- [详细设计文档](./docs/design.md)
-- [API文档](./docs/api.md)
-- [组件文档](./docs/components.md)
-- [数据库设计](./docs/database.md)
+- [项目架构文档](./src/docs/项目架构文档.md) - 项目结构和组件关系详细说明
+- [API文档](./src/docs/API文档.md) - 所有API端点及使用方法
+- [代码组织与文档规范](./src/docs/代码组织与文档规范.md) - 代码规范和文档要求
+- [错误处理和日志指南](./src/docs/日志和错误处理指南.md) - 日志记录和错误处理机制
+- [Token认证文档](./src/docs/token认证问题修复说明.md) - JWT认证详细说明
+- [认证机制优化说明](./src/docs/认证机制优化说明.md) - 认证系统设计与实现
+- [数据库连接优化说明](./src/docs/数据库连接优化说明.md) - 数据库配置和优化
 
 ## 贡献指南
 
@@ -267,7 +311,6 @@ DELETE /api/platform/banner/{id}
 2. 添加图片上传到云存储功能
 3. 添加批量删除功能
 4. 添加拖拽排序功能
-5. 添加数据导出功能
 
 # 资讯管理功能
 
@@ -294,3 +337,46 @@ CREATE TABLE articles (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
+
+## 性能优化
+
+为了提高系统性能并减少加载时间，我们实施了以下优化措施：
+
+### 前端性能监控与优化
+
+我们实现了全面的前端性能监控系统：
+
+- **实时性能指标收集**：包括LCP、FID、CLS、TTFB、INP等核心Web性能指标
+- **自定义性能标记**：支持对关键操作路径进行性能标记和测量
+- **资源加载优化**：监控并优化资源加载性能
+- **组件懒加载**：实现多种组件懒加载策略，减少初始加载时间
+
+详细文档请参考 [性能优化指南](./src/docs/性能优化指南.md)
+
+### 数据库查询优化
+
+提供了一套完整的数据库性能优化工具和策略：
+
+- **索引优化**：为频繁查询的字段添加合适的索引
+- **查询优化**：重写低效查询，优化JOIN策略
+- **表结构优化**：统一表引擎和字符集，定期表维护
+- **性能分析工具**：数据库性能分析脚本和索引检查工具
+
+运行以下命令进行数据库优化：
+
+```bash
+# 运行数据库性能分析和优化
+npm run perf:db-optimize
+
+# 检查索引状态
+npm run db:check-indexes
+```
+
+### 其他优化措施
+
+- **Next.js 优化**：使用App Router、Server Components减少客户端JavaScript
+- **React优化**：组件拆分、避免不必要的重渲染
+- **资源优化**：图像优化、字体优化、代码分割
+- **缓存策略**：合理使用LRU缓存、数据库查询结果缓存
+
+访问 [性能优化示例](http://localhost:3000/examples/lazy-loading) 查看懒加载演示。

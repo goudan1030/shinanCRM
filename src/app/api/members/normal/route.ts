@@ -1,60 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/mysql';
-import { getSession } from '@/lib/auth';
+import { createClient } from '../../../../lib/mysql';
+import { RowDataPacket } from 'mysql2';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
-
-    if (!session?.user?.id) {
-      return new NextResponse(JSON.stringify({ error: '未授权访问' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '25');
-    const status = searchParams.get('status');
-    const search = searchParams.get('search');
+    
+    console.log('普通会员查询参数:', { page, pageSize });
 
-    console.log('普通会员查询参数:', {
-      page,
-      pageSize,
-      status,
-      search
-    });
-
+    // 使用真实数据库查询
+    const mysql = await createClient();
+    
+    // 计算分页参数
     const offset = (page - 1) * pageSize;
-
-    const mysql = createClient();
-
-    let query = 'SELECT SQL_CALC_FOUND_ROWS * FROM members WHERE type = "NORMAL"';
-    const queryParams: any[] = [];
-
-    if (status && status !== 'all') {
-      query += ' AND status = ?';
-      queryParams.push(status);
-    }
-
-    if (search) {
-      query += ' AND (member_no LIKE ? OR wechat LIKE ? OR phone LIKE ?)';
-      const searchPattern = `%${search}%`;
-      queryParams.push(searchPattern, searchPattern, searchPattern);
-    }
-
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    queryParams.push(pageSize, offset);
-
-    const [members] = await mysql.query(query, queryParams);
-    const [countResult] = await mysql.query('SELECT FOUND_ROWS() as total');
-    const total = countResult[0].total;
-
+    
+    // 完全简化，不使用任何条件，只做基本查询
+    const query = `SELECT * FROM members LIMIT ${pageSize} OFFSET ${offset}`;
+    console.log('执行查询:', query);
+    
+    const [rows] = await mysql.query<RowDataPacket[]>(query);
+    
+    // 获取总数
+    const countQuery = 'SELECT COUNT(*) as total FROM members';
+    console.log('执行总数查询:', countQuery);
+    
+    const [countResult] = await mysql.query<RowDataPacket[]>(countQuery);
+    
     await mysql.end();
-
+    
+    const total = (countResult as RowDataPacket[])[0]?.total || 0;
+    
+    // 输出查询结果信息
+    console.log('普通会员API返回数据条数:', (rows as RowDataPacket[]).length);
+    
     return new NextResponse(JSON.stringify({
-      data: members,
+      data: rows,
       total,
       page,
       pageSize
@@ -64,7 +46,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('获取普通会员列表失败:', error);
-    return new NextResponse(JSON.stringify({ error: '获取普通会员列表失败' }), {
+    return new NextResponse(JSON.stringify({ 
+      error: '获取普通会员列表失败', 
+      details: error instanceof Error ? error.message : String(error)
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

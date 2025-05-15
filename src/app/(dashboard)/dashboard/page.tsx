@@ -99,6 +99,13 @@ export default function DashboardPage() {
         // 计算待结算金额：当月总收入减去当月总支出之后，然后除以2，再减去当月已结算金额
         const unsettledAmount = (monthlyIncome - monthlyExpense) / 2 - settledAmount;
 
+        // 以更清晰的方式显示计算逻辑
+        console.log('当月收入:', monthlyIncome);
+        console.log('当月支出:', monthlyExpense);
+        console.log('当月营业额一半(预计可结算):', (monthlyIncome - monthlyExpense) / 2);
+        console.log('当月已结算金额:', settledAmount);
+        console.log('当月待结算金额:', unsettledAmount);
+
         // 获取趋势数据
         const trendsResponse = await fetch('/api/dashboard/trends');
         const trendsData = await trendsResponse.json();
@@ -127,6 +134,11 @@ export default function DashboardPage() {
     }
   }, [session, supabase]);
 
+  // 处理"当月待结算金额"卡片点击事件
+  const handleUnsettledCardClick = () => {
+    router.push('/finance/settlement');
+  };
+
   if (isLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -154,14 +166,18 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="space-y-2">
-            <CardTitle className="text-base font-medium text-muted-foreground">已结算金额</CardTitle>
+            <CardTitle className="text-base font-medium text-muted-foreground">当月已结算金额</CardTitle>
             <CardDescription className="text-4xl font-bold text-foreground">¥{dashboardData.settledAmount.toLocaleString()}</CardDescription>
           </CardHeader>
         </Card>
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+          onClick={handleUnsettledCardClick}
+        >
           <CardHeader className="space-y-2">
-            <CardTitle className="text-base font-medium text-muted-foreground">待结算金额</CardTitle>
+            <CardTitle className="text-base font-medium text-muted-foreground">当月待结算金额</CardTitle>
             <CardDescription className="text-4xl font-bold text-foreground">¥{dashboardData.unsettledAmount.toLocaleString()}</CardDescription>
+            <p className="text-xs text-muted-foreground mt-1">点击查看结算详情或进行结算</p>
           </CardHeader>
         </Card>
       </div>

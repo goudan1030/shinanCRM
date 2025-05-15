@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { clearTokenCookie } from '../../../../lib/token';
 
 export async function POST() {
   try {
@@ -7,12 +7,7 @@ export async function POST() {
     const response = NextResponse.json({ message: '退出登录成功' });
 
     // 清除认证cookie
-    response.cookies.delete('auth_token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/'
-    });
+    clearTokenCookie(response);
 
     // 设置 Cache-Control 头，防止浏览器缓存
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
