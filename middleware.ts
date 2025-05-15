@@ -15,15 +15,27 @@ const protectedRoutes = [
   '/users'
 ];
 
-// 定义公开路由
+// 定义公开路由 - 不需要认证的路由
 const publicRoutes = [
   '/login',
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/session',
+  '/favicon.ico',
+  '/_next',
 ];
 
-// 简化中间件实现，专注于核心认证逻辑
+// 检查路径是否匹配公开路由
+function isPublicPath(path: string): boolean {
+  return publicRoutes.some(route => path.startsWith(route) || path === route);
+}
+
+// 检查路径是否匹配需要保护的路由
+function isProtectedPath(path: string): boolean {
+  return protectedRoutes.some(route => path.startsWith(route) || path === route);
+}
+
+// 中间件主函数
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
@@ -44,6 +56,20 @@ export function middleware(request: NextRequest) {
 
   // 处理API请求的缓存
   if (pathname.includes('/api/')) {
+    // 跳过认证检查的API路由
+    if (isPublicPath(pathname)) {
+      return NextResponse.next();
+    }
+    
+    // 检查认证
+    const authToken = request.cookies.get('auth_token');
+    if (!authToken) {
+      return NextResponse.json(
+        { error: '未授权访问' },
+        { status: 401 }
+      );
+    }
+    
     const response = NextResponse.next();
     
     // 动态API接口（可能经常变化的数据）
@@ -72,17 +98,23 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // 登录页面无需验证
-  if (pathname === '/login') {
+  // 公开路由无需验证
+  if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  // 验证其他页面
+  // 验证其他页面 - 尤其是受保护的路由
   const authToken = request.cookies.get('auth_token');
-  if (!authToken && pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url));
+  
+  if (!authToken) {
+    // 如果没有token，重定向到登录页
+    const url = new URL('/login', request.url);
+    // 保存原始URL以便登录后重定向回来
+    url.searchParams.set('from', pathname);
+    return NextResponse.redirect(url);
   }
 
+  // 认证通过，继续处理请求
   return NextResponse.next();
 }
 

@@ -92,6 +92,7 @@ export function LoginForm({
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   disabled={loading}
+                  autoComplete="email"
                 />
               </div>
               <div className="grid gap-2">
@@ -111,6 +112,7 @@ export function LoginForm({
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   disabled={loading}
+                  autoComplete="current-password"
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
