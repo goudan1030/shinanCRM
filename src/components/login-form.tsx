@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, ChangeEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,13 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
 
-export function LoginForm({
+interface LoginResponse {
+  error?: string;
+  [key: string]: any;
+}
+
+// 创建一个内部组件，处理搜索参数逻辑
+function LoginFormContent({
   className,
   ...props
 }: React.ComponentProps<"div">) {
@@ -46,7 +52,7 @@ export function LoginForm({
         })
       });
 
-      const data = await response.json();
+      const data = await response.json() as LoginResponse;
       console.log('收到服务器响应:', { status: response.status });
 
       if (!response.ok) {
@@ -80,6 +86,12 @@ export function LoginForm({
     }
   };
 
+  // 处理输入变化
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>, field: 'email' | 'password') => {
+    const value = e.target.value;
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden">
@@ -100,7 +112,7 @@ export function LoginForm({
                   placeholder="请输入邮箱地址"
                   required
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => handleInputChange(e, 'email')}
                   disabled={loading}
                   autoComplete="email"
                 />
@@ -120,7 +132,7 @@ export function LoginForm({
                   type="password"
                   required
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => handleInputChange(e, 'password')}
                   disabled={loading}
                   autoComplete="current-password"
                 />
@@ -148,5 +160,14 @@ export function LoginForm({
         点击登录即表示您同意我们的<a href="#">服务条款</a>和<a href="#">隐私政策</a>
       </div>
     </div>
-  )
+  );
+}
+
+// 导出一个包装组件，使用Suspense
+export function LoginForm(props: React.ComponentProps<"div">) {
+  return (
+    <Suspense fallback={<div className="flex flex-col gap-6">加载中...</div>}>
+      <LoginFormContent {...props} />
+    </Suspense>
+  );
 }

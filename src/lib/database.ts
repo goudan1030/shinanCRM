@@ -62,12 +62,7 @@ if (missingEnvVars.length > 0) {
  * 数据库连接配置
  * 包含完整的连接池设置和优化参数
  */
-const dbConfig: PoolOptions & { 
-  timeout?: number; 
-  acquireTimeout?: number;
-  enableKeepAlive?: boolean;
-  keepAliveInitialDelay?: number;
-} = {
+const dbConfig: PoolOptions = {
   // 基本连接信息
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -81,11 +76,7 @@ const dbConfig: PoolOptions & {
   queueLimit: 0,                   // 队列限制（0=无限制）
   
   // 性能优化设置
-  enableKeepAlive: true,           // 启用连接保活
-  keepAliveInitialDelay: 10000,    // 10秒后开始保活检查
   connectTimeout: 10000,           // 连接超时10秒
-  timeout: 60000,                  // 查询超时60秒
-  acquireTimeout: 30000,           // 获取连接超时30秒
   
   // 查询选项
   namedPlaceholders: true          // 支持命名参数，提高安全性和可读性
@@ -96,6 +87,11 @@ const dbConfig: PoolOptions & {
  * 整个应用共享同一个连接池实例，避免资源浪费
  */
 const pool: Pool = mysql.createPool(dbConfig);
+
+// 为保持向后兼容，可以在这里添加连接事件监听器
+pool.on('connection', function(connection) {
+  console.log('新的数据库连接已建立');
+});
 
 /**
  * 检查数据库连接是否正常
