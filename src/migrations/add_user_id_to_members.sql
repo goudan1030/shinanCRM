@@ -43,58 +43,6 @@ LEFT JOIN
 WHERE 
   (m.deleted IS NULL OR m.deleted = FALSE);
 
--- 创建通过手机号匹配用户和会员的视图
-CREATE OR REPLACE VIEW view_user_members_by_phone AS
-SELECT 
-  u.id AS user_id,
-  u.phone AS user_phone,
-  u.username AS user_username,
-  u.nickname AS user_nickname,
-  u.status AS user_status,
-  m.id AS member_id,
-  m.member_no,
-  m.type AS member_type,
-  m.status AS member_status,
-  m.nickname AS member_nickname,
-  m.phone AS member_phone
-FROM 
-  users u
-LEFT JOIN 
-  members m ON u.phone = m.phone
-WHERE 
-  (m.deleted IS NULL OR m.deleted = FALSE);
-
--- 确保索引存在以提高视图性能（用动态SQL检查并创建索引）
--- 为 users.phone 创建索引
-SET @sql = (SELECT IF(
-    NOT EXISTS(
-        SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS 
-        WHERE table_schema = DATABASE() 
-        AND table_name = 'users' 
-        AND index_name = 'idx_users_phone'
-    ),
-    'CREATE INDEX idx_users_phone ON users(phone)',
-    'SELECT "索引 idx_users_phone 已存在，无需创建"'
-));
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- 为 members.phone 创建索引
-SET @sql = (SELECT IF(
-    NOT EXISTS(
-        SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS 
-        WHERE table_schema = DATABASE() 
-        AND table_name = 'members' 
-        AND index_name = 'idx_members_phone'
-    ),
-    'CREATE INDEX idx_members_phone ON members(phone)',
-    'SELECT "索引 idx_members_phone 已存在，无需创建"'
-));
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
 -- 为 members.wechat 创建索引
 SET @sql = (SELECT IF(
     NOT EXISTS(
