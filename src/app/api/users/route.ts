@@ -16,9 +16,12 @@ export async function GET(request: Request) {
     const countResult = await query('SELECT COUNT(*) as total FROM users');
     const total = (countResult as any[])[0].total;
     
-    // 分页查询用户
+    // 分页查询用户并关联会员信息
     const users = await query(
-      'SELECT * FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      `SELECT u.*, vm.member_id 
+       FROM users u
+       LEFT JOIN view_user_members vm ON u.id = vm.user_id
+       ORDER BY u.created_at DESC LIMIT ? OFFSET ?`,
       [pageSize, offset]
     );
     

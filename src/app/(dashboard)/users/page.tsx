@@ -33,7 +33,8 @@ interface User {
   registered: number;
   refresh_count: number;
   member_type: '普通会员' | '一次性会员' | '年费会员';
-  [key: string]: string | number | null;
+  member_id?: string | null; // 关联的会员ID
+  [key: string]: string | number | null | undefined;
 }
 
 // 添加自定义Session类型
@@ -625,13 +626,21 @@ function UsersPageContent() {
                     )}
                     {visibleColumns.includes('registered') && (
                       <td className="px-4 py-2">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          user.registered === 1
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {getRegisteredText(user.registered as number)}
-                        </span>
+                        {user.registered === 1 && user.member_id ? (
+                          <Link href={`/members/${user.member_id}`}>
+                            <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 cursor-pointer hover:bg-green-200">
+                              已完善
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            user.registered === 1
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {getRegisteredText(user.registered as number)}
+                          </span>
+                        )}
                       </td>
                     )}
                     {visibleColumns.includes('member_type') && (

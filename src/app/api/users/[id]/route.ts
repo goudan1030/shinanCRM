@@ -8,7 +8,13 @@ export async function GET(
 ) {
   try {
     const userId = params.id;
-    const users = await query('SELECT * FROM users WHERE id = ?', [userId]);
+    const users = await query(
+      `SELECT u.*, vm.member_id 
+       FROM users u
+       LEFT JOIN view_user_members vm ON u.id = vm.user_id
+       WHERE u.id = ?`, 
+      [userId]
+    );
     const user = (users as any[])[0];
     
     if (!user) {
