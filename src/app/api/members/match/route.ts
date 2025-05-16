@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/mysql';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { recordOperationLog, OperationType, TargetType, buildOperationDetail } from '@/lib/log-operations';
 
 // 会员匹配
 export async function POST(request: Request) {
@@ -17,7 +16,6 @@ export async function POST(request: Request) {
     }
 
     const userId = (session.user as any).id;
-    const userEmail = (session.user as any).email;
     const { memberId1, memberId2, notes } = await request.json() as {
       memberId1: string,
       memberId2: string,
@@ -110,40 +108,6 @@ export async function POST(request: Request) {
 
       // 提交事务
       await connection.commit();
-
-      // 记录会员1的匹配操作日志
-      const detail1 = buildOperationDetail(
-        '匹配',
-        member1.nickname || member1.member_no,
-        `与会员 ${member2.nickname || member2.member_no} 进行匹配，剩余匹配次数减1${notes ? `，备注: ${notes}` : ''}`
-      );
-
-      await recordOperationLog(
-        pool,
-        OperationType.MATCH,
-        TargetType.MEMBER,
-        memberId1,
-        userId,
-        detail1,
-        userEmail
-      );
-
-      // 记录会员2的匹配操作日志
-      const detail2 = buildOperationDetail(
-        '匹配',
-        member2.nickname || member2.member_no,
-        `与会员 ${member1.nickname || member1.member_no} 进行匹配，剩余匹配次数减1${notes ? `，备注: ${notes}` : ''}`
-      );
-
-      await recordOperationLog(
-        pool,
-        OperationType.MATCH,
-        TargetType.MEMBER,
-        memberId2,
-        userId,
-        detail2,
-        userEmail
-      );
 
       return NextResponse.json({
         success: true,

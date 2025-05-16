@@ -2,21 +2,46 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/mysql';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { recordOperationLog, OperationType, TargetType, buildOperationDetail } from '@/lib/log-operations';
+
+// 定义会员数据类型
+interface MemberData {
+  member_no: string;
+  nickname?: string;
+  wechat: string;
+  phone: string;
+  type?: string;
+  gender?: string;
+  birth_year?: number;
+  height?: number;
+  weight?: number;
+  education?: string;
+  occupation?: string;
+  province?: string;
+  city?: string;
+  district?: string;
+  target_area?: string;
+  house_car?: string;
+  hukou_province?: string;
+  hukou_city?: string;
+  children_plan?: string;
+  marriage_cert?: string;
+  marriage_history?: string;
+  sexual_orientation?: string;
+  self_description?: string;
+  partner_requirement?: string;
+}
 
 export async function POST(request: Request) {
   try {
     // 获取当前用户会话信息
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id || null;
-    const userEmail = (session?.user as any)?.email || null;
     
-    const data = await request.json();
+    const data = await request.json() as MemberData;
     
     // 验证必填字段
     const requiredFields = ['member_no', 'wechat', 'phone'];
     for (const field of requiredFields) {
-      if (!data[field]) {
+      if (!data[field as keyof MemberData]) {
         return NextResponse.json(
           { error: `${field} 不能为空` },
           { status: 400 }
@@ -27,8 +52,8 @@ export async function POST(request: Request) {
     // 转换数字类型字段
     const numberFields = ['birth_year', 'height', 'weight'];
     numberFields.forEach(field => {
-      if (data[field]) {
-        data[field] = parseInt(data[field]);
+      if (data[field as keyof MemberData]) {
+        data[field as 'birth_year' | 'height' | 'weight'] = parseInt(data[field as 'birth_year' | 'height' | 'weight'] as unknown as string);
       }
     });
 
@@ -75,25 +100,6 @@ export async function POST(request: Request) {
     
     // 获取新创建的会员ID
     const memberId = (result as any).insertId;
-    
-    // 记录操作日志
-    if (userId) {
-      const detail = buildOperationDetail(
-        '创建',
-        `${data.nickname || data.member_no}`,
-        `会员编号: ${data.member_no}, 微信: ${data.wechat}, 手机: ${data.phone}`
-      );
-      
-      await recordOperationLog(
-        pool,
-        OperationType.CREATE,
-        TargetType.MEMBER,
-        memberId,
-        userId,
-        detail,
-        userEmail
-      );
-    }
 
     return NextResponse.json({
       success: true,

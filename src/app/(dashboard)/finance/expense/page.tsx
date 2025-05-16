@@ -1,19 +1,17 @@
 'use client';
 
 import { useEffect, useState, useCallback, ChangeEvent } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { useAuth } from '@/contexts/auth-context';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
-import { Session } from '@supabase/auth-helpers-nextjs';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from 'next/navigation';
 import { useRefresh } from '@/hooks/use-refresh';
+import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/auth-context';
 
 // 输入事件处理类型定义
 type HandleInputChange = (e: ChangeEvent<HTMLInputElement>, field: string) => void;
@@ -39,6 +37,18 @@ interface ExpenseListResponse {
   total: number;
   totalPages: number;
   error?: string;
+}
+
+// 添加自定义Session接口
+interface SessionUser {
+  id: number;
+  email?: string;
+  name?: string;
+  role?: string;
+}
+
+interface Session {
+  user?: SessionUser;
 }
 
 export default function ExpensePage() {

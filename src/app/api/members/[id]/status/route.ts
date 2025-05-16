@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/mysql';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { recordOperationLog, OperationType, TargetType, buildOperationDetail } from '@/lib/log-operations';
 
 // 修改会员状态
 export async function POST(
@@ -19,8 +18,6 @@ export async function POST(
       );
     }
 
-    const userId = (session.user as any).id;
-    const userEmail = (session.user as any).email;
     const { status, reason } = await request.json() as { 
       status: 'ACTIVE' | 'REVOKED',
       reason?: string
@@ -37,7 +34,7 @@ export async function POST(
     // 获取会员ID
     const memberId = params.id;
     
-    // 先查询会员信息，用于记录日志
+    // 先查询会员信息
     const [members] = await pool.execute(
       'SELECT member_no, nickname, status FROM members WHERE id = ?',
       [memberId]
@@ -64,30 +61,6 @@ export async function POST(
     await pool.execute(
       'UPDATE members SET status = ?, updated_at = NOW() WHERE id = ?',
       [status, memberId]
-    );
-
-    // 确定操作类型
-    const operationType = status === 'ACTIVE'
-      ? OperationType.ACTIVATE
-      : OperationType.REVOKE;
-    
-    // 构建操作详情
-    const operationName = status === 'ACTIVE' ? '激活' : '撤销';
-    let detail = buildOperationDetail(
-      operationName,
-      member.nickname || member.member_no,
-      reason ? `原因: ${reason}` : undefined
-    );
-
-    // 记录操作日志
-    await recordOperationLog(
-      pool,
-      operationType,
-      TargetType.MEMBER,
-      memberId,
-      userId,
-      detail,
-      userEmail
     );
 
     return NextResponse.json({

@@ -409,7 +409,7 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
               </tr>
             </tbody>
           </table>
-        </div>
+                  </div>
       </div>
     </div>
   );

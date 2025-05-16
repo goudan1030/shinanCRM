@@ -4,9 +4,8 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, AppWindow, Database, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, AppWindow, Database } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useToast } from '@/components/ui/use-toast';
 
 import {
@@ -16,17 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { User as SupabaseUser } from '@supabase/supabase-js';
 import { LucideIcon } from 'lucide-react';
 import React from 'react';
-
-// 扩展 User 类型
-interface ExtendedUser extends SupabaseUser {
-  user_metadata: {
-    name?: string;
-    avatar_url?: string;
-  };
-}
 
 // 为子菜单项创建单独的类型
 interface NavigationChildItem {
@@ -120,10 +110,6 @@ export function Sidebar({ className }: SidebarProps) {
   const router = useRouter();
   const { session } = useAuth();
   const { toast } = useToast();
-  const supabase = createClientComponentClient();
-
-  // 添加类型断言
-  const user = session?.user as ExtendedUser | null;
 
   const handleLogout = async () => {
     try {
@@ -151,12 +137,25 @@ export function Sidebar({ className }: SidebarProps) {
   };
 
   const handleMenuClick = (href: string) => {
+    // 记录当前时间，用于调试性能问题
+    const startTime = performance.now();
+    
     // 如果是需要重定向的路径，则重定向到对应的子页面
-    if (href in menuRedirectMap) {
-      router.push(menuRedirectMap[href as keyof typeof menuRedirectMap]);
-    } else {
-      router.push(href);
-    }
+    const targetPath = href in menuRedirectMap ? 
+      menuRedirectMap[href as keyof typeof menuRedirectMap] : 
+      href;
+      
+    // 立即触发路由预载
+    router.prefetch(targetPath);
+    
+    // 延迟很小的时间，让UI先做出响应，减轻卡顿感
+    setTimeout(() => {
+      router.push(targetPath);
+      
+      // 记录导航耗时（仅供调试）
+      const endTime = performance.now();
+      console.log(`菜单导航耗时: ${endTime - startTime}ms`, targetPath);
+    }, 10);
   };
 
   const menus = [
@@ -261,21 +260,11 @@ export function Sidebar({ className }: SidebarProps) {
                 pathname === '/settings/profile' ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-50'
               )}>
                 <div className="w-[40px] h-[40px] flex items-center justify-center flex-shrink-0">
-                  {user?.user_metadata?.avatar_url ? (
-                    <Image
-                      src={user.user_metadata.avatar_url}
-                      alt="Avatar"
-                      width={16}
-                      height={16}
-                      className="rounded-full"
-                    />
-                  ) : (
-                    <UserCircle className="h-4 w-4 text-gray-500" />
-                  )}
+                  <UserCircle className="h-4 w-4 text-gray-500" />
                 </div>
                 <div className="w-0 group-hover/sidebar:w-auto overflow-hidden transition-all duration-300">
                   <p className="whitespace-nowrap group-hover/sidebar:ml-2 text-[13px] font-medium truncate">
-                    {user?.user_metadata?.name || user?.email}
+                    {session?.user?.email || '用户'}
                   </p>
                 </div>
               </div>

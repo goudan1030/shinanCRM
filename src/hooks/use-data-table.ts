@@ -1,9 +1,15 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+interface ApiResponse<T> {
+  data: T[];
+  totalCount: number;
+  success: boolean;
+  message?: string;
+}
 
 interface UseDataTableProps {
-  tableName: string;
+  apiEndpoint: string;
   pageSize?: number;
   defaultSort?: {
     column: string;
@@ -13,13 +19,12 @@ interface UseDataTableProps {
 }
 
 export function useDataTable<T>({ 
-  tableName, 
+  apiEndpoint, 
   pageSize = 25,
   defaultSort = { column: 'created_at', ascending: false },
   defaultFilters = {}
 }: UseDataTableProps) {
   const { toast } = useToast();
-  const supabase = createClientComponentClient();
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,74 +34,66 @@ export function useDataTable<T>({
 
   const fetchData = useCallback(async () => {
     try {
-      let query = supabase
-        .from(tableName)
-        .select('*', { count: 'exact' })
-        .order(defaultSort.column, { ascending: defaultSort.ascending })
-        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
-
-      console.log('构建查询前的参数:', {
-        tableName,
-        currentPage,
-        pageSize,
-        filters,
-        defaultSort
-      });
-
-      // 应用过滤条件
+      setLoading(true);
+      
+      // 构建查询参数
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', currentPage.toString());
+      queryParams.append('pageSize', pageSize.toString());
+      queryParams.append('sortColumn', defaultSort.column);
+      queryParams.append('sortDirection', defaultSort.ascending ? 'asc' : 'desc');
+      
+      // 添加过滤条件
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          console.log('应用筛选条件:', {
-            字段: key,
-            值: value,
-            类型: typeof value
-          });
-
-          if (typeof value === 'string' && value.includes('%')) {
-            query = query.ilike(key, value);
-            console.log(`应用模糊匹配: ${key} ILIKE ${value}`);
-          } else if (Array.isArray(value) && value.length === 2) {
-            // 处理日期范围
-            query = query.gte(key, value[0]).lte(key, value[1]);
-            console.log(`应用日期范围: ${key} 从 ${value[0]} 到 ${value[1]}`);
+        if (value !== undefined && value !== null && value !== '') {
+          if (Array.isArray(value)) {
+            // 处理日期范围等数组类型数据
+            queryParams.append(`${key}From`, value[0]?.toString() || '');
+            queryParams.append(`${key}To`, value[1]?.toString() || '');
           } else {
-            query = query.eq(key, value);
-            console.log(`应用精确匹配: ${key} = ${value}`);
+            queryParams.append(key, value.toString());
           }
         }
       });
 
       console.log('执行查询前的最终参数:', {
-        SQL: query.toSQL(),
-        过滤条件: filters
+        apiEndpoint,
+        查询参数: Object.fromEntries(queryParams.entries())
       });
 
-      const { data: result, error, count } = await query;
-
-      if (error) throw error;
-
-      console.log('查询结果:', {
-        总数: count,
-        当前页数据量: result?.length,
-        第一条数据: result?.[0]
+      const response = await fetch(`${apiEndpoint}?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
-      setData(result || []);
-      if (count !== null) {
-        setTotalCount(count);
-        setTotalPages(Math.ceil(count / pageSize));
+      if (!response.ok) {
+        throw new Error(`API请求错误: ${response.status}`);
       }
+
+      const result = await response.json() as ApiResponse<T>;
+      
+      console.log('查询结果:', {
+        总数: result.totalCount,
+        当前页数据量: result.data?.length,
+        第一条数据: result.data?.[0]
+      });
+
+      setData(result.data || []);
+      setTotalCount(result.totalCount || 0);
+      setTotalPages(Math.ceil((result.totalCount || 0) / pageSize));
     } catch (error) {
-      console.error(`获取${tableName}数据失败:`, error);
+      console.error(`获取数据失败:`, error);
       toast({
         variant: 'destructive',
-        title: `获取${tableName}数据失败`,
+        title: `获取数据失败`,
         description: error instanceof Error ? error.message : '操作失败，请重试'
       });
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filters, pageSize, supabase, tableName, toast, defaultSort]);
+  }, [currentPage, filters, pageSize, apiEndpoint, toast, defaultSort]);
 
   const updateFilters = useCallback((newFilters: Record<string, unknown>) => {
     console.log('筛选条件变化:', newFilters);

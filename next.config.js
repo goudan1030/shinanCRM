@@ -46,10 +46,11 @@ const nextConfig = {
     } : false,
   },
   
-  // 构建优化 - 移除不再支持的选项
+  // 构建优化 - 保留支持的实验性功能
   experimental: {
-    optimizeCss: true, // CSS优化
-    optimizeServerReact: true, // 服务端React优化
+    // 部分实验性功能可能需要特定版本支持，如有问题请注释掉
+    // optimizeCss: true, // CSS优化
+    // optimizeServerReact: true, // 服务端React优化
     serverActions: {
       bodySizeLimit: '2mb', // 服务器动作的请求体大小限制
     },
@@ -61,7 +62,13 @@ const nextConfig = {
       'date-fns',
     ],
     // 增加静态资源预加载
-    optimisticClientCache: true,
+    // optimisticClientCache: true, // 此功能可能不被支持
+    // 添加Prefetch优化，通过预请求提高导航性能
+    // prefetchThreshold: 1000, // 这个选项在当前版本不支持
+    // 删除只有canary版本支持的ppr功能
+    // ppr: true, 
+    // 为客户端导航添加滑动动画
+    scrollRestoration: true, // 启用滚动恢复功能
   },
   
   // 配置webpack

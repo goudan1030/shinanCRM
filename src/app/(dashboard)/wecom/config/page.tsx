@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +30,6 @@ export default function WecomConfigPage() {
   const { session, isLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const supabase = createClientComponentClient();
   const [isConfigLoading, setIsConfigLoading] = useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({    

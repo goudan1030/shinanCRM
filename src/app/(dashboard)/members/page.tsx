@@ -9,11 +9,22 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Session } from '@supabase/auth-helpers-nextjs';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense } from 'react';
 import { useDataTable } from '@/hooks/use-data-table';
 import { Copy, CheckCircle2 } from 'lucide-react';
+
+// 自定义会话类型
+interface SessionUser {
+  id: number;
+  email?: string;
+  name?: string;
+  role?: string;
+}
+
+interface Session {
+  user?: SessionUser;
+}
 
 interface Member {
   id: string;

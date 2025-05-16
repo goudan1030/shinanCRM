@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/mysql';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { recordOperationLog, OperationType, TargetType, buildOperationDetail } from '@/lib/log-operations';
 
 // 会员升级
 export async function POST(
@@ -19,8 +18,6 @@ export async function POST(
       );
     }
 
-    const userId = (session.user as any).id;
-    const userEmail = (session.user as any).email;
     const { type, remainingMatches, reason } = await request.json() as { 
       type: 'NORMAL' | 'ANNUAL',
       remainingMatches?: number,
@@ -38,7 +35,7 @@ export async function POST(
     // 获取会员ID
     const memberId = params.id;
     
-    // 先查询会员信息，用于记录日志
+    // 先查询会员信息
     const [members] = await pool.execute(
       'SELECT member_no, nickname, type, remaining_matches FROM members WHERE id = ?',
       [memberId]
@@ -59,24 +56,6 @@ export async function POST(
       await pool.execute(
         'UPDATE members SET remaining_matches = ?, updated_at = NOW() WHERE id = ?',
         [remainingMatches, memberId]
-      );
-      
-      // 构建操作详情
-      const detail = buildOperationDetail(
-        '调整匹配次数',
-        member.nickname || member.member_no,
-        `从 ${member.remaining_matches || 0} 次调整到 ${remainingMatches} 次${reason ? `，原因: ${reason}` : ''}`
-      );
-
-      // 记录操作日志
-      await recordOperationLog(
-        pool,
-        OperationType.UPGRADE,
-        TargetType.MEMBER,
-        memberId,
-        userId,
-        detail,
-        userEmail
       );
 
       return NextResponse.json({
@@ -106,26 +85,6 @@ export async function POST(
     await pool.execute(
       'UPDATE members SET type = ?, remaining_matches = ?, updated_at = NOW() WHERE id = ?',
       [type, newRemainingMatches, memberId]
-    );
-    
-    // 构建操作详情
-    const fromType = member.type === 'NORMAL' ? '普通会员' : '年费会员';
-    const toType = type === 'NORMAL' ? '普通会员' : '年费会员';
-    const detail = buildOperationDetail(
-      '升级',
-      member.nickname || member.member_no,
-      `从 ${fromType} 升级为 ${toType}，匹配次数从 ${member.remaining_matches || 0} 次调整到 ${newRemainingMatches} 次${reason ? `，原因: ${reason}` : ''}`
-    );
-
-    // 记录操作日志
-    await recordOperationLog(
-      pool,
-      OperationType.UPGRADE,
-      TargetType.MEMBER,
-      memberId,
-      userId,
-      detail,
-      userEmail
     );
 
     return NextResponse.json({

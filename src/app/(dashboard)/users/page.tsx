@@ -9,7 +9,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
-import { Session } from '@supabase/auth-helpers-nextjs';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense } from 'react';
 import Image from 'next/image';
@@ -35,6 +34,18 @@ interface User {
   refresh_count: number;
   member_type: '普通会员' | '一次性会员' | '年费会员';
   [key: string]: string | number | null;
+}
+
+// 添加自定义Session类型
+interface SessionUser {
+  id: number;
+  email?: string;
+  name?: string;
+  role?: string;
+}
+
+interface Session {
+  user?: SessionUser;
 }
 
 // 定义可用的列

@@ -101,21 +101,7 @@ src/
 
 创建 `.env.local` 文件并配置以下环境变量：
 
-```env
-# 数据库配置
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=h5_cloud_user
-DB_PASSWORD=mc72TNcMmy6HCybH
-DB_NAME=h5_cloud_db
 
-# Supabase配置
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-
-# JWT配置
-JWT_SECRET=your-jwt-secret
-```
 
 ### JWT认证系统
 

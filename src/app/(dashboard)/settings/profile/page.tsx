@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { Card } from '@/components/ui/card';
@@ -42,7 +41,6 @@ interface PasswordForm {
 
 export default function ProfilePage() {
   const { session } = useAuth() as { session: ExtendedSession | null };
-  const supabase = createClientComponentClient();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

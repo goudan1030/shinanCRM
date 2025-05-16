@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { memo } from 'react';
 
 interface ThreeColumnLayoutProps {
   children: React.ReactNode;
@@ -10,7 +11,8 @@ interface ThreeColumnLayoutProps {
   useThreeColumns?: boolean;
 }
 
-export function ThreeColumnLayout({
+// 使用memo优化组件，减少不必要的重渲染
+export const ThreeColumnLayout = memo(function ThreeColumnLayout({
   children,
   sidebarContent,
   middleContent,
@@ -24,10 +26,21 @@ export function ThreeColumnLayout({
         {sidebarContent}
       </div>
 
-      {/* 主内容区域 - 添加了适当的左侧边距 */}
-      <div className="relative ml-[60px]">
+      {/* 中间栏容器 - 仅在三栏布局时显示 */}
+      {useThreeColumns && middleContent && (
+        <div className="fixed inset-y-0 left-[57px] z-[999] w-[240px]">
+          {middleContent}
+        </div>
+      )}
+
+      {/* 主内容区域 - 根据是否有中间栏调整左侧边距 */}
+      <div className={cn(
+        "relative", 
+        useThreeColumns && middleContent ? "ml-[297px]" : "ml-[60px]",
+        "transition-all duration-100 ease-in-out" // 添加过渡效果
+      )}>
         {children}
       </div>
     </div>
   );
-}
+});

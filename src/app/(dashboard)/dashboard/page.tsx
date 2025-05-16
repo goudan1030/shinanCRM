@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 interface TrendData {
   month: string;
@@ -25,7 +24,6 @@ interface DashboardData {
 export default function DashboardPage() {
   const { session, isLoading } = useAuth();
   const router = useRouter();
-  const supabase = createClientComponentClient();
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     totalMembers: 0,
     monthlyIncome: 0,
@@ -132,7 +130,7 @@ export default function DashboardPage() {
     if (session) {
       fetchDashboardData();
     }
-  }, [session, supabase]);
+  }, [session]);
 
   // 处理"当月待结算金额"卡片点击事件
   const handleUnsettledCardClick = () => {

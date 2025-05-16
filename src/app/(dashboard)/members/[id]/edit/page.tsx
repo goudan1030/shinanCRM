@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -44,7 +43,6 @@ interface SubmitData {
 export default function EditMemberPage() {
   const router = useRouter();
   const params = useParams();
-  const supabase = createClientComponentClient();
   const { toast } = useToast();
   const { session, isLoading } = useAuth();
   const [loading, setLoading] = useState(false);

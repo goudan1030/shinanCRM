@@ -1,16 +1,28 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/ui/use-toast';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Pagination } from '@/components/ui/pagination';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Link from 'next/link';
-import { Session } from '@supabase/auth-helpers-nextjs';
+
+// 自定义会话类型
+interface SessionUser {
+  id: number;
+  email?: string;
+  name?: string;
+  role?: string;
+}
+
+interface SessionType {
+  user?: SessionUser;
+}
 
 interface IncomeRecord {
   id: string;
@@ -25,8 +37,7 @@ interface IncomeRecord {
 
 export default function IncomePage() {
   const { toast } = useToast();
-  const { session, isLoading } = useAuth() as { session: Session | null, isLoading: boolean };
-  const supabase = createClientComponentClient();
+  const { session, isLoading } = useAuth() as { session: SessionType | null, isLoading: boolean };
   const [records, setRecords] = useState<IncomeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -510,7 +521,7 @@ export default function IncomePage() {
                   
                   // 延迟一点时间后重新获取数据，确保后端更新生效
                   setTimeout(() => {
-                    fetchRecords();
+                  fetchRecords();
                   }, 300);
                 } catch (error) {
                   console.error('删除收入记录失败:', error);
@@ -660,7 +671,7 @@ export default function IncomePage() {
                   
                   // 延迟一点时间后重新获取数据，确保后端更新生效
                   setTimeout(() => {
-                    fetchRecords();
+                  fetchRecords();
                   }, 300);
                 } catch (error) {
                   console.error('更新收入记录失败:', error);

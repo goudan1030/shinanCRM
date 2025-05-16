@@ -2,19 +2,30 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import type { AuthState } from '@/types/auth';
+import type { AuthState, User } from '@/types/auth';
 
-const initialState: AuthState = {
+// 定义简化的会话类型，用于本地状态管理
+interface SimpleSession {
+  user: User;
+}
+
+// 定义API响应类型
+interface SessionApiResponse {
+  user: User | null;
+}
+
+// 修改初始状态类型适配简化会话类型
+const initialState: Omit<AuthState, 'session'> & { session: SimpleSession | null } = {
   session: null,
   isLoading: true,
   error: null,
   operatorId: null,
 };
 
-const AuthContext = createContext<AuthState>(initialState);
+const AuthContext = createContext<typeof initialState>(initialState);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>(initialState);
+  const [state, setState] = useState(initialState);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -27,52 +38,90 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const checkSession = async () => {
       try {
-        // 如果已经在登录页而且还在加载中，不要再次检查会话
-        if (isLoginPage && state.isLoading) {
-          setState(prev => ({ ...prev, isLoading: false }));
-          return;
-        }
-
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include',
-          cache: 'no-store',
-          signal: controller.signal
-        });
-        
-        if (!isMounted) return;
-        
-        if (!response.ok) {
-          throw new Error('会话检查失败');
-        }
-        
-        const data = await response.json();
-        
-        if (!isMounted) return;
-        
-        if (data.user) {
-          setState(prev => ({
-            ...prev,
-            session: {
-              user: data.user
-            },
-            isLoading: false,
-            operatorId: data.user.id
-          }));
+        // 如果已经在登录页面，标记为非加载状态但不立即重定向
+        if (isLoginPage) {
+          const response = await fetch('/api/auth/session', {
+            credentials: 'include',
+            signal: controller.signal,
+            headers: {
+              'Cache-Control': 'no-store, no-cache, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          });
           
-          // 如果在登录页且有有效会话，重定向到仪表板
-          if (isLoginPage) {
-            // 检查是否有原始URL需要返回
-            const params = new URLSearchParams(window.location.search);
-            const returnUrl = params.get('from') || '/dashboard';
-            router.push(returnUrl);
+          if (!isMounted) return;
+          
+          if (!response.ok) {
+            setState(prev => ({ ...prev, isLoading: false }));
+            return;
+          }
+          
+          const data = await response.json() as SessionApiResponse;
+          
+          if (!isMounted) return;
+          
+          if (data.user) {
+            // 设置会话状态
+            setState(prev => ({
+              ...prev,
+              session: {
+                user: data.user
+              },
+              isLoading: false,
+              operatorId: String(data.user.id)
+            }));
+            
+            // 在登录页且有会话时，只有在直接访问登录页（没有重定向参数）时才重定向到仪表板
+            if (typeof window !== 'undefined') {
+              const searchParams = new URLSearchParams(window.location.search);
+              if (!searchParams.has('from')) {
+                console.log('有效会话，从登录页重定向到仪表板');
+                router.push('/dashboard');
+              }
+            }
+          } else {
+            // 如果没有会话，只需更新状态
+            setState(prev => ({ ...prev, session: null, operatorId: null, isLoading: false }));
           }
         } else {
-          setState(prev => ({ ...prev, session: null, operatorId: null, isLoading: false }));
+          // 非登录页面的会话检查
+          const response = await fetch('/api/auth/session', {
+            credentials: 'include',
+            signal: controller.signal,
+            headers: {
+              'Cache-Control': 'no-store, no-cache, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          });
           
-          // 仅当当前页面不是登录页且不在公开路径时重定向
-          if (!isLoginPage && !isPublicPath(pathname)) {
-            const returnPath = encodeURIComponent(pathname);
-            router.push(`/login?from=${returnPath}`);
+          if (!isMounted) return;
+          
+          if (!response.ok) {
+            throw new Error('会话检查失败');
+          }
+          
+          const data = await response.json() as SessionApiResponse;
+          
+          if (!isMounted) return;
+          
+          if (data.user) {
+            setState(prev => ({
+              ...prev,
+              session: {
+                user: data.user
+              },
+              isLoading: false,
+              operatorId: String(data.user.id)
+            }));
+          } else {
+            setState(prev => ({ ...prev, session: null, operatorId: null, isLoading: false }));
+            
+            // 仅当访问受保护的路径时重定向到登录页
+            if (!isPublicPath(pathname)) {
+              const returnPath = encodeURIComponent(pathname);
+              console.log('无效会话，从受保护页面重定向到登录页');
+              router.push(`/login?from=${returnPath}`);
+            }
           }
         }
       } catch (error) {
@@ -86,8 +135,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           error: error as Error 
         }));
         
-        // 仅在不是登录页面时重定向
+        // 仅在非登录页面且访问受保护的路径时重定向
         if (!isLoginPage && !isPublicPath(pathname)) {
+          console.log('会话检查异常，重定向到登录页');
           router.push('/login');
         }
       }
@@ -100,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
       controller.abort();
     };
-  }, [pathname, router, isLoginPage]); // 添加isLoginPage作为依赖项
+  }, [pathname, router, isLoginPage]); 
 
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
 }
