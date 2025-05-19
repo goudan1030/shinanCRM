@@ -49,6 +49,18 @@ export interface UserProfileUpdate {
   [key: string]: any;
 }
 
+// 设置默认环境变量（在未找到.env.local的情况下使用）
+if (!process.env.DB_HOST) {
+  console.warn('警告: 找不到.env.local文件，使用默认环境变量');
+  process.env.DB_HOST = '8.149.244.105';
+  process.env.DB_PORT = '3306';
+  process.env.DB_USER = 'h5_cloud_user';
+  process.env.DB_PASSWORD = 'mc72TNcMmy6HCybH';
+  process.env.DB_NAME = 'h5_cloud_db';
+  process.env.JWT_SECRET = 'sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe';
+  process.env.SERVER_URL = 'http://8.149.244.105:8888/';
+}
+
 // 检查必要的环境变量
 const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -81,6 +93,15 @@ const dbConfig: PoolOptions = {
   // 查询选项
   namedPlaceholders: true          // 支持命名参数，提高安全性和可读性
 };
+
+// 打印数据库配置信息（不包含敏感信息）
+console.log('数据库配置信息:', {
+  host: dbConfig.host,
+  port: dbConfig.port,
+  user: dbConfig.user,
+  database: dbConfig.database,
+  connectionLimit: dbConfig.connectionLimit
+});
 
 /**
  * 创建单例连接池
