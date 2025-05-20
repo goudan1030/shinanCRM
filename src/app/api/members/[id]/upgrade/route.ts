@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/mysql';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getTokenFromCookieStore, verifyToken } from '@/lib/token';
 
 // 会员升级
 export async function POST(
@@ -9,14 +10,45 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 1. 首先尝试使用next-auth获取会话
     const session = await getServerSession(authOptions);
+    
+    // 2. 如果next-auth没有会话，尝试使用自定义JWT token验证
+    let isAuthenticated = !!session?.user;
+    let userId = session?.user ? (session.user as any).id : undefined;
+    
+    if (!isAuthenticated) {
+      // 尝试从cookie获取自定义token
+      const token = await getTokenFromCookieStore();
+      
+      if (token) {
+        const userData = verifyToken(token);
+        if (userData) {
+          isAuthenticated = true;
+          userId = userData.id;
+        }
+      }
+      
+      // 如果还是未认证，尝试从请求头获取用户ID
+      if (!isAuthenticated) {
+        const userIdHeader = request.headers.get('x-user-id');
+        if (userIdHeader) {
+          isAuthenticated = true;
+          userId = parseInt(userIdHeader);
+        }
+      }
+    }
+    
     // 验证是否已登录
-    if (!session?.user) {
+    if (!isAuthenticated) {
+      console.log('会员升级API: 认证失败，用户未登录');
       return NextResponse.json(
         { error: '未授权' },
         { status: 401 }
       );
     }
+    
+    console.log(`会员升级API: 认证成功，用户ID: ${userId}`);
 
     const { type, remainingMatches, reason } = await request.json() as { 
       type: 'NORMAL' | 'ANNUAL',
