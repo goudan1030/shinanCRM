@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build --no-lint",
+    "postbuild": "node scripts/fix-netlify-deploy.js",
     "start": "next start",
     "lint": "next lint",
     "db:optimize": "node scripts/run-db-optimize.js",
@@ -18,7 +19,7 @@
     "setup:env": "node scripts/setup-env.js",
     "optimize:images": "node scripts/optimize-images.js",
     "build:analyze": "ANALYZE=true next build",
-    "build:prod": "npm run optimize:images && next build",
+    "build:prod": "npm run optimize:images && next build && node scripts/fix-netlify-deploy.js",
     "start:prod": "next start -p 3000 --hostname 0.0.0.0 --cluster-workers auto",
     "test:export": "node scripts/test-export.js",
     "perf:db-optimize": "ts-node scripts/db-optimize.ts",
@@ -29,7 +30,9 @@
     "perf:check": "next build --profile && next start",
     "perf:analyze-bundle": "ANALYZE=true next build",
     "optimize:components": "node scripts/analyze-component-render.js",
-    "optimize:lazy-load": "ts-node scripts/detect-lazy-load-candidates.ts"
+    "optimize:lazy-load": "ts-node scripts/detect-lazy-load-candidates.ts",
+    "deploy": "npm run build && node scripts/fix-netlify-deploy.js",
+    "deploy:netlify": "npm run build && node scripts/fix-netlify-deploy.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -54,6 +57,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "dotenv": "^16.4.7",
+    "fs-extra": "^11.2.0",
     "jsonwebtoken": "^9.0.2",
     "lru-cache": "^11.1.0",
     "lucide-react": "^0.474.0",

@@ -218,6 +218,7 @@ export function Sidebar({ className }: SidebarProps) {
               height={24}
               className="rounded-md"
               priority
+              unoptimized
             />
           </div>
           <div className="w-0 group-hover/sidebar:w-auto overflow-hidden transition-all duration-300">

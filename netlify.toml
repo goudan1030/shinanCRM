@@ -10,13 +10,35 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# 添加重定向规则
+# 为静态资源添加特定的处理规则
+[[redirects]]
+  from = "/logo.svg"
+  to = "/logo.svg"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/public/*"
+  to = "/:splat"
+  status = 200
+
+# 修改为支持Next.js的重定向规则
+[[redirects]]
+  from = "/_next/*"
+  to = "/_next/:splat"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
+  
 # 添加 headers 配置
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    
 [[headers]]
   for = "/*"
   [headers.values]

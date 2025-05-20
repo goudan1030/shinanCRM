@@ -7,8 +7,13 @@ const nextConfig = {
   // 禁用服务端组件重渲染以提高性能
   reactStrictMode: false,
   
+  // 资源前缀配置，以支持子路径部署
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/' : '',
+  
   // 先进的图片优化
   images: {
+    domains: ['8.149.244.105'],
+    unoptimized: true, // 在生产环境禁用图片优化以避免路径问题
     formats: ['image/avif', 'image/webp'], // 支持现代图片格式
     // 使用remotePatterns替代domains
     remotePatterns: [

@@ -87,6 +87,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                   height={36}
                   className="rounded-md"
                   priority
+                  unoptimized
                 />
               </div>
               <span className="sr-only">CRM系统</span>
