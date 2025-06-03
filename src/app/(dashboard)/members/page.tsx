@@ -220,6 +220,7 @@ function MembersPageContent() {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [copiedMemberId, setCopiedMemberId] = useState<string | null>(null);
+  const [copiedLinkMemberId, setCopiedLinkMemberId] = useState<string | null>(null);
 
   // 分页计算
   const totalPages = Math.ceil(total / pageSize);
@@ -911,6 +912,62 @@ function MembersPageContent() {
     }
   }, [getChildrenPlanText, getEducationText, getHouseCarText, getMarriageCertText, getMarriageHistoryText, getSexualOrientationText, toast]);
 
+  // 会员链接复制功能
+  const copyMemberLink = useCallback(async (member: Member) => {
+    try {
+      // 构建会员H5链接
+      const memberLink = `https://m.xinghun.info/member/${member.member_no}`;
+      
+      // 复制到剪贴板
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(memberLink);
+        setCopiedLinkMemberId(member.id);
+        setTimeout(() => setCopiedLinkMemberId(null), 2000);
+        toast({
+          title: "复制成功",
+          description: "会员链接已复制到剪贴板"
+        });
+      } else {
+        // 浏览器不支持clipboard API的备用方案
+        const textArea = document.createElement('textarea');
+        textArea.value = memberLink;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            setCopiedLinkMemberId(member.id);
+            setTimeout(() => setCopiedLinkMemberId(null), 2000);
+            toast({
+              title: "复制成功",
+              description: "会员链接已复制到剪贴板"
+            });
+          } else {
+            throw new Error('复制失败');
+          }
+        } catch (err) {
+          console.error('复制失败:', err);
+          toast({
+            variant: 'destructive',
+            title: "复制失败",
+            description: "无法复制到剪贴板"
+          });
+        }
+        
+        document.body.removeChild(textArea);
+      }
+    } catch (error) {
+      console.error('复制会员链接失败:', error);
+      toast({
+        variant: 'destructive',
+        title: "复制失败",
+        description: error instanceof Error ? error.message : "未知错误"
+      });
+    }
+  }, [toast]);
+
   // 修改清空筛选函数，同时清除 localStorage
   const clearFilters = () => {
     setStatusFilter(null);
@@ -1478,6 +1535,25 @@ function MembersPageContent() {
                                   <span className="flex items-center gap-1">
                                     <Copy className="w-3 h-3" />
                                     复制
+                                  </span>
+                                )}
+                              </Button>
+                              <div className="h-4 border-r border-gray-300"></div>
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="h-7 px-2 py-0 text-xs border border-gray-300 hover:bg-gray-50 shadow-sm"
+                                onClick={() => copyMemberLink(member)}
+                              >
+                                {copiedLinkMemberId === member.id ? (
+                                  <span className="flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    已复制链接
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1">
+                                    <Copy className="w-3 h-3" />
+                                    复制链接
                                   </span>
                                 )}
                               </Button>
