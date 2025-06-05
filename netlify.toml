@@ -1,4 +1,4 @@
-# Netlify配置 - 自动生成
+# Netlify配置
 [build]
   publish = ".next"
   command = "npm run build"
@@ -15,16 +15,6 @@
   DB_NAME = "h5_cloud_db"
   JWT_SECRET = "sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe"
 
-# Netlify Functions配置
-[functions]
-  directory = ".netlify/functions"
-  node_bundler = "esbuild"
-
-# API函数特殊配置
-[[functions]]
-  path = "/api/*"
-  included_files = ["lib/**", "components/**"]
-
 # 静态资源处理规则
 [[redirects]]
   from = "/logo.svg"
@@ -40,12 +30,6 @@
 [[redirects]]
   from = "/_next/*"
   to = "/_next/:splat"
-  status = 200
-
-# API路由重定向
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
   status = 200
 
 [[redirects]]
