@@ -270,10 +270,26 @@ export default function NewMemberPage() {
       router.push('/members');
     } catch (error) {
       console.error('提交失败，错误详情:', error);
+      
+      // 提供更友好的错误提示
+      let errorMessage = '保存失败，请重试';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('server configuration')) {
+          errorMessage = '服务器配置问题，请稍后重试或联系管理员';
+        } else if (error.message.includes('Database connection')) {
+          errorMessage = '数据库连接失败，请检查网络连接';
+        } else if (error.message.includes('网络')) {
+          errorMessage = '网络连接异常，请检查网络后重试';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         variant: 'destructive',
         title: '创建会员失败',
-        description: error instanceof Error ? error.message : '保存失败，请重试。如果问题持续存在，请联系管理员'
+        description: errorMessage + '。如果问题持续存在，请联系管理员'
       });
     } finally {
       setLoading(false);
