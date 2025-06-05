@@ -1,27 +1,42 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery, testNetlifyConnection } from '@/lib/database-netlify';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
 // 获取文章列表
 export async function GET(request: Request) {
   try {
+    console.log('=== 开始获取文章列表 ===');
+    
+    // 首先测试数据库连接
+    const dbConnected = await testNetlifyConnection();
+    if (!dbConnected) {
+      throw new Error('数据库连接失败');
+    }
+    
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const offset = (page - 1) * pageSize;
 
+    console.log('查询参数:', { page, pageSize });
+
     // 获取总数
-    const [countResult] = await pool.execute(
+    console.log('获取文章总数...');
+    const [countResult] = await executeQuery(
       'SELECT COUNT(*) as total FROM articles'
     );
-    const total = countResult[0].total;
+    const total = (countResult as any[])[0].total;
+    console.log('文章总数:', total);
 
     // 获取分页数据
-    const [rows] = await pool.execute(
+    console.log('获取文章列表...');
+    const [rows] = await executeQuery(
       'SELECT * FROM articles ORDER BY is_top DESC, sort_order DESC, created_at DESC LIMIT ? OFFSET ?',
       [pageSize, offset]
     );
+    
+    console.log('✓ 文章列表查询成功，返回', (rows as any[]).length, '条记录');
     
     return NextResponse.json({
       success: true,
@@ -31,8 +46,32 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('获取文章列表失败:', error);
+    
+    // 详细的错误日志
+    if (error instanceof Error) {
+      console.error('错误详情:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // 特殊处理数据库连接错误
+      if (error.message.includes('connect') || error.message.includes('ECONNREFUSED')) {
+        return NextResponse.json(
+          { 
+            error: 'Database connection failed. Please check server configuration.',
+            details: '数据库连接失败，请检查服务器配置'
+          },
+          { status: 503 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { error: '获取文章列表失败' },
+      { 
+        error: '获取文章列表失败',
+        details: error instanceof Error ? error.message : '服务器内部错误'
+      },
       { status: 500 }
     );
   }
@@ -41,7 +80,22 @@ export async function GET(request: Request) {
 // 新增/更新文章
 export async function POST(request: Request) {
   try {
+    console.log('=== 开始保存文章 ===');
+    
+    // 首先测试数据库连接
+    const dbConnected = await testNetlifyConnection();
+    if (!dbConnected) {
+      throw new Error('数据库连接失败');
+    }
+    
     const data = await request.json();
+    
+    console.log('文章数据:', { 
+      id: data.id, 
+      title: data.title,
+      hasContent: !!data.content,
+      hasCoverUrl: !!data.cover_url 
+    });
     
     // 检查图片数据是否存在
     if (!data.cover_url) {
@@ -70,6 +124,7 @@ export async function POST(request: Request) {
                         'image/jpeg';
         
         data.cover_url = `data:${mimeType};base64,${base64Image}`;
+        console.log('✓ 图片转换为Base64成功');
       } catch (error) {
         console.error('图片读取失败:', error);
         return NextResponse.json(
@@ -89,7 +144,8 @@ export async function POST(request: Request) {
 
     if (data.id) {
       // 更新文章
-      const [result] = await pool.execute(
+      console.log('更新文章:', data.id);
+      await executeQuery(
         `UPDATE articles SET 
           title = ?,
           cover_url = ?,
@@ -113,11 +169,13 @@ export async function POST(request: Request) {
           data.id
         ]
       );
+      console.log('✓ 文章更新成功');
       return NextResponse.json({ success: true });
     }
 
     // 新增文章
-    const [result] = await pool.execute(
+    console.log('新增文章:', data.title);
+    const [result] = await executeQuery(
       `INSERT INTO articles (
         title, cover_url, content, summary, link_url,
         is_hidden, is_top, sort_order, created_at, updated_at
@@ -134,12 +192,28 @@ export async function POST(request: Request) {
       ]
     );
 
+    const insertId = (result as any).insertId;
+    console.log('✓ 文章创建成功:', { insertId });
+
     return NextResponse.json({ success: true });
 
   } catch (error) {
     console.error('保存文章失败:', error);
+    
+    // 详细的错误日志
+    if (error instanceof Error) {
+      console.error('错误详情:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+    }
+    
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : '保存失败' },
+      { 
+        error: error instanceof Error ? error.message : '保存失败',
+        details: error instanceof Error ? error.message : '服务器内部错误'
+      },
       { status: 500 }
     );
   }

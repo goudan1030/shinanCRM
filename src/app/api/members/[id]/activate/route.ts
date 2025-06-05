@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/mysql';
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const params = await context.params;
   try {
     const data = await request.json() as { reason?: string; notes?: string };
     

@@ -3,7 +3,11 @@ import pool from '../../../../../lib/mysql';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { membersCache } from '../../../../../lib/cache';
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const params = await context.params;
   const startTime = Date.now(); // 记录开始时间
   
   try {

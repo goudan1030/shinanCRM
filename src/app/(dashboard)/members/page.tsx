@@ -63,6 +63,7 @@ interface Member {
   marriage_history: string;
   sexual_orientation: string;
   self_description: string;
+  wechat_qrcode: string;
   [key: string]: string | number;
 }
 
@@ -71,13 +72,14 @@ type ColumnKey = 'member_no' | 'wechat' | 'phone' | 'type' | 'status' | 'gender'
   'height' | 'weight' | 'education' | 'occupation' | 'province' | 'city' | 'district' | 
   'target_area' | 'house_car' | 'hukou_province' | 'hukou_city' | 'children_plan' | 
   'marriage_cert' | 'marriage_history' | 'sexual_orientation' | 'remaining_matches' | 
-  'created_at' | 'actions' | 'self_description' | 'partner_requirement';
+  'created_at' | 'actions' | 'self_description' | 'partner_requirement' | 'wechat_qrcode';
 
 // 修改 availableColumns 的类型
 const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'member_no', label: '会员编号' },
   { key: 'wechat', label: '微信号' },
   { key: 'phone', label: '手机号' },
+  { key: 'wechat_qrcode', label: '微信二维码' },
   { key: 'type', label: '会员类型' },
   { key: 'status', label: '状态' },
   { key: 'gender', label: '性别' },
@@ -198,6 +200,10 @@ function MembersPageContent() {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [selectedMemberType, setSelectedMemberType] = useState<string | null>(null);
   const [upgradeType, setUpgradeType] = useState<'ONE_TIME' | 'ANNUAL'>('ONE_TIME');
+  
+  // 图片预览相关状态
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
   const [upgradeDate, setUpgradeDate] = useState(new Date());
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   
@@ -407,34 +413,52 @@ function MembersPageContent() {
   };
 
   const getMarriageHistoryText = (marriageHistory: string) => {
+    if (!marriageHistory) return '未填写';
+    
     switch (marriageHistory) {
       case 'YES':
         return '有婚史';
       case 'NO':
         return '无婚史';
+      case 'HAS_HISTORY':
+        return '有婚史';
+      case 'NO_HISTORY':
+        return '无婚史';
       default:
-        return '未知';
+        return marriageHistory; // 直接显示原始值，保持向后兼容
     }
   };
 
   const getEducationText = (education: string) => {
+    if (!education) return '未填写';
+    
     switch (education) {
+      case 'PRIMARY_SCHOOL':
+        return '小学';
+      case 'MIDDLE_SCHOOL':
+        return '初中';
       case 'HIGH_SCHOOL':
         return '高中';
+      case 'JUNIOR_COLLEGE':
+        return '专科';
       case 'COLLEGE':
         return '大专';
       case 'BACHELOR':
         return '本科';
       case 'MASTER':
         return '硕士';
+      case 'DOCTOR':
+        return '博士';
       case 'PHD':
         return '博士';
       default:
-        return '未知';
+        return education; // 直接显示原始值，保持向后兼容
     }
   };
 
   const getSexualOrientationText = (sexualOrientation: string) => {
+    if (!sexualOrientation) return '未填写';
+    
     switch (sexualOrientation) {
       case 'STRAIGHT_MALE':
         return '直男';
@@ -446,9 +470,41 @@ function MembersPageContent() {
         return 'GAY';
       case 'ASEXUAL':
         return '无性恋';
+      case 'STRAIGHT':
+        return '异性恋';
+      case 'HOMOSEXUAL':
+        return '同性恋';
+      case 'BISEXUAL':
+        return '双性恋';
       default:
-        return '未知';
+        return sexualOrientation; // 直接显示原始值，保持向后兼容
     }
+  };
+
+  // 处理目标区域显示
+  const getTargetAreaText = (targetArea: string) => {
+    if (!targetArea) return '未填写';
+    return targetArea;
+  };
+
+  // 处理个人说明显示
+  const getSelfDescriptionText = (selfDescription: string) => {
+    if (!selfDescription) return '未填写';
+    // 限制显示长度，超过50个字符时截断并显示省略号
+    if (selfDescription.length > 50) {
+      return selfDescription.substring(0, 50) + '...';
+    }
+    return selfDescription;
+  };
+
+  // 处理择偶要求显示
+  const getPartnerRequirementText = (partnerRequirement: string) => {
+    if (!partnerRequirement) return '未填写';
+    // 限制显示长度，超过50个字符时截断并显示省略号
+    if (partnerRequirement.length > 50) {
+      return partnerRequirement.substring(0, 50) + '...';
+    }
+    return partnerRequirement;
   };
 
   const handlePageChange = (page: number) => {
@@ -471,6 +527,8 @@ function MembersPageContent() {
         return 'min-w-[150px]';
       case 'phone':
         return 'min-w-[120px]';
+      case 'wechat_qrcode':
+        return 'min-w-[100px]';
       case 'type':
       case 'status':
       case 'gender':
@@ -500,6 +558,12 @@ function MembersPageContent() {
       default:
         return 'min-w-[120px]';
     }
+  };
+
+  // 处理图片点击事件
+  const handleImageClick = (imageUrl: string) => {
+    setPreviewImageUrl(imageUrl);
+    setImagePreviewOpen(true);
   };
 
   // 会员操作处理函数
@@ -991,6 +1055,35 @@ function MembersPageContent() {
 
   return (
     <div className="space-y-4">
+      {/* 图片预览对话框 */}
+      <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>微信二维码</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-4">
+            {previewImageUrl && (
+              <img 
+                src={previewImageUrl} 
+                alt="微信二维码预览" 
+                className="max-w-full max-h-[500px] object-contain rounded-lg border"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '';
+                  target.alt = '图片加载失败';
+                  target.className = 'text-gray-400 p-8';
+                }}
+              />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImagePreviewOpen(false)}>
+              关闭
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* 激活会员对话框 */}
       <Dialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
         <DialogContent>
@@ -1470,6 +1563,25 @@ function MembersPageContent() {
                                 {getMemberTypeText(member.type, member.remaining_matches)}
                               </span>
                             ) :
+                            columnKey === 'wechat_qrcode' ? (
+                              member.wechat_qrcode ? (
+                                <div className="flex items-center justify-center">
+                                  <img 
+                                    src={member.wechat_qrcode.startsWith('data:') ? member.wechat_qrcode : `data:image/png;base64,${member.wechat_qrcode}`} 
+                                    alt="微信二维码" 
+                                    className="w-8 h-8 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => handleImageClick(member.wechat_qrcode.startsWith('data:') ? member.wechat_qrcode : `data:image/png;base64,${member.wechat_qrcode}`)}
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.parentElement!.innerHTML = '<span class="text-gray-400 text-xs">无图</span>';
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 text-xs">无二维码</span>
+                              )
+                            ) :
                             columnKey === 'gender' ? getGenderText(member.gender) :
                             columnKey === 'house_car' ? getHouseCarText(member.house_car) :
                             columnKey === 'children_plan' ? getChildrenPlanText(member.children_plan) :
@@ -1477,6 +1589,9 @@ function MembersPageContent() {
                             columnKey === 'marriage_history' ? getMarriageHistoryText(member.marriage_history) :
                             columnKey === 'sexual_orientation' ? getSexualOrientationText(member.sexual_orientation) :
                             columnKey === 'education' ? getEducationText(member.education) :
+                            columnKey === 'target_area' ? getTargetAreaText(member.target_area) :
+                            columnKey === 'self_description' ? getSelfDescriptionText(member.self_description) :
+                            columnKey === 'partner_requirement' ? getPartnerRequirementText(member.partner_requirement) :
                             columnKey === 'status' ? (
                               <span className={`px-2 py-1 rounded-full text-xs ${
                                 member.status === 'ACTIVE' 

@@ -21,6 +21,7 @@ const publicRoutes = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/session',
+  '/api/debug/db-test',  // 添加诊断API到公开路由
   '/favicon.ico',
   '/_next',
 ];

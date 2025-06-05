@@ -34,7 +34,7 @@ export async function GET(request: Request) {
             target_area, birth_year, height, weight, education, occupation,
             wechat, phone, remaining_matches, created_at, updated_at,
             house_car, hukou_province, hukou_city, children_plan, marriage_cert,
-            marriage_history, sexual_orientation
+            marriage_history, sexual_orientation, wechat_qrcode, self_description, partner_requirement
           FROM 
             members 
           WHERE 1=1`;

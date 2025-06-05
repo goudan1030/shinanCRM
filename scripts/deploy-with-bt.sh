@@ -1,10 +1,10 @@
-#!/bin/bash
+ #!/bin/bash
 
 # 阿里云服务器配置
-SERVER_IP="YOUR_SERVER_IP"           # 例如：8.149.244.105
-SERVER_USER="root"                   # 或其他有权限的用户
+SERVER_IP="8.149.244.105"           # 实际服务器IP
+SERVER_USER="root"                   # 宝塔默认用户是root
 SERVER_PATH="/www/wwwroot/sncrm"     # 宝塔面板默认网站路径
-SSH_KEY="~/.ssh/id_rsa"              # SSH密钥路径，如果使用密码认证则留空
+SSH_KEY=""                           # 使用密码认证，保持为空
 
 # 颜色输出
 GREEN='\033[0;32m'
@@ -91,13 +91,36 @@ $SSH_CMD "cd $SERVER_PATH &&
   pm2 startup"
 check_status "配置PM2"
 
+# 创建环境变量文件
+echo -e "${YELLOW}Step 6: 配置环境变量${NC}"
+$SSH_CMD "cd $SERVER_PATH && cat > .env.local << 'EOF'
+# 数据库配置
+DB_HOST=8.149.244.105
+DB_PORT=3306
+DB_USER=h5_cloud_user
+DB_PASSWORD=mc72TNcMmy6HCybH
+DB_NAME=h5_cloud_db
+
+# JWT配置
+JWT_SECRET=sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe
+
+# 服务器配置
+SERVER_URL=http://8.149.244.105/
+EOF"
+check_status "配置环境变量"
+
+# 重启应用
+echo -e "${YELLOW}Step 7: 重启应用${NC}"
+$SSH_CMD "cd $SERVER_PATH && pm2 restart sncrm"
+check_status "重启应用"
+
 # 完成
 echo -e "${GREEN}部署完成! 您的应用已成功部署到阿里云服务器.${NC}"
 echo -e "${YELLOW}请在宝塔面板中配置网站:${NC}"
-echo -e "1. 创建网站，域名填写您的域名"
+echo -e "1. 创建网站，域名填写您的域名或IP 8.149.244.105"
 echo -e "2. 网站目录设置为: ${SERVER_PATH}"
 echo -e "3. 在'设置'中配置反向代理:"
 echo -e "   - 目标URL: http://127.0.0.1:3000"
 echo -e "   - 发送域名: \$host"
 echo -e "4. 如需配置HTTPS，请在宝塔面板中申请SSL证书"
-echo -e "${YELLOW}访问地址: http://$SERVER_IP 或您配置的域名${NC}" 
+echo -e "${YELLOW}访问地址: http://8.149.244.105 或您配置的域名${NC}" 

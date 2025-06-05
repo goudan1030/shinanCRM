@@ -14,6 +14,17 @@ interface LoginFormProps extends React.ComponentPropsWithoutRef<"div"> {
   className?: string;
 }
 
+interface LoginResponse {
+  success: boolean;
+  error?: string;
+  token?: string;
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+  };
+}
+
 export function LoginForm({ className, ...props }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,16 +46,27 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
     try {
       setLoading(true);
       
+      // 调试信息
+      console.log('开始登录请求...');
+      
       // 调用登录API
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // 添加防缓存头
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
         },
         body: JSON.stringify({ email, password }),
+        // 确保包含凭证
+        credentials: 'include',
       });
       
-      const data = await response.json();
+      console.log('登录响应状态:', response.status);
+      
+      const data = await response.json() as LoginResponse;
+      console.log('登录响应数据:', data);
       
       if (!response.ok) {
         throw new Error(data.error || '登录失败，请重试');
@@ -56,12 +78,12 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
         description: "正在进入系统...",
       });
       
-      // 使用较强的重定向方式，完全刷新页面，确保状态重置
-      if (typeof window !== 'undefined') {
-        window.location.href = '/dashboard';
-      } else {
-        router.push('/dashboard');
-      }
+      console.log('登录成功，准备重定向到仪表板...');
+      
+      // 使用硬重定向，完全刷新页面，确保状态重置
+      setTimeout(() => {
+        window.location.href = `/dashboard?t=${Date.now()}`;
+      }, 500);
     } catch (error) {
       console.error('登录失败:', error);
       setError(error instanceof Error ? error.message : '登录失败，请重试');
@@ -112,6 +134,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
+                autoComplete="username email"
               />
             </div>
             
@@ -125,6 +148,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={loading}
+                autoComplete="current-password"
               />
             </div>
             

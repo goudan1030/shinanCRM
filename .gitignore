@@ -40,3 +40,22 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .cursor/
+
+# 部署相关文件 (新增)
+/deploy-package/
+*.tar.gz
+*.zip
+
+# 缓存和临时文件 (新增)
+.next/cache/
+.next/static/chunks/
+.next/standalone/
+.swc/
+
+# PM2 日志文件 (新增)
+*.log
+logs/
+
+# 备份文件 (新增)
+*.bak
+*.backup
