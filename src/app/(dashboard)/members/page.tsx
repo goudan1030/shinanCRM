@@ -980,7 +980,7 @@ function MembersPageContent() {
   const copyMemberLink = useCallback(async (member: Member) => {
     try {
       // 构建会员H5链接
-      const memberLink = `https://m.xinghun.info/member/${member.member_no}`;
+      const memberLink = `https://m.xinghun.info/user/${member.id}`;
       
       // 复制到剪贴板
       if (typeof navigator !== 'undefined' && navigator.clipboard) {

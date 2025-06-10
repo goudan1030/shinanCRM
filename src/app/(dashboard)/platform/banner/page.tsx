@@ -274,13 +274,21 @@ export default function BannerPage() {
               <TableRow key={banner.id}>
                 <TableCell>
                   <div className="w-[80px] h-[40px] relative">
-                    <OptimizedImage 
-                      src={banner.image_url} 
-                      alt={banner.title}
-                      width={80}
-                      height={40}
-                      className="absolute inset-0 w-full h-full object-cover rounded"
-                    />
+                    {banner.image_url?.startsWith('data:') ? (
+                      <img 
+                        src={banner.image_url} 
+                        alt={banner.title}
+                        className="absolute inset-0 w-full h-full object-cover rounded"
+                      />
+                    ) : (
+                      <OptimizedImage 
+                        src={banner.image_url} 
+                        alt={banner.title}
+                        width={80}
+                        height={40}
+                        className="absolute inset-0 w-full h-full object-cover rounded"
+                      />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>{banner.title}</TableCell>

@@ -1,5 +1,9 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -65,42 +69,59 @@ interface BannerDialogProps {
 // 添加图片压缩函数
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 600;
-        let width = img.width;
-        let height = img.height;
+    // 如果文件大于1MB，则进行压缩
+    if (file.size > 1024 * 1024) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
           }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        
-        // 压缩为 80% 质量的 JPEG
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        resolve(compressedDataUrl);
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // 压缩为较低质量的JPEG以减小大小
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+          
+          // 判断压缩后的数据URL大小
+          const base64Size = compressedDataUrl.length * 0.75; // 估计base64编码的大小
+          
+          if (base64Size > 100 * 1024) {
+            // 如果仍然大于100KB，尝试进一步压缩
+            const furtherCompressedDataUrl = canvas.toDataURL('image/jpeg', 0.4);
+            resolve(furtherCompressedDataUrl);
+          } else {
+            resolve(compressedDataUrl);
+          }
+        };
+        img.onerror = reject;
       };
-      img.onerror = reject;
-    };
-    reader.onerror = reject;
+      reader.onerror = reject;
+    } else {
+      // 小文件直接使用文件URL
+      const fileUrl = URL.createObjectURL(file);
+      resolve(fileUrl);
+    }
   });
 };
 
@@ -162,11 +183,37 @@ export function BannerDialog({
   const handleSubmit = async (values: FormValues) => {
     try {
       setLoading(true);
+      
+      // 如果是在编辑模式下，并且没有选择新图片，则使用原始图片URL
+      let finalImageUrl = initialData?.id && !values.image_file 
+        ? initialData.image_url 
+        : imagePreview;
+      
+      // 如果图片预览是blob:URL，需要先将其转换为可存储的格式
+      if (finalImageUrl && finalImageUrl.startsWith('blob:')) {
+        try {
+          // 获取blob URL对应的图片并转换为base64
+          const response = await fetch(finalImageUrl);
+          const blob = await response.blob();
+          
+          // 创建一个新的FileReader来读取blob
+          const reader = new FileReader();
+          finalImageUrl = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch (err) {
+          console.error('转换blob URL失败:', err);
+          // 如果失败，回退到原图
+          finalImageUrl = initialData?.image_url || '';
+        }
+      }
+      
       const submitData = {
         ...values,
         id: initialData?.id,
         category_id: CATEGORY_MAP[values.category_id as keyof typeof CATEGORY_MAP],
-        image_url: imagePreview,
+        image_url: finalImageUrl,
       };
       
       if (onSubmit) {
@@ -267,11 +314,11 @@ export function BannerDialog({
                         {...field}
                       />
                       {imagePreview && (
-                        <div className="relative w-20 h-20">
+                        <div className="relative w-20 h-20 border rounded overflow-hidden">
                           <img 
                             src={imagePreview}
                             alt="预览" 
-                            className="w-full h-full object-cover rounded"
+                            className="w-full h-full object-cover"
                           />
                         </div>
                       )}

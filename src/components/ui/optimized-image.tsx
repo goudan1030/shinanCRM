@@ -66,6 +66,9 @@ export function OptimizedImage({
     onError && onError();
   };
 
+  // 检查是否是 data URI
+  const isDataUri = imgSrc.startsWith('data:');
+
   return (
     <div 
       className={cn(
@@ -74,24 +77,45 @@ export function OptimizedImage({
         className
       )}
     >
-      <Image
-        src={imgSrc}
-        alt={alt}
-        width={width}
-        height={height}
-        quality={quality}
-        priority={priority}
-        className={cn(
-          'transition-all duration-300',
-          objectFit === 'contain' && 'object-contain',
-          objectFit === 'cover' && 'object-cover',
-          objectFit === 'fill' && 'object-fill',
-          objectFit === 'none' && 'object-none',
-          objectFit === 'scale-down' && 'object-scale-down',
-        )}
-        onLoad={handleLoad}
-        onError={handleError}
-      />
+      {isDataUri ? (
+        // 对于 data URI，使用普通的 img 标签
+        <img
+          src={imgSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          className={cn(
+            'transition-all duration-300',
+            objectFit === 'contain' && 'object-contain',
+            objectFit === 'cover' && 'object-cover',
+            objectFit === 'fill' && 'object-fill',
+            objectFit === 'none' && 'object-none',
+            objectFit === 'scale-down' && 'object-scale-down',
+          )}
+          onLoad={handleLoad}
+          onError={handleError}
+        />
+      ) : (
+        // 对于正常 URL，使用 Next.js Image 组件
+        <Image
+          src={imgSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          quality={quality}
+          priority={priority}
+          className={cn(
+            'transition-all duration-300',
+            objectFit === 'contain' && 'object-contain',
+            objectFit === 'cover' && 'object-cover',
+            objectFit === 'fill' && 'object-fill',
+            objectFit === 'none' && 'object-none',
+            objectFit === 'scale-down' && 'object-scale-down',
+          )}
+          onLoad={handleLoad}
+          onError={handleError}
+        />
+      )}
     </div>
   );
 }
