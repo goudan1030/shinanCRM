@@ -7,9 +7,12 @@
  * 2. 更小的连接池大小
  * 3. 更适合serverless的配置
  * 4. 支持远程访问的额外安全设置
+ * 5. 增强的网络诊断和连接重试
  */
 
 import mysql, { PoolOptions, Pool, RowDataPacket, ResultSetHeader, QueryResult } from 'mysql2/promise';
+import dns from 'dns';
+import { promisify } from 'util';
 
 /**
  * 错误类型定义
@@ -20,6 +23,47 @@ export type DBError = Error & {
   sqlState?: string;
   sqlMessage?: string;
 };
+
+/**
+ * 进行DNS解析测试
+ */
+async function testDnsResolution(hostname: string): Promise<boolean> {
+  try {
+    const lookup = promisify(dns.lookup);
+    const result = await lookup(hostname);
+    console.log(`✓ DNS解析成功: ${hostname} -> ${result.address}`);
+    return true;
+  } catch (error) {
+    console.error(`✗ DNS解析失败: ${hostname}`, error);
+    return false;
+  }
+}
+
+/**
+ * 测试TCP连接
+ */
+async function testTcpConnection(host: string, port: number): Promise<boolean> {
+  try {
+    // 使用无连接池的直接连接测试TCP连接
+    const connection = await mysql.createConnection({
+      host,
+      port,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      connectTimeout: 3000, // 快速超时
+      ssl: {
+        rejectUnauthorized: false
+      }
+    });
+    
+    await connection.end();
+    console.log(`✓ TCP连接成功: ${host}:${port}`);
+    return true;
+  } catch (error) {
+    console.error(`✗ TCP连接失败: ${host}:${port}`, error);
+    return false;
+  }
+}
 
 /**
  * 检查并设置环境变量
@@ -41,6 +85,15 @@ function initializeEnvVars() {
       process.env[key] = value;
       console.log(`设置默认环境变量: ${key}`);
     }
+  });
+  
+  // 打印当前使用的环境变量（隐藏密码）
+  console.log('当前数据库配置:', {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    database: process.env.DB_NAME,
+    hasPassword: !!process.env.DB_PASSWORD
   });
 }
 
@@ -64,7 +117,7 @@ const netlifyDBConfig: PoolOptions = {
   queueLimit: 0,
   
   // 较短的超时时间
-  connectTimeout: 5000,            // 5秒连接超时
+  connectTimeout: 10000,           // 增加到10秒以适应较慢的网络
   
   // 其他优化选项
   namedPlaceholders: true,
@@ -196,11 +249,35 @@ export async function executeQuery<T extends QueryResult = QueryResult>(
  */
 export async function testNetlifyConnection(): Promise<boolean> {
   try {
+    console.log('开始测试Netlify数据库连接...');
+    
+    // 首先测试DNS解析
+    const host = process.env.DB_HOST || '8.149.244.105';
+    const port = parseInt(process.env.DB_PORT || '3306', 10);
+    
+    console.log(`测试DNS解析: ${host}`);
+    const dnsOk = await testDnsResolution(host);
+    if (!dnsOk) {
+      console.error('DNS解析失败，这可能导致连接问题');
+      // 继续尝试连接，因为IP地址可能不需要DNS解析
+    }
+    
+    // 测试TCP连接
+    console.log(`测试TCP连接: ${host}:${port}`);
+    const tcpOk = await testTcpConnection(host, port);
+    if (!tcpOk) {
+      console.error('TCP连接测试失败，这表明网络连接问题或防火墙阻止');
+      return false;
+    }
+    
+    // 尝试从连接池获取连接
     const pool = getNetlifyPool();
+    console.log('从连接池获取连接...');
     const connection = await pool.getConnection();
     console.log('✓ Netlify数据库连接测试成功');
     
     // 执行简单查询进一步测试连接
+    console.log('执行简单查询测试...');
     const [result] = await connection.query('SELECT 1 AS test');
     console.log('✓ 简单查询测试成功:', result);
     
@@ -208,6 +285,22 @@ export async function testNetlifyConnection(): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('✗ Netlify数据库连接测试失败:', error);
+    
+    // 打印更多诊断信息
+    const dbError = error as DBError;
+    if (dbError.code) {
+      console.error('错误代码:', dbError.code);
+      
+      if (dbError.code === 'ENOTFOUND') {
+        console.error('主机名无法解析，请检查DNS设置或使用IP地址');
+      } else if (dbError.code === 'ECONNREFUSED') {
+        console.error('连接被拒绝，请检查服务器是否在运行以及防火墙设置');
+      } else if (dbError.code === 'ER_ACCESS_DENIED_ERROR') {
+        console.error('访问被拒绝，请检查用户名和密码');
+      } else if (dbError.code === 'ETIMEDOUT') {
+        console.error('连接超时，可能是网络问题或防火墙阻止');
+      }
+    }
     
     // 清除连接池实例以便下次重建
     netlifyPool = null;
