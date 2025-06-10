@@ -8,6 +8,7 @@
  * 3. 更适合serverless的配置
  * 4. 支持远程访问的额外安全设置
  * 5. 增强的网络诊断和连接重试
+ * 6. 支持代理连接和额外调试
  */
 
 import mysql, { PoolOptions, Pool, RowDataPacket, ResultSetHeader, QueryResult } from 'mysql2/promise';
@@ -24,14 +25,27 @@ export type DBError = Error & {
   sqlMessage?: string;
 };
 
+// 配置调试模式
+const DEBUG = process.env.DB_DEBUG === 'true';
+
+/**
+ * 调试日志函数
+ */
+function debugLog(...args: any[]): void {
+  if (DEBUG) {
+    console.log('[DB_DEBUG]', ...args);
+  }
+}
+
 /**
  * 进行DNS解析测试
  */
 async function testDnsResolution(hostname: string): Promise<boolean> {
   try {
+    debugLog(`测试DNS解析: ${hostname}`);
     const lookup = promisify(dns.lookup);
     const result = await lookup(hostname);
-    console.log(`✓ DNS解析成功: ${hostname} -> ${result.address}`);
+    debugLog(`✓ DNS解析成功: ${hostname} -> ${result.address}`);
     return true;
   } catch (error) {
     console.error(`✗ DNS解析失败: ${hostname}`, error);
@@ -44,6 +58,7 @@ async function testDnsResolution(hostname: string): Promise<boolean> {
  */
 async function testTcpConnection(host: string, port: number): Promise<boolean> {
   try {
+    debugLog(`测试TCP连接: ${host}:${port}`);
     // 使用无连接池的直接连接测试TCP连接
     const connection = await mysql.createConnection({
       host,
@@ -56,8 +71,9 @@ async function testTcpConnection(host: string, port: number): Promise<boolean> {
       }
     });
     
+    debugLog(`TCP连接成功，线程ID: ${(connection as any).threadId}`);
     await connection.end();
-    console.log(`✓ TCP连接成功: ${host}:${port}`);
+    debugLog(`✓ TCP连接测试成功并正确关闭`);
     return true;
   } catch (error) {
     console.error(`✗ TCP连接失败: ${host}:${port}`, error);
@@ -72,7 +88,7 @@ function initializeEnvVars() {
   // 为Netlify环境设置默认值
   const defaultEnvVars = {
     DB_HOST: '8.149.244.105',
-    DB_PORT: '3306',
+    DB_PORT: '3308', // 使用代理端口
     DB_USER: 'h5_cloud_user',
     DB_PASSWORD: 'mc72TNcMmy6HCybH',
     DB_NAME: 'h5_cloud_db',
@@ -83,17 +99,18 @@ function initializeEnvVars() {
   Object.entries(defaultEnvVars).forEach(([key, value]) => {
     if (!process.env[key]) {
       process.env[key] = value;
-      console.log(`设置默认环境变量: ${key}`);
+      debugLog(`设置默认环境变量: ${key} = ${key === 'DB_PASSWORD' ? '******' : value}`);
     }
   });
   
   // 打印当前使用的环境变量（隐藏密码）
-  console.log('当前数据库配置:', {
+  debugLog('当前数据库配置:', {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     user: process.env.DB_USER,
     database: process.env.DB_NAME,
-    hasPassword: !!process.env.DB_PASSWORD
+    hasPassword: !!process.env.DB_PASSWORD,
+    debug: DEBUG
   });
 }
 
@@ -106,7 +123,7 @@ initializeEnvVars();
 const netlifyDBConfig: PoolOptions = {
   // 基本连接信息
   host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '3306', 10),
+  port: parseInt(process.env.DB_PORT || '3308', 10),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
@@ -130,7 +147,10 @@ const netlifyDBConfig: PoolOptions = {
   
   // 连接保持活动设置
   enableKeepAlive: true,
-  keepAliveInitialDelay: 10000     // 10秒钟心跳检测
+  keepAliveInitialDelay: 10000,    // 10秒钟心跳检测
+  
+  // 调试选项
+  debug: DEBUG
 };
 
 /**
@@ -143,12 +163,13 @@ let netlifyPool: Pool | null = null;
  */
 export function getNetlifyPool(): Pool {
   if (!netlifyPool) {
-    console.log('初始化Netlify数据库连接池...');
-    console.log('数据库连接信息:', {
+    debugLog('初始化Netlify数据库连接池...');
+    debugLog('数据库连接信息:', {
       host: netlifyDBConfig.host,
       port: netlifyDBConfig.port,
       user: netlifyDBConfig.user,
-      database: netlifyDBConfig.database
+      database: netlifyDBConfig.database,
+      debug: netlifyDBConfig.debug
     });
     
     netlifyPool = mysql.createPool(netlifyDBConfig);
@@ -158,7 +179,7 @@ export function getNetlifyPool(): Pool {
     if (pool.on) {
       // 监听连接建立
       pool.on('connection', function(connection: any) {
-        console.log('新建数据库连接:', connection.threadId);
+        debugLog('新建数据库连接:', connection.threadId);
       });
       
       // 监听错误
@@ -191,13 +212,23 @@ export async function executeQuery<T extends QueryResult = QueryResult>(
   
   while (retries > 0) {
     try {
-      console.log('执行SQL查询:', { sql: sql.substring(0, 100) + '...', paramsLength: params.length });
+      debugLog('执行SQL查询:', { 
+        sql: sql.substring(0, 100) + (sql.length > 100 ? '...' : ''), 
+        paramsLength: params.length 
+      });
       
       // 获取连接前再次测试连接池
-      await testNetlifyConnection();
+      const connectionOk = await testNetlifyConnection();
+      if (!connectionOk) {
+        debugLog('连接测试失败，重试中...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        continue;
+      }
       
       const result = await pool.execute<T>(sql, params);
-      console.log('✓ 查询执行成功');
+      debugLog('✓ 查询执行成功', {
+        rowCount: Array.isArray(result[0]) ? result[0].length : 1
+      });
       return result;
     } catch (error) {
       const dbError = error as DBError;
@@ -236,7 +267,7 @@ export async function executeQuery<T extends QueryResult = QueryResult>(
       
       // 重试前等待时间递增
       const waitTime = (3 - retries) * 300;
-      console.log(`等待 ${waitTime}ms 后重试...`);
+      debugLog(`等待 ${waitTime}ms 后重试...`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
@@ -249,13 +280,13 @@ export async function executeQuery<T extends QueryResult = QueryResult>(
  */
 export async function testNetlifyConnection(): Promise<boolean> {
   try {
-    console.log('开始测试Netlify数据库连接...');
+    debugLog('开始测试Netlify数据库连接...');
     
     // 首先测试DNS解析
     const host = process.env.DB_HOST || '8.149.244.105';
-    const port = parseInt(process.env.DB_PORT || '3306', 10);
+    const port = parseInt(process.env.DB_PORT || '3308', 10);
     
-    console.log(`测试DNS解析: ${host}`);
+    debugLog(`测试DNS解析: ${host}`);
     const dnsOk = await testDnsResolution(host);
     if (!dnsOk) {
       console.error('DNS解析失败，这可能导致连接问题');
@@ -263,7 +294,7 @@ export async function testNetlifyConnection(): Promise<boolean> {
     }
     
     // 测试TCP连接
-    console.log(`测试TCP连接: ${host}:${port}`);
+    debugLog(`测试TCP连接: ${host}:${port}`);
     const tcpOk = await testTcpConnection(host, port);
     if (!tcpOk) {
       console.error('TCP连接测试失败，这表明网络连接问题或防火墙阻止');
@@ -272,14 +303,14 @@ export async function testNetlifyConnection(): Promise<boolean> {
     
     // 尝试从连接池获取连接
     const pool = getNetlifyPool();
-    console.log('从连接池获取连接...');
+    debugLog('从连接池获取连接...');
     const connection = await pool.getConnection();
-    console.log('✓ Netlify数据库连接测试成功');
+    debugLog('✓ Netlify数据库连接测试成功');
     
     // 执行简单查询进一步测试连接
-    console.log('执行简单查询测试...');
+    debugLog('执行简单查询测试...');
     const [result] = await connection.query('SELECT 1 AS test');
-    console.log('✓ 简单查询测试成功:', result);
+    debugLog('✓ 简单查询测试成功:', result);
     
     connection.release();
     return true;

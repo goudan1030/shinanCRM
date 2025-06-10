@@ -7,13 +7,15 @@
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
-  # 为Netlify Functions设置环境变量
+  # 为Netlify Functions设置环境变量 - 使用代理端口
   DB_HOST = "8.149.244.105"
-  DB_PORT = "3306"
+  DB_PORT = "3308"  # 使用代理端口而不是直接连接MySQL
   DB_USER = "h5_cloud_user"
   DB_PASSWORD = "mc72TNcMmy6HCybH"
   DB_NAME = "h5_cloud_db"
   JWT_SECRET = "sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe"
+  # 启用数据库连接调试
+  DB_DEBUG = "true"
 
 # 静态资源处理规则
 [[redirects]]
