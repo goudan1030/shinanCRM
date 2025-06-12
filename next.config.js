@@ -33,7 +33,7 @@ const nextConfig = {
   },
   
   // 提高构建性能
-  output: 'standalone', // 使用独立输出模式
+  // output: 'standalone', // 在Netlify上使用默认输出模式
   
   // 开发阶段错误检查，生产环境忽略
   eslint: {

@@ -18,32 +18,23 @@ function createNetlifyConfig() {
   if (!fs.existsSync(netlifyConfigPath)) {
     console.log('❌ netlify.toml 不存在，正在创建...');
     
-    const config = `
-# Netlify配置
+    const config = `# Netlify配置 for Next.js
 [build]
-  publish = ".next"
   command = "npm run build"
+  publish = ".next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
+  # 数据库环境变量
   DB_HOST = "8.149.244.105"
   DB_PORT = "3306"
   DB_USER = "h5_cloud_user"
   DB_PASSWORD = "mc72TNcMmy6HCybH"
   DB_NAME = "h5_cloud_db"
   JWT_SECRET = "sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+  NETLIFY = "true"
 `;
 
     fs.writeFileSync(netlifyConfigPath, config);
