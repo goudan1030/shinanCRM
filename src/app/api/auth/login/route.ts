@@ -4,6 +4,16 @@ import { generateToken, setTokenCookie } from '../../../../lib/token';
 
 export async function POST(request: Request) {
   console.log('=== 开始处理登录请求 ===');
+
+  // 诊断代码：打印关键的环境变量，检查它们在Netlify上是否可用
+  console.log('【环境变量诊断】');
+  console.log('DB_HOST:', process.env.DB_HOST ? '已设置' : '未设置 (!!!)');
+  console.log('DB_USER:', process.env.DB_USER ? '已设置' : '未设置 (!!!)');
+  console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '已设置' : '未设置 (!!!)');
+  console.log('DB_NAME:', process.env.DB_NAME ? '已设置' : '未设置 (!!!)');
+  console.log('JWT_SECRET:', process.env.JWT_SECRET ? '已设置' : '未设置 (!!!)');
+  console.log('--------------------');
+  
   try {
     const data = await request.json() as { email: string; password: string };
     const { email, password } = data;
