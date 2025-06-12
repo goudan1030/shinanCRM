@@ -71,35 +71,35 @@ const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     // 如果文件大于1MB，则进行压缩
     if (file.size > 1024 * 1024) {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 600;
-          let width = img.width;
-          let height = img.height;
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 600;
+        let width = img.width;
+        let height = img.height;
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
           }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
           // 压缩为较低质量的JPEG以减小大小
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
           
@@ -111,12 +111,12 @@ const compressImage = (file: File): Promise<string> => {
             const furtherCompressedDataUrl = canvas.toDataURL('image/jpeg', 0.4);
             resolve(furtherCompressedDataUrl);
           } else {
-            resolve(compressedDataUrl);
+        resolve(compressedDataUrl);
           }
-        };
-        img.onerror = reject;
       };
-      reader.onerror = reject;
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
     } else {
       // 小文件直接使用文件URL
       const fileUrl = URL.createObjectURL(file);

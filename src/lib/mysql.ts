@@ -3,15 +3,12 @@
  * 为保持向后兼容，此文件仍然存在
  */
 
-import getPoolFn, { 
+import { 
   getPool,
   authenticateUser,
   updateUserProfile,
   updateUserPassword
 } from './database';
-
-// 获取连接池实例，并将其直接导出作为默认导出
-const pool = getPool();
 
 // 为向后兼容提供 createClient 函数
 const createClient = () => {
@@ -19,10 +16,28 @@ const createClient = () => {
   return getPool();
 };
 
-// 为了保持向后兼容，导出所有需要的函数和连接池
-export default pool;
+// 创建一个代理对象，将所有方法调用转发到实际的连接池
+// 这样既保持了向后兼容，又实现了懒加载
+const poolProxy = new Proxy({} as any, {
+  get(target, prop) {
+    // 当访问属性时，才获取实际的连接池
+    const actualPool = getPool();
+    const value = actualPool[prop as keyof typeof actualPool];
+    
+    // 如果是方法，绑定正确的 this 上下文
+    if (typeof value === 'function') {
+      return value.bind(actualPool);
+    }
+    
+    return value;
+  }
+});
+
+// 默认导出代理对象
+export default poolProxy;
+
 export { 
-  pool, 
+  poolProxy as pool, 
   createClient,
   authenticateUser,
   updateUserProfile,

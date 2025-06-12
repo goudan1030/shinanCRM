@@ -45,7 +45,7 @@ function createNetlifyConfig() {
   to = "/index.html"
   status = 200
 `;
-    
+
     fs.writeFileSync(netlifyConfigPath, config);
     console.log('✅ netlify.toml 已创建');
   } else {

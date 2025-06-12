@@ -281,13 +281,13 @@ export default function BannerPage() {
                         className="absolute inset-0 w-full h-full object-cover rounded"
                       />
                     ) : (
-                      <OptimizedImage 
-                        src={banner.image_url} 
-                        alt={banner.title}
-                        width={80}
-                        height={40}
-                        className="absolute inset-0 w-full h-full object-cover rounded"
-                      />
+                    <OptimizedImage 
+                      src={banner.image_url} 
+                      alt={banner.title}
+                      width={80}
+                      height={40}
+                      className="absolute inset-0 w-full h-full object-cover rounded"
+                    />
                     )}
                   </div>
                 </TableCell>
