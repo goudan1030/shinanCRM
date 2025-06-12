@@ -3,7 +3,7 @@
  * 定义不同类型的缓存配置和预热函数
  */
 import { CacheOptions } from './cache-manager';
-import pool from '../database';
+import { getPool } from '../database';
 import { RowDataPacket } from 'mysql2';
 
 /**
@@ -17,6 +17,7 @@ export const membersCacheStrategy: CacheOptions = {
   // 预热函数 - 加载热门会员数据
   preloadFunction: async () => {
     try {
+      const pool = getPool();
       // 获取最近活跃的前100名会员，只查询确定存在的字段
       const [members] = await pool.query<RowDataPacket[]>(`
         SELECT id, updated_at 
@@ -51,6 +52,7 @@ export const dashboardCacheStrategy: CacheOptions = {
   // 预热函数 - 加载常用的仪表盘数据
   preloadFunction: async () => {
     try {
+      const pool = getPool();
       const [memberCountResult] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) as count FROM members');
       
       // 获取收入和支出数据
@@ -128,6 +130,7 @@ export const articlesCacheStrategy: CacheOptions = {
   // 预热函数 - 加载热门文章
   preloadFunction: async () => {
     try {
+      const pool = getPool();
       // 检查articles表结构
       const [columns] = await pool.query<RowDataPacket[]>(`
         SHOW COLUMNS FROM articles
@@ -201,6 +204,7 @@ export const bannersCacheStrategy: CacheOptions = {
   // 预热函数 - 加载所有活跃Banner
   preloadFunction: async () => {
     try {
+      const pool = getPool();
       // 检查banners表结构
       const [columns] = await pool.query<RowDataPacket[]>(`
         SHOW COLUMNS FROM banners

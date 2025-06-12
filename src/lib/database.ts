@@ -324,8 +324,8 @@ export async function query<T extends DBQueryResult>(
   }
 }
 
-// 默认导出连接池
-export default getPool();
+// 默认导出 getPool 函数
+export default getPool;
 
 // 同时保留命名导出以保持兼容性
 export { getPool }; 
