@@ -40,6 +40,11 @@ function isProtectedPath(path: string): boolean {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  // 检测是否在Netlify环境
+  const isNetlify = process.env.NETLIFY === 'true';
+  
+  console.log('中间件处理路径:', pathname, '是否Netlify环境:', isNetlify);
+  
   // 处理静态资源的缓存
   if (
     pathname.startsWith('/_next') || 
@@ -59,11 +64,25 @@ export function middleware(request: NextRequest) {
   if (pathname.includes('/api/')) {
     // 跳过认证检查的API路由
     if (isPublicPath(pathname)) {
-      return NextResponse.next();
+      const response = NextResponse.next();
+      
+      // 为Netlify环境添加特殊的CORS头
+      if (isNetlify) {
+        response.headers.set('Access-Control-Allow-Credentials', 'true');
+        response.headers.set('Access-Control-Allow-Origin', request.headers.get('origin') || '*');
+      }
+      
+      return response;
     }
     
-    // 检查认证
+    // 检查认证 - 优化cookie读取
     const authToken = request.cookies.get('auth_token');
+    console.log('API请求认证检查:', { 
+      path: pathname, 
+      hasToken: !!authToken?.value,
+      tokenLength: authToken?.value?.length 
+    });
+    
     if (!authToken) {
       return NextResponse.json(
         { error: '未授权访问' },
@@ -72,6 +91,12 @@ export function middleware(request: NextRequest) {
     }
     
     const response = NextResponse.next();
+    
+    // 为Netlify环境添加特殊的CORS头
+    if (isNetlify) {
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      response.headers.set('Access-Control-Allow-Origin', request.headers.get('origin') || '*');
+    }
     
     // 动态API接口（可能经常变化的数据）
     if (
@@ -107,11 +132,19 @@ export function middleware(request: NextRequest) {
   // 验证其他页面 - 尤其是受保护的路由
   const authToken = request.cookies.get('auth_token');
   
+  console.log('页面访问认证检查:', { 
+    path: pathname, 
+    hasToken: !!authToken?.value,
+    tokenLength: authToken?.value?.length,
+    isProtected: isProtectedPath(pathname)
+  });
+  
   if (!authToken) {
     // 如果没有token，重定向到登录页
     const url = new URL('/login', request.url);
     // 保存原始URL以便登录后重定向回来
     url.searchParams.set('from', pathname);
+    console.log('无token，重定向到登录页:', url.toString());
     return NextResponse.redirect(url);
   }
 

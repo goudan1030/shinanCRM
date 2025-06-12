@@ -167,14 +167,29 @@ export function refreshToken(user: UserPayload): string {
  * @returns 更新后的响应对象
  */
 export function setTokenCookie(response: NextResponse, token: string): NextResponse {
+  // 检测是否在HTTPS环境中
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isNetlify = process.env.NETLIFY === 'true';
+  
+  // 在Netlify环境中，即使是production也可能需要特殊处理
+  const shouldSecure = isProduction && !isNetlify;
+  
+  console.log('设置Cookie配置:', {
+    isProduction,
+    isNetlify,
+    shouldSecure,
+    domain: process.env.VERCEL_URL || process.env.URL || 'localhost'
+  });
+  
   response.cookies.set({
     name: TOKEN_COOKIE_NAME,
     value: token,
     httpOnly: true,                           // 仅服务器可访问Cookie
-    secure: process.env.NODE_ENV === 'production', // 仅在HTTPS下传输
-    sameSite: 'lax',                          // 防止CSRF攻击
+    secure: shouldSecure,                     // 针对Netlify优化的secure设置
+    sameSite: isNetlify ? 'none' : 'lax',    // Netlify需要'none'来支持跨域
     maxAge: 7 * 24 * 60 * 60,                 // 7天（秒）
-    path: '/'                                 // 所有路径可访问
+    path: '/',                                // 所有路径可访问
+    domain: isNetlify ? undefined : undefined // 让浏览器自动处理域名
   });
   return response;
 }

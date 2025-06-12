@@ -48,6 +48,11 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
       
       // 调试信息
       console.log('开始登录请求...');
+      console.log('检测环境:', {
+        isNetlify: typeof window !== 'undefined' && window.location.hostname.includes('netlify'),
+        hostname: typeof window !== 'undefined' ? window.location.hostname : 'unknown',
+        protocol: typeof window !== 'undefined' ? window.location.protocol : 'unknown'
+      });
       
       // 调用登录API
       const response = await fetch('/api/auth/login', {
@@ -59,11 +64,15 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
           'Pragma': 'no-cache',
         },
         body: JSON.stringify({ email, password }),
-        // 确保包含凭证
+        // 确保包含凭证 - 对Netlify特别重要
         credentials: 'include',
       });
       
       console.log('登录响应状态:', response.status);
+      console.log('响应头信息:', {
+        'set-cookie': response.headers.get('set-cookie'),
+        'content-type': response.headers.get('content-type')
+      });
       
       const data = await response.json() as LoginResponse;
       console.log('登录响应数据:', data);
@@ -78,12 +87,25 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
         description: "正在进入系统...",
       });
       
-      console.log('登录成功，准备重定向到仪表板...');
+      console.log('登录成功，准备重定向...');
       
-      // 使用硬重定向，完全刷新页面，确保状态重置
+      // 改进的重定向策略 - 针对Netlify优化
+      const redirectPath = '/dashboard';
+      
+      // 方法1: 先尝试客户端路由
       setTimeout(() => {
-        window.location.href = `/dashboard?t=${Date.now()}`;
-      }, 500);
+        console.log('尝试客户端路由重定向到:', redirectPath);
+        router.push(redirectPath);
+        
+        // 方法2: 如果客户端路由失败，使用硬重定向
+        setTimeout(() => {
+                     console.log('客户端路由可能失败，使用硬重定向');
+           if (typeof window !== 'undefined') {
+             window.location.href = redirectPath;
+           }
+        }, 1000);
+      }, 200);
+      
     } catch (error) {
       console.error('登录失败:', error);
       setError(error instanceof Error ? error.message : '登录失败，请重试');
@@ -131,7 +153,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 type="text" 
                 placeholder="请输入邮箱"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail((e.target as HTMLInputElement).value)}
                 required
                 disabled={loading}
                 autoComplete="username email"
@@ -145,7 +167,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 type="password"
                 placeholder="请输入密码"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
                 required
                 disabled={loading}
                 autoComplete="current-password"
