@@ -3,16 +3,7 @@ import { authenticateUser } from '../../../../lib/database';
 import { generateToken, setTokenCookie } from '../../../../lib/token';
 
 export async function POST(request: Request) {
-  // 使用 console.error 强制日志在 Netlify 中可见
-  console.error('=== 开始处理登录请求 (强制日志) ===');
-  console.error('【环境变量诊断】');
-  console.error('DB_HOST:', process.env.DB_HOST ? '已设置' : '未设置 (!!!)');
-  console.error('DB_USER:', process.env.DB_USER ? '已设置' : '未设置 (!!!)');
-  console.error('DB_PASSWORD:', process.env.DB_PASSWORD ? '已设置' : '未设置 (!!!)');
-  console.error('DB_NAME:', process.env.DB_NAME ? '已设置' : '未设置 (!!!)');
-  console.error('JWT_SECRET:', process.env.JWT_SECRET ? '已设置' : '未设置 (!!!)');
-  console.error('--------------------');
-  
+  console.log('=== 开始处理登录请求 ===');
   try {
     const data = await request.json() as { email: string; password: string };
     const { email, password } = data;

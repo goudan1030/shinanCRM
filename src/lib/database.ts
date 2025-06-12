@@ -94,25 +94,42 @@ const dbConfig: PoolOptions = {
   namedPlaceholders: true          // 支持命名参数，提高安全性和可读性
 };
 
-// 打印数据库配置信息（不包含敏感信息）
-console.log('数据库配置信息:', {
-  host: dbConfig.host,
-  port: dbConfig.port,
-  user: dbConfig.user,
-  database: dbConfig.database,
-  connectionLimit: dbConfig.connectionLimit
-});
+let pool: Pool | null = null;
 
-/**
- * 创建单例连接池
- * 整个应用共享同一个连接池实例，避免资源浪费
- */
-const pool: Pool = mysql.createPool(dbConfig);
+function getPool(): Pool {
+  if (pool) {
+    return pool;
+  }
+  
+  // 在创建连接池时，使用最新的环境变量
+  const currentDbConfig: PoolOptions = {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'h5_cloud_db',
+    waitForConnections: true,
+    connectionLimit: 25,
+    queueLimit: 0,
+    connectTimeout: 10000,
+    namedPlaceholders: true
+  };
+  
+  console.log('首次创建数据库连接池:', {
+    host: currentDbConfig.host,
+    port: currentDbConfig.port,
+    user: currentDbConfig.user,
+    database: currentDbConfig.database,
+  });
 
-// 为保持向后兼容，可以在这里添加连接事件监听器
-pool.on('connection', function(connection) {
-  console.log('新的数据库连接已建立');
-});
+  pool = mysql.createPool(currentDbConfig);
+
+  pool.on('connection', function(connection) {
+    console.log('新的数据库连接已建立');
+  });
+
+  return pool;
+}
 
 /**
  * 检查数据库连接是否正常
@@ -123,7 +140,7 @@ pool.on('connection', function(connection) {
  */
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
-    const connection = await pool.getConnection();
+    const connection = await getPool().getConnection();
     console.log('✓ 数据库连接测试成功');
     connection.release();
     return true;
@@ -183,7 +200,7 @@ export async function authenticateUser(email: string, password: string): Promise
 
     // 查询用户
     console.log('执行数据库查询:', { email });
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const [rows] = await getPool().execute<RowDataPacket[]>(
       'SELECT * FROM admin_users WHERE email = ?',
       [email]
     );
@@ -254,10 +271,13 @@ export async function authenticateUser(email: string, password: string): Promise
  * @throws 数据库操作错误
  */
 export async function updateUserProfile(userId: number, data: UserProfileUpdate): Promise<ResultSetHeader> {
+  const connection = await getPool().getConnection();
   try {
-    const [result] = await pool.execute<ResultSetHeader>(
+    // 过滤掉密码字段，确保安全
+    const { password, ...updateData } = data;
+    const [result] = await connection.execute<ResultSetHeader>(
       'UPDATE users SET ? WHERE id = ?',
-      [data, userId]
+      [updateData, userId]
     );
     return result;
   } catch (error) {
@@ -275,18 +295,12 @@ export async function updateUserProfile(userId: number, data: UserProfileUpdate)
  * @throws 数据库操作错误
  */
 export async function updateUserPassword(userId: number, newPassword: string): Promise<ResultSetHeader> {
-  try {
-    const hashedPassword = hashPassword(newPassword);
-
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE admin_users SET password = ? WHERE id = ?',
-      [hashedPassword, userId]
-    );
-    return result;
-  } catch (error) {
-    console.error('更新密码失败:', error);
-    throw new Error('更新失败');
-  }
+  const hashedPassword = hashPassword(newPassword);
+  const [result] = await getPool().execute<ResultSetHeader>(
+    'UPDATE admin_users SET password = ? WHERE id = ?',
+    [hashedPassword, userId]
+  );
+  return result;
 }
 
 /**
@@ -301,17 +315,17 @@ export async function query<T extends DBQueryResult>(
   sql: string, 
   params?: any[]
 ): Promise<T> {
+  const connection = await getPool().getConnection();
   try {
-    const [results] = await pool.execute<T>(sql, params || []);
-    return results;
-  } catch (error) {
-    console.error('数据库查询失败:', error);
-    throw new Error(`查询失败: ${(error as Error).message}`);
+    const [results] = await connection.query(sql, params);
+    return results as T;
+  } finally {
+    connection.release();
   }
 }
 
 // 默认导出连接池
-export default pool;
+export default getPool();
 
 // 同时保留命名导出以保持兼容性
-export { pool }; 
+export { getPool }; 
