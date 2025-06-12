@@ -49,65 +49,43 @@ export interface UserProfileUpdate {
   [key: string]: any;
 }
 
-// 设置默认环境变量（在未找到.env.local的情况下使用）
-if (!process.env.DB_HOST) {
-  console.warn('警告: 找不到.env.local文件，使用默认环境变量');
-  process.env.DB_HOST = '8.149.244.105';
-  process.env.DB_PORT = '3306';
-  process.env.DB_USER = 'h5_cloud_user';
-  process.env.DB_PASSWORD = 'mc72TNcMmy6HCybH';
-  process.env.DB_NAME = 'h5_cloud_db';
-  process.env.JWT_SECRET = 'sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe';
-  process.env.SERVER_URL = 'http://8.149.244.105:8888/';
+// 检查必要的环境变量，如果不存在则抛出错误
+function validateEnvVars() {
+  const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
+  const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+  if (missingEnvVars.length > 0) {
+    throw new Error(`严重错误: 缺少必要的数据库环境变量: ${missingEnvVars.join(', ')}`);
+  }
 }
 
-// 检查必要的环境变量
-const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-if (missingEnvVars.length > 0) {
-  console.warn(`警告: 缺少数据库配置环境变量: ${missingEnvVars.join(', ')}`);
-  console.warn('将使用默认值，这在生产环境中是不安全的');
-}
-
-/**
- * 数据库连接配置
- * 包含完整的连接池设置和优化参数
- */
-const dbConfig: PoolOptions = {
-  // 基本连接信息
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '3306', 10),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'h5_cloud_db',
-  
-  // 连接池配置
-  waitForConnections: true,        // 连接不够时等待，而不是立即失败
-  connectionLimit: 25,             // 连接池大小 - 基于系统负载调整
-  queueLimit: 0,                   // 队列限制（0=无限制）
-  
-  // 性能优化设置
-  connectTimeout: 10000,           // 连接超时10秒
-  
-  // 查询选项
-  namedPlaceholders: true          // 支持命名参数，提高安全性和可读性
-};
-
+// 创建连接池实例
 let pool: Pool | null = null;
 
+/**
+ * 获取数据库连接池
+ * 
+ * 使用环境变量中的配置创建连接池，确保在首次调用时已正确设置环境变量
+ * 
+ * @returns 数据库连接池实例
+ */
 function getPool(): Pool {
   if (pool) {
     return pool;
   }
   
-  // 在创建连接池时，使用最新的环境变量
-  const currentDbConfig: PoolOptions = {
-    host: process.env.DB_HOST || 'localhost',
+  // 验证环境变量，确保它们存在
+  validateEnvVars();
+  
+  // 使用环境变量创建连接配置
+  const dbConfig: PoolOptions = {
+    host: process.env.DB_HOST!,
     port: parseInt(process.env.DB_PORT || '3306', 10),
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'h5_cloud_db',
+    user: process.env.DB_USER!,
+    password: process.env.DB_PASSWORD!,
+    database: process.env.DB_NAME!,
+    
+    // 连接池配置
     waitForConnections: true,
     connectionLimit: 25,
     queueLimit: 0,
@@ -116,13 +94,13 @@ function getPool(): Pool {
   };
   
   console.log('首次创建数据库连接池:', {
-    host: currentDbConfig.host,
-    port: currentDbConfig.port,
-    user: currentDbConfig.user,
-    database: currentDbConfig.database,
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    database: dbConfig.database,
   });
 
-  pool = mysql.createPool(currentDbConfig);
+  pool = mysql.createPool(dbConfig);
 
   pool.on('connection', function(connection) {
     console.log('新的数据库连接已建立');
@@ -148,15 +126,6 @@ export async function checkDatabaseConnection(): Promise<boolean> {
     console.error('✗ 数据库连接测试失败:', error);
     return false;
   }
-}
-
-/**
- * 创建新的数据库连接（通常不需要，应优先使用连接池）
- * 
- * @returns mysql连接实例
- */
-export function createClient() {
-  return mysql.createConnection(dbConfig);
 }
 
 /**
@@ -266,9 +235,8 @@ export async function authenticateUser(email: string, password: string): Promise
  * 更新用户资料
  * 
  * @param userId 用户ID
- * @param data 要更新的用户资料字段
+ * @param data 更新的资料字段
  * @returns 更新结果
- * @throws 数据库操作错误
  */
 export async function updateUserProfile(userId: number, data: UserProfileUpdate): Promise<ResultSetHeader> {
   const connection = await getPool().getConnection();
@@ -280,9 +248,8 @@ export async function updateUserProfile(userId: number, data: UserProfileUpdate)
       [updateData, userId]
     );
     return result;
-  } catch (error) {
-    console.error('更新用户信息失败:', error);
-    throw new Error('更新失败');
+  } finally {
+    connection.release();
   }
 }
 
@@ -290,9 +257,8 @@ export async function updateUserProfile(userId: number, data: UserProfileUpdate)
  * 更新用户密码
  * 
  * @param userId 用户ID
- * @param newPassword 新密码（明文，会自动加密）
+ * @param newPassword 新密码（明文）
  * @returns 更新结果
- * @throws 数据库操作错误
  */
 export async function updateUserPassword(userId: number, newPassword: string): Promise<ResultSetHeader> {
   const hashedPassword = hashPassword(newPassword);
@@ -304,12 +270,11 @@ export async function updateUserPassword(userId: number, newPassword: string): P
 }
 
 /**
- * 执行通用查询的辅助函数
+ * 执行通用数据库查询
  * 
- * @param sql SQL查询语句
+ * @param sql SQL语句
  * @param params 查询参数
  * @returns 查询结果
- * @throws 数据库操作错误
  */
 export async function query<T extends DBQueryResult>(
   sql: string, 
@@ -324,8 +289,6 @@ export async function query<T extends DBQueryResult>(
   }
 }
 
-// 默认导出 getPool 函数
+// 同时提供默认导出和命名导出，保持兼容性
 export default getPool;
-
-// 同时保留命名导出以保持兼容性
 export { getPool }; 
