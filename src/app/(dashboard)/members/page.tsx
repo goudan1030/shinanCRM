@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense } from 'react';
 import { useDataTable } from '@/hooks/use-data-table';
-import { Copy, CheckCircle2 } from 'lucide-react';
+import { Copy, CheckCircle2, QrCode, Download } from 'lucide-react';
+import QRCode from 'qrcode';
 
 // 自定义会话类型
 interface SessionUser {
@@ -227,6 +228,12 @@ function MembersPageContent() {
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [copiedMemberId, setCopiedMemberId] = useState<string | null>(null);
   const [copiedLinkMemberId, setCopiedLinkMemberId] = useState<string | null>(null);
+  
+  // 二维码相关状态
+  const [qrCodeDialogOpen, setQrCodeDialogOpen] = useState(false);
+  const [qrCodeGenerating, setQrCodeGenerating] = useState(false);
+  const [qrCodePreviewUrl, setQrCodePreviewUrl] = useState<string | null>(null);
+  const [selectedQrCodeMember, setSelectedQrCodeMember] = useState<Member | null>(null);
 
   // 分页计算
   const totalPages = Math.ceil(total / pageSize);
@@ -1032,6 +1039,146 @@ function MembersPageContent() {
     }
   }, [toast]);
 
+  // 生成二维码名片
+  const generateQRCodeCard = useCallback(async (member: Member) => {
+    setQrCodeGenerating(true);
+    
+    try {
+      toast({
+        title: "生成中",
+        description: "正在生成二维码名片..."
+      });
+
+      // 构建会员链接
+      const memberLink = `https://m.xinghun.info/user/${member.id}`;
+      
+      // 生成二维码数据URL
+      const qrCodeDataUrl = await QRCode.toDataURL(memberLink, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
+      // 创建canvas
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('无法创建Canvas上下文');
+      }
+
+      // 设置高分辨率canvas (提高清晰度)
+      const scale = 3; // 提高分辨率倍数
+      
+      // 加载底图先获取实际尺寸
+      const backgroundImg = new Image();
+      backgroundImg.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        backgroundImg.onload = resolve;
+        backgroundImg.onerror = reject;
+        backgroundImg.src = '/qcord.png';
+      });
+
+      // 根据底图实际尺寸设置Canvas，保持原始比例
+      const imgWidth = backgroundImg.naturalWidth;
+      const imgHeight = backgroundImg.naturalHeight;
+      
+      canvas.width = imgWidth * scale;
+      canvas.height = imgHeight * scale;
+      
+      // 设置CSS显示尺寸
+      canvas.style.width = `${imgWidth}px`;
+      canvas.style.height = `${imgHeight}px`;
+      
+      // 缩放上下文以匹配高分辨率
+      ctx.scale(scale, scale);
+
+      // 绘制底图 (使用实际尺寸，不压缩变形)
+      ctx.drawImage(backgroundImg, 0, 0, imgWidth, imgHeight);
+
+      // 加载二维码图片
+      const qrCodeImg = new Image();
+      await new Promise((resolve, reject) => {
+        qrCodeImg.onload = resolve;
+        qrCodeImg.onerror = reject;
+        qrCodeImg.src = qrCodeDataUrl;
+      });
+
+      // 绘制二维码 (调整位置往上移，进一步增大尺寸)
+      const qrSize = Math.min(imgWidth * 0.45, 300); // 进一步增大到图片宽度的45%，最大300px
+      const qrX = (imgWidth - qrSize) / 2;
+      const qrY = imgHeight * 0.6; // 从图片高度的60%位置开始，往上移动了
+      ctx.drawImage(qrCodeImg, qrX, qrY, qrSize, qrSize);
+
+      // 设置文字样式 - 根据提供的CSS样式
+      ctx.fillStyle = '#8400B9'; // 紫色
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${Math.max(24, imgWidth * 0.04)}px "Source Han Sans", "PingFang SC", "Microsoft YaHei", sans-serif`;
+
+      // 计算标题位置 (往上调整)
+      const titleCenterX = imgWidth / 2; // 居中显示
+      const titleY = imgHeight * 0.45; // 从图片高度的45%位置，比之前更靠上
+
+      // 组合所有信息到一行显示
+      const infoText = `${member.member_no} ${member.city} ${member.gender === 'male' ? '男' : '女'} 找形婚`;
+      ctx.fillText(infoText, titleCenterX, titleY);
+
+      // 生成预览图片
+      const dataUrl = canvas.toDataURL('image/png');
+      setQrCodePreviewUrl(dataUrl);
+      
+      toast({
+        title: "生成成功",
+        description: "二维码名片已生成，可以预览和下载"
+      });
+
+    } catch (error) {
+      console.error('生成二维码名片失败:', error);
+      toast({
+        variant: 'destructive',
+        title: "生成失败",
+        description: error instanceof Error ? error.message : "未知错误"
+      });
+    } finally {
+      setQrCodeGenerating(false);
+    }
+  }, [toast]);
+
+  // 下载二维码图片
+  const downloadQRCodeImage = useCallback(() => {
+    if (!qrCodePreviewUrl || !selectedQrCodeMember) return;
+
+    const link = document.createElement('a');
+    link.download = `${selectedQrCodeMember.member_no}_二维码名片.png`;
+    link.href = qrCodePreviewUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "下载成功",
+      description: "二维码名片已保存到本地"
+    });
+  }, [qrCodePreviewUrl, selectedQrCodeMember, toast]);
+
+  // 处理二维码按钮点击
+  const handleQRCodeClick = useCallback((member: Member) => {
+    setSelectedQrCodeMember(member);
+    setQrCodeDialogOpen(true);
+    setQrCodePreviewUrl(null);
+    generateQRCodeCard(member);
+  }, [generateQRCodeCard]);
+
+  // 关闭二维码对话框
+  const handleQRCodeDialogClose = useCallback(() => {
+    setQrCodeDialogOpen(false);
+    setQrCodePreviewUrl(null);
+    setSelectedQrCodeMember(null);
+  }, []);
+
   // 修改清空筛选函数，同时清除 localStorage
   const clearFilters = () => {
     setStatusFilter(null);
@@ -1055,6 +1202,47 @@ function MembersPageContent() {
 
   return (
     <div className="space-y-4">
+      {/* 二维码生成对话框 */}
+      <Dialog open={qrCodeDialogOpen} onOpenChange={handleQRCodeDialogClose}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>二维码名片预览</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {qrCodeGenerating ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-muted-foreground">正在生成二维码名片...</p>
+                </div>
+              </div>
+            ) : qrCodePreviewUrl ? (
+              <div className="space-y-4">
+                <div className="border rounded-lg overflow-hidden">
+                  <img 
+                    src={qrCodePreviewUrl} 
+                    alt="二维码名片预览" 
+                    className="w-full h-auto"
+                  />
+                </div>
+                
+                <div className="flex justify-center">
+                  <Button onClick={downloadQRCodeImage} className="flex items-center gap-2">
+                    <Download className="w-4 h-4" />
+                    下载图片
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-sm text-muted-foreground">准备生成二维码名片...</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* 图片预览对话框 */}
       <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
         <DialogContent className="max-w-2xl">
@@ -1652,6 +1840,16 @@ function MembersPageContent() {
                                     复制
                                   </span>
                                 )}
+                              </Button>
+                              <div className="h-4 border-r border-gray-300"></div>
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="h-7 px-2 py-0 text-xs border border-gray-300 hover:bg-gray-50 shadow-sm"
+                                onClick={() => handleQRCodeClick(member)}
+                              >
+                                <QrCode className="w-3 h-3 mr-1" />
+                                二维码
                               </Button>
                               <div className="h-4 border-r border-gray-300"></div>
                               <Button
