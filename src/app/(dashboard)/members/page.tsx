@@ -1733,19 +1733,201 @@ function MembersPageContent() {
           </div>
         ) : (
           <>
-            {/* 添加滚动提示 */}
-            <div className="flex items-center text-sm text-muted-foreground mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                <path d="M18 8L22 12L18 16"></path>
-                <path d="M6 8L2 12L6 16"></path>
-              </svg>
-              <span>左右滑动可查看更多列，操作按钮已固定在最右侧</span>
+            {/* 移动端卡片布局 */}
+            <div className="lg:hidden space-y-4 mb-[60px]">
+              {members.map((member) => (
+                <div key={member.id} className="bg-white rounded-lg border p-4 shadow-sm">
+                  {/* 卡片头部 */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-base">{member.member_no}</span>
+                        <span 
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            member.type === 'ANNUAL' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : member.type === 'ONE_TIME'
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {getMemberTypeText(member.type, member.remaining_matches)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span>{member.wechat}</span>
+                        <span>{member.phone}</span>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      member.status === 'ACTIVE' 
+                        ? 'bg-green-100 text-green-800' 
+                        : member.status === 'REVOKED' 
+                        ? 'bg-red-100 text-red-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {member.status === 'ACTIVE' ? '激活' : member.status === 'REVOKED' ? '撤销' : '成功'}
+                    </span>
+                  </div>
+
+                  {/* 卡片内容 */}
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                      <span className="text-gray-500">性别：</span>
+                      <span>{getGenderText(member.gender)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">出生年份：</span>
+                      <span>{member.birth_year}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">身高：</span>
+                      <span>{member.height}cm</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">学历：</span>
+                      <span>{getEducationText(member.education)}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-gray-500">地区：</span>
+                      <span>{member.province} {member.city} {member.district}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-gray-500">创建时间：</span>
+                      <span>{new Date(member.created_at).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}</span>
+                    </div>
+                  </div>
+
+                  {/* 卡片操作按钮 */}
+                  <div className="flex flex-wrap gap-2 pt-3 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => router.push(`/members/${member.id}`)}
+                    >
+                      查看
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => router.push(`/members/${member.id}/edit`)}
+                    >
+                      编辑
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => copyMemberInfo(member)}
+                    >
+                      {copiedMemberId === member.id ? '已复制' : '复制'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => handleQRCodeClick(member)}
+                    >
+                      二维码
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => copyMemberLink(member)}
+                    >
+                      {copiedLinkMemberId === member.id ? '已复制链接' : '复制链接'}
+                    </Button>
+                    {member.status === 'ACTIVE' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs text-blue-600"
+                          onClick={() => {
+                            if (member.remaining_matches <= 0) {
+                              toast({
+                                variant: 'destructive',
+                                title: '匹配失败',
+                                description: '该用户匹配次数为0，无法匹配'
+                              });
+                              return;
+                            }
+                            setSelectedMemberId(member.id);
+                            setMatchDialogOpen(true);
+                          }}
+                          disabled={loading || member.status !== 'ACTIVE'}
+                        >
+                          匹配
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs text-red-600"
+                          onClick={() => {
+                            setSelectedMemberId(member.id);
+                            setRevokeReason('');
+                            setRevokeDialogOpen(true);
+                          }}
+                        >
+                          撤销
+                        </Button>
+                      </>
+                    )}
+                    {member.status === 'REVOKED' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs text-blue-600"
+                          onClick={() => {
+                            setSelectedMemberId(member.id);
+                            setActivateDialogOpen(true);
+                          }}
+                        >
+                          激活
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs text-red-600"
+                          onClick={() => {
+                            setSelectedMemberId(member.id);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          删除
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div className="rounded-md border overflow-hidden mb-[80px]">
-              {/* 使用相对定位容器和溢出滚动 */}
-              <div className="relative overflow-x-auto" style={{ maxWidth: '100%' }}>
-                <table className="w-full text-sm">
+            {/* 桌面端表格布局 */}
+            <div className="hidden lg:block">
+              {/* 添加滚动提示 */}
+              <div className="flex items-center text-sm text-muted-foreground mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                  <path d="M18 8L22 12L18 16"></path>
+                  <path d="M6 8L2 12L6 16"></path>
+                </svg>
+                <span>左右滑动可查看更多列，操作按钮已固定在最右侧</span>
+              </div>
+
+              <div className="rounded-md border overflow-hidden mb-[60px]">
+                {/* 使用相对定位容器和溢出滚动 */}
+                <div className="relative overflow-x-auto" style={{ maxWidth: '100%' }}>
+                  <table className="w-full text-sm">
                   <thead className="bg-white sticky top-0 z-20">
                     <tr>
                       {selectedColumns.filter(col => col !== 'actions').map((columnKey: ColumnKey) => {
@@ -1985,16 +2167,17 @@ function MembersPageContent() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
             </div>
 
             {/* 分页 */}
-            <div className="h-[48px] flex items-center justify-between border-t fixed bottom-0 left-[57px] right-0 bg-white z-50 px-6 shadow-sm">
-              <div className="text-sm text-muted-foreground flex items-center">
-                <span className="mr-2">共 {totalCount} 条记录</span>
+            <div className="h-[48px] flex items-center justify-between border-t fixed bottom-0 left-0 md:left-[57px] right-0 bg-white z-50 px-3 md:px-6 shadow-sm">
+              <div className="text-xs md:text-sm text-muted-foreground flex items-center">
+                <span className="mr-1 md:mr-2">共 {totalCount} 条</span>
                 <select 
-                  className="ml-2 px-2 py-1 border border-gray-300 rounded text-sm"
+                  className="ml-1 md:ml-2 px-1 md:px-2 py-1 border border-gray-300 rounded text-xs md:text-sm"
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
                 >
@@ -2004,9 +2187,9 @@ function MembersPageContent() {
                   <option value="100">100条/页</option>
                 </select>
               </div>
-              <div className="flex gap-2 items-center">
-                <div className="flex items-center text-sm mr-4">
-                  <span className="mr-2">跳至</span>
+              <div className="flex gap-1 md:gap-2 items-center">
+                <div className="hidden sm:flex items-center text-xs md:text-sm mr-2 md:mr-4">
+                  <span className="mr-1 md:mr-2">跳至</span>
                   <input 
                     type="number" 
                     min="1" 
@@ -2018,9 +2201,9 @@ function MembersPageContent() {
                         handlePageChange(value);
                       }
                     }}
-                    className="w-[50px] px-2 py-1 border border-gray-300 rounded text-center"
+                    className="w-[40px] md:w-[50px] px-1 md:px-2 py-1 border border-gray-300 rounded text-center text-xs md:text-sm"
                   />
-                  <span className="ml-2">页</span>
+                  <span className="ml-1 md:ml-2">页</span>
                 </div>
                 
                 <Button
@@ -2028,10 +2211,10 @@ function MembersPageContent() {
                   size="sm"
                   onClick={() => handlePageChange(1)}
                   disabled={currentPage === 1}
-                  className="h-8 min-w-[40px] px-2"
+                  className="h-7 md:h-8 min-w-[30px] md:min-w-[40px] px-1 md:px-2"
                 >
                   <span className="sr-only">首页</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="11 17 6 12 11 7"></polyline>
                     <polyline points="18 17 13 12 18 7"></polyline>
                   </svg>
@@ -2042,15 +2225,15 @@ function MembersPageContent() {
                   size="sm"
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="h-8 min-w-[40px] px-2"
+                  className="h-7 md:h-8 min-w-[30px] md:min-w-[40px] px-1 md:px-2"
                 >
                   <span className="sr-only">上一页</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="15 18 9 12 15 6"></polyline>
                   </svg>
                 </Button>
                 
-                <span className="px-4 text-sm">
+                <span className="px-2 md:px-4 text-xs md:text-sm">
                   {currentPage} / {totalPages}
                 </span>
                 
@@ -2059,10 +2242,10 @@ function MembersPageContent() {
                   size="sm"
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="h-8 min-w-[40px] px-2"
+                  className="h-7 md:h-8 min-w-[30px] md:min-w-[40px] px-1 md:px-2"
                 >
                   <span className="sr-only">下一页</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="9 18 15 12 9 6"></polyline>
                   </svg>
                 </Button>
@@ -2072,10 +2255,10 @@ function MembersPageContent() {
                   size="sm"
                   onClick={() => handlePageChange(totalPages)}
                   disabled={currentPage === totalPages}
-                  className="h-8 min-w-[40px] px-2"
+                  className="h-7 md:h-8 min-w-[30px] md:min-w-[40px] px-1 md:px-2"
                 >
                   <span className="sr-only">尾页</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="13 17 18 12 13 7"></polyline>
                     <polyline points="6 17 11 12 6 7"></polyline>
                   </svg>
