@@ -394,7 +394,7 @@ export default function IncomePage() {
         open={newIncomeDialogOpen} 
         onOpenChange={setNewIncomeDialogOpen}
       >
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>新增收入</DialogTitle>
           </DialogHeader>
@@ -548,7 +548,7 @@ export default function IncomePage() {
         open={deleteDialogOpen} 
         onOpenChange={setDeleteDialogOpen}
       >
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle>删除确认</DialogTitle>
           </DialogHeader>
@@ -616,7 +616,7 @@ export default function IncomePage() {
         open={editDialogOpen} 
         onOpenChange={setEditDialogOpen}
       >
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>编辑收入</DialogTitle>
           </DialogHeader>

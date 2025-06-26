@@ -376,7 +376,7 @@ export default function SettlementPage() {
 
       {/* 自动结算对话框 */}
       <Dialog open={autoSettleDialogOpen} onOpenChange={setAutoSettleDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>自动结算</DialogTitle>
           </DialogHeader>
@@ -449,7 +449,7 @@ export default function SettlementPage() {
       </Dialog>
 
       <Dialog open={newExpenseDialogOpen} onOpenChange={setNewExpenseDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>新增结算</DialogTitle>
           </DialogHeader>
@@ -540,7 +540,7 @@ export default function SettlementPage() {
       </Dialog>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle>删除确认</DialogTitle>
           </DialogHeader>
@@ -601,7 +601,7 @@ export default function SettlementPage() {
       </Dialog>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>编辑结算</DialogTitle>
           </DialogHeader>

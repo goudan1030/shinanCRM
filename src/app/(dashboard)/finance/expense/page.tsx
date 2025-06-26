@@ -388,7 +388,7 @@ export default function ExpensePage() {
       </div>
 
       <Dialog open={newExpenseDialogOpen} onOpenChange={setNewExpenseDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>新增支出</DialogTitle>
           </DialogHeader>
@@ -496,7 +496,7 @@ export default function ExpensePage() {
       </Dialog>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle>删除确认</DialogTitle>
           </DialogHeader>
@@ -566,7 +566,7 @@ export default function ExpensePage() {
       </Dialog>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>编辑支出</DialogTitle>
           </DialogHeader>
