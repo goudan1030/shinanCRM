@@ -271,7 +271,7 @@ export default function ChatGroupsPage() {
   };
 
   return (
-    <div className="p-3 sm:p-4 md:p-6">
+    <div className="p-3">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-semibold">群聊管理</h2>
         <Button onClick={handleAdd}>

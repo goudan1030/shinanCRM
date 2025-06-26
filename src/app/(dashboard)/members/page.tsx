@@ -1498,7 +1498,7 @@ function MembersPageContent() {
       </Dialog>
 
       {/* 主页面内容 */}
-      <div className="flex-1 flex flex-col p-3 sm:p-4 md:p-6">
+      <div className="flex-1 flex flex-col p-3">
         {/* 搜索和过滤 - 优化移动端布局 */}
         <div className="flex flex-col gap-3 mb-4">
           {/* 关键词搜索框 */}

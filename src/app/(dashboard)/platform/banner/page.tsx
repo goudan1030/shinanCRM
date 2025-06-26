@@ -235,7 +235,7 @@ export default function BannerPage() {
   });
 
   return (
-    <div className="p-3 sm:p-4 md:p-6">
+    <div className="p-3">
       {/* 标题和操作按钮 - 移动端垂直排列 */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 sm:mb-6">
         <h2 className="text-lg sm:text-xl font-semibold">Banner管理</h2>
