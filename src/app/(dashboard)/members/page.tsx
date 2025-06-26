@@ -997,27 +997,86 @@ function MembersPageContent() {
       
       // 复制到剪贴板
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(info.join('\n'));
-        setCopiedMemberId(member.id);
-        setTimeout(() => setCopiedMemberId(null), 2000);
-        
-        // 移动端显示黑色toast，PC端显示默认toast
-        if (!showMobileToast('会员信息已复制')) {
-          toast({
-            title: "复制成功",
-            description: "会员基本信息已复制到剪贴板"
-          });
+        try {
+          // 添加延时和更详细的错误处理
+          await Promise.race([
+            navigator.clipboard.writeText(info.join('\n')),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('复制超时，请重试')), 5000)
+            )
+          ]);
+          
+          setCopiedMemberId(member.id);
+          setTimeout(() => setCopiedMemberId(null), 2000);
+          
+          // 移动端显示黑色toast，PC端显示默认toast
+          if (!showMobileToast('会员信息已复制')) {
+            toast({
+              title: "复制成功",
+              description: "会员基本信息已复制到剪贴板"
+            });
+          }
+        } catch (clipboardError) {
+          console.error('Clipboard API 复制失败:', clipboardError);
+          
+          // 如果Clipboard API失败，尝试备用方案
+          try {
+            const textArea = document.createElement('textarea');
+            textArea.value = info.join('\n');
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+              setCopiedMemberId(member.id);
+              setTimeout(() => setCopiedMemberId(null), 2000);
+              
+              if (!showMobileToast('会员信息已复制')) {
+                toast({
+                  title: "复制成功",
+                  description: "会员基本信息已复制到剪贴板"
+                });
+              }
+            } else {
+              throw new Error('备用复制方案也失败');
+            }
+          } catch (fallbackError) {
+            console.error('备用复制方案失败:', fallbackError);
+            
+            const errorMessage = clipboardError.message.includes('timeout') 
+              ? '复制超时，请重试' 
+              : '复制失败，可能是权限问题或内容过长';
+            
+            if (!showMobileToast(errorMessage, 'error')) {
+              toast({
+                variant: 'destructive',
+                title: "复制失败",
+                description: errorMessage
+              });
+            }
+          }
         }
       } else {
         // 浏览器不支持clipboard API的备用方案
         const textArea = document.createElement('textarea');
         textArea.value = info.join('\n');
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
         
         try {
           const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          
           if (successful) {
             setCopiedMemberId(member.id);
             setTimeout(() => setCopiedMemberId(null), 2000);
@@ -1030,22 +1089,20 @@ function MembersPageContent() {
               });
             }
           } else {
-            throw new Error('复制失败');
+            throw new Error('execCommand复制失败');
           }
         } catch (err) {
-          console.error('复制失败:', err);
+          console.error('execCommand复制失败:', err);
           
           // 移动端显示黑色错误toast，PC端显示默认错误toast
-          if (!showMobileToast('复制失败', 'error')) {
+          if (!showMobileToast('复制失败，请手动选择文本复制', 'error')) {
             toast({
               variant: 'destructive',
               title: "复制失败",
-              description: "无法复制到剪贴板"
+              description: "复制失败，请手动选择文本复制"
             });
           }
         }
-        
-        document.body.removeChild(textArea);
       }
     } catch (error) {
       console.error('复制会员信息失败:', error);
@@ -1069,27 +1126,86 @@ function MembersPageContent() {
       
       // 复制到剪贴板
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(memberLink);
-        setCopiedLinkMemberId(member.id);
-        setTimeout(() => setCopiedLinkMemberId(null), 2000);
-        
-        // 移动端显示黑色toast，PC端显示默认toast
-        if (!showMobileToast('会员链接已复制')) {
-          toast({
-            title: "复制成功",
-            description: "会员链接已复制到剪贴板"
-          });
+        try {
+          // 添加延时和更详细的错误处理
+          await Promise.race([
+            navigator.clipboard.writeText(memberLink),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('复制超时，请重试')), 5000)
+            )
+          ]);
+          
+          setCopiedLinkMemberId(member.id);
+          setTimeout(() => setCopiedLinkMemberId(null), 2000);
+          
+          // 移动端显示黑色toast，PC端显示默认toast
+          if (!showMobileToast('会员链接已复制')) {
+            toast({
+              title: "复制成功",
+              description: "会员链接已复制到剪贴板"
+            });
+          }
+        } catch (clipboardError) {
+          console.error('Clipboard API 复制失败:', clipboardError);
+          
+          // 如果Clipboard API失败，尝试备用方案
+          try {
+            const textArea = document.createElement('textarea');
+            textArea.value = memberLink;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+              setCopiedLinkMemberId(member.id);
+              setTimeout(() => setCopiedLinkMemberId(null), 2000);
+              
+              if (!showMobileToast('会员链接已复制')) {
+                toast({
+                  title: "复制成功",
+                  description: "会员链接已复制到剪贴板"
+                });
+              }
+            } else {
+              throw new Error('备用复制方案也失败');
+            }
+          } catch (fallbackError) {
+            console.error('备用复制方案失败:', fallbackError);
+            
+            const errorMessage = clipboardError.message.includes('timeout') 
+              ? '复制超时，请重试' 
+              : '复制失败，可能是权限问题';
+            
+            if (!showMobileToast(errorMessage, 'error')) {
+              toast({
+                variant: 'destructive',
+                title: "复制失败",
+                description: errorMessage
+              });
+            }
+          }
         }
       } else {
         // 浏览器不支持clipboard API的备用方案
         const textArea = document.createElement('textarea');
         textArea.value = memberLink;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
         
         try {
           const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          
           if (successful) {
             setCopiedLinkMemberId(member.id);
             setTimeout(() => setCopiedLinkMemberId(null), 2000);
@@ -1102,22 +1218,20 @@ function MembersPageContent() {
               });
             }
           } else {
-            throw new Error('复制失败');
+            throw new Error('execCommand复制失败');
           }
         } catch (err) {
-          console.error('复制失败:', err);
+          console.error('execCommand复制失败:', err);
           
           // 移动端显示黑色错误toast，PC端显示默认错误toast
-          if (!showMobileToast('复制失败', 'error')) {
+          if (!showMobileToast('复制失败，请手动选择文本复制', 'error')) {
             toast({
               variant: 'destructive',
               title: "复制失败",
-              description: "无法复制到剪贴板"
+              description: "复制失败，请手动选择文本复制"
             });
           }
         }
-        
-        document.body.removeChild(textArea);
       }
     } catch (error) {
       console.error('复制会员链接失败:', error);
@@ -1298,7 +1412,7 @@ function MembersPageContent() {
     <div className="space-y-4">
       {/* 二维码生成对话框 */}
       <Dialog open={qrCodeDialogOpen} onOpenChange={handleQRCodeDialogClose}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[90%] max-w-sm mx-auto">
           <DialogHeader>
             <DialogTitle>二维码名片预览</DialogTitle>
           </DialogHeader>
@@ -1339,7 +1453,7 @@ function MembersPageContent() {
 
       {/* 图片预览对话框 */}
       <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[90%] max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle>微信二维码</DialogTitle>
           </DialogHeader>
@@ -1368,7 +1482,7 @@ function MembersPageContent() {
 
       {/* 激活会员对话框 */}
       <Dialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>激活会员</DialogTitle>
             <DialogDescription>
@@ -1426,7 +1540,7 @@ function MembersPageContent() {
 
       {/* 会员升级对话框 */}
       <Dialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>会员升级</DialogTitle>
             <DialogDescription>
