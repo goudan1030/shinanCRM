@@ -13,7 +13,7 @@ export default function MiniappLayout({
   const pathname = usePathname();
 
   const MiniappMenu = (
-    <div className="h-full bg-white relative z-[998]">
+    <div className="h-full bg-white relative z-[998] hidden lg:block">
       <div className="flex h-[48px] items-center px-6 border-b">
         <h1 className="text-2xl font-semibold text-gray-900">小程序管理</h1>
       </div>
@@ -43,6 +43,7 @@ export default function MiniappLayout({
       sidebarContent={<Sidebar />}
       middleContent={MiniappMenu}
       useThreeColumns={true}
+      useTwoColumnsOnMobile={true}
       className="bg-gray-50"
     >
       {children}

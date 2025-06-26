@@ -18,8 +18,8 @@ export default function PlatformLayout({
       className="bg-gray-50"
     >
       <div className="flex">
-        {/* 左侧导航菜单 - 固定位置 */}
-        <div className="fixed inset-y-0 left-[57px] w-[240px] bg-white border-r z-[900]">
+        {/* 左侧导航菜单 - 固定位置，移动端隐藏 */}
+        <div className="hidden lg:block fixed inset-y-0 left-[57px] w-[240px] bg-white border-r z-[900]">
           <div className="flex h-[48px] items-center px-6 border-b">
             <h1 className="text-2xl font-semibold text-gray-900">平台管理</h1>
           </div>
@@ -51,8 +51,8 @@ export default function PlatformLayout({
           </div>
         </div>
 
-        {/* 主内容区域 - 添加了左边距以避开导航 */}
-        <div className="ml-[297px] w-full">
+        {/* 主内容区域 - 移动端全宽，PC端添加左边距以避开导航 */}
+        <div className="w-full lg:ml-[297px]">
           {children}
         </div>
       </div>
