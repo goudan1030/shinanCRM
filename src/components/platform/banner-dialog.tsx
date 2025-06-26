@@ -249,7 +249,7 @@ export function BannerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="w-[95%] max-w-[600px] mx-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? '编辑' : '新增'}Banner</DialogTitle>
           <DialogDescription>

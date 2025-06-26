@@ -373,89 +373,104 @@ export default function BannerPage() {
         </div>
 
         {/* 移动端卡片列表 */}
-        <div className="lg:hidden">
+        <div className="lg:hidden space-y-4 p-4">
           {filteredBanners.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               暂无Banner数据
             </div>
           ) : (
-            <div className="divide-y">
-              {filteredBanners.map((banner) => (
-                <div key={banner.id} className="p-4">
-                  <div className="flex gap-3">
-                    {/* 缩略图 */}
-                    <div className="w-[60px] h-[30px] flex-shrink-0 relative">
+            filteredBanners.map((banner) => (
+              <div key={banner.id} className="bg-white rounded-lg border p-4 shadow-sm">
+                {/* 卡片头部 */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3 flex-1">
+                    {/* Banner图片 */}
+                    <div className="w-16 h-10 flex-shrink-0 relative rounded overflow-hidden">
                       {banner.image_url?.startsWith('data:') ? (
                         <img 
                           src={banner.image_url} 
                           alt={banner.title}
-                          className="absolute inset-0 w-full h-full object-cover rounded"
+                          className="w-full h-full object-cover"
                         />
                       ) : (
                         <OptimizedImage 
                           src={banner.image_url} 
                           alt={banner.title}
-                          width={60}
-                          height={30}
-                          className="absolute inset-0 w-full h-full object-cover rounded"
+                          width={64}
+                          height={40}
+                          className="w-full h-full object-cover"
                         />
                       )}
                     </div>
                     
-                    {/* 内容区域 */}
+                    {/* Banner标题和分类 */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm truncate">{banner.title}</h3>
-                      <div className="mt-1 space-y-1">
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                          <span>分类: {CATEGORY_MAP[banner.category_id as keyof typeof CATEGORY_MAP]}</span>
-                          <span>排序: {banner.sort_order}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className={banner.status === 1 ? "text-green-600" : "text-gray-400"}>
-                            {banner.status === 1 ? "显示" : "隐藏"}
-                          </span>
-                          <span className="text-gray-500">
-                            {new Date(banner.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
+                      <h3 className="font-medium text-sm truncate mb-1">{banner.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                          {CATEGORY_MAP[banner.category_id as keyof typeof CATEGORY_MAP]}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          banner.status === 1 
+                            ? "bg-green-100 text-green-800" 
+                            : "bg-gray-100 text-gray-600"
+                        }`}>
+                          {banner.status === 1 ? "显示" : "隐藏"}
+                        </span>
                       </div>
-                    </div>
-                    
-                    {/* 操作按钮 */}
-                    <div className="flex flex-col gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleEdit(banner)}
-                        className="h-7 px-2"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => toggleStatus(banner.id, banner.status)}
-                        className="h-7 px-2"
-                      >
-                        {banner.status === 1 ? (
-                          <EyeOff className="h-3 w-3" />
-                        ) : (
-                          <Eye className="h-3 w-3" />
-                        )}
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleDelete(banner.id)}
-                        className="h-7 px-2 text-red-500 hover:text-red-600"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {/* 卡片内容 */}
+                <div className="space-y-2 text-sm mb-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">排序：</span>
+                    <span>{banner.sort_order}</span>
+                  </div>
+                  {banner.start_time && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">展示时间：</span>
+                      <span className="text-right">
+                        {new Date(banner.start_time).toLocaleDateString()} - {new Date(banner.end_time).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">创建时间：</span>
+                    <span>{new Date(banner.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                {/* 卡片操作按钮 */}
+                <div className="flex gap-2 pt-3 border-t">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1 h-8 text-xs"
+                    onClick={() => handleEdit(banner)}
+                  >
+                    编辑
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1 h-8 text-xs"
+                    onClick={() => toggleStatus(banner.id, banner.status)}
+                  >
+                    {banner.status === 1 ? "隐藏" : "显示"}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1 h-8 text-xs text-red-600"
+                    onClick={() => handleDelete(banner.id)}
+                  >
+                    删除
+                  </Button>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </Card>
