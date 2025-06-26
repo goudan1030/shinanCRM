@@ -915,6 +915,46 @@ function MembersPageContent() {
     localStorage.setItem('memberTableColumns', JSON.stringify(finalColumns));
   };
 
+  // 移动端黑色toast工具函数
+  const showMobileToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    // 检测是否为移动端
+    const isMobile = window.innerWidth < 1024; // lg断点
+    
+    if (isMobile) {
+      // 创建黑色toast元素
+      const toastElement = document.createElement('div');
+      toastElement.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] px-4 py-2 rounded-md text-white text-sm font-medium shadow-lg transition-all duration-300 ${
+        type === 'success' ? 'bg-black' : 'bg-red-600'
+      }`;
+      toastElement.textContent = message;
+      toastElement.style.opacity = '0';
+      toastElement.style.transform = 'translate(-50%, -20px)';
+      
+      document.body.appendChild(toastElement);
+      
+      // 动画显示
+      requestAnimationFrame(() => {
+        toastElement.style.opacity = '1';
+        toastElement.style.transform = 'translate(-50%, 0)';
+      });
+      
+      // 2秒后移除
+      setTimeout(() => {
+        toastElement.style.opacity = '0';
+        toastElement.style.transform = 'translate(-50%, -20px)';
+        setTimeout(() => {
+          if (document.body.contains(toastElement)) {
+            document.body.removeChild(toastElement);
+          }
+        }, 300);
+      }, 2000);
+      
+      return true; // 表示已显示移动端toast
+    }
+    
+    return false; // 表示未显示移动端toast，需要使用默认toast
+  }, []);
+
   // 会员信息复制功能
   const copyMemberInfo = useCallback(async (member: Member) => {
     try {
@@ -960,10 +1000,14 @@ function MembersPageContent() {
         await navigator.clipboard.writeText(info.join('\n'));
         setCopiedMemberId(member.id);
         setTimeout(() => setCopiedMemberId(null), 2000);
-        toast({
-          title: "复制成功",
-          description: "会员基本信息已复制到剪贴板"
-        });
+        
+        // 移动端显示黑色toast，PC端显示默认toast
+        if (!showMobileToast('会员信息已复制')) {
+          toast({
+            title: "复制成功",
+            description: "会员基本信息已复制到剪贴板"
+          });
+        }
       } else {
         // 浏览器不支持clipboard API的备用方案
         const textArea = document.createElement('textarea');
@@ -977,33 +1021,45 @@ function MembersPageContent() {
           if (successful) {
             setCopiedMemberId(member.id);
             setTimeout(() => setCopiedMemberId(null), 2000);
-            toast({
-              title: "复制成功",
-              description: "会员基本信息已复制到剪贴板"
-            });
+            
+            // 移动端显示黑色toast，PC端显示默认toast
+            if (!showMobileToast('会员信息已复制')) {
+              toast({
+                title: "复制成功",
+                description: "会员基本信息已复制到剪贴板"
+              });
+            }
           } else {
             throw new Error('复制失败');
           }
         } catch (err) {
           console.error('复制失败:', err);
-          toast({
-            variant: 'destructive',
-            title: "复制失败",
-            description: "无法复制到剪贴板"
-          });
+          
+          // 移动端显示黑色错误toast，PC端显示默认错误toast
+          if (!showMobileToast('复制失败', 'error')) {
+            toast({
+              variant: 'destructive',
+              title: "复制失败",
+              description: "无法复制到剪贴板"
+            });
+          }
         }
         
         document.body.removeChild(textArea);
       }
     } catch (error) {
       console.error('复制会员信息失败:', error);
-      toast({
-        variant: 'destructive',
-        title: "复制失败",
-        description: error instanceof Error ? error.message : "未知错误"
-      });
+      
+      // 移动端显示黑色错误toast，PC端显示默认错误toast
+      if (!showMobileToast('复制失败', 'error')) {
+        toast({
+          variant: 'destructive',
+          title: "复制失败",
+          description: error instanceof Error ? error.message : "未知错误"
+        });
+      }
     }
-  }, [getChildrenPlanText, getEducationText, getHouseCarText, getMarriageCertText, getMarriageHistoryText, getSexualOrientationText, toast]);
+  }, [getChildrenPlanText, getEducationText, getHouseCarText, getMarriageCertText, getMarriageHistoryText, getSexualOrientationText, toast, showMobileToast]);
 
   // 会员链接复制功能
   const copyMemberLink = useCallback(async (member: Member) => {
@@ -1016,10 +1072,14 @@ function MembersPageContent() {
         await navigator.clipboard.writeText(memberLink);
         setCopiedLinkMemberId(member.id);
         setTimeout(() => setCopiedLinkMemberId(null), 2000);
-        toast({
-          title: "复制成功",
-          description: "会员链接已复制到剪贴板"
-        });
+        
+        // 移动端显示黑色toast，PC端显示默认toast
+        if (!showMobileToast('会员链接已复制')) {
+          toast({
+            title: "复制成功",
+            description: "会员链接已复制到剪贴板"
+          });
+        }
       } else {
         // 浏览器不支持clipboard API的备用方案
         const textArea = document.createElement('textarea');
@@ -1033,33 +1093,45 @@ function MembersPageContent() {
           if (successful) {
             setCopiedLinkMemberId(member.id);
             setTimeout(() => setCopiedLinkMemberId(null), 2000);
-            toast({
-              title: "复制成功",
-              description: "会员链接已复制到剪贴板"
-            });
+            
+            // 移动端显示黑色toast，PC端显示默认toast
+            if (!showMobileToast('会员链接已复制')) {
+              toast({
+                title: "复制成功",
+                description: "会员链接已复制到剪贴板"
+              });
+            }
           } else {
             throw new Error('复制失败');
           }
         } catch (err) {
           console.error('复制失败:', err);
-          toast({
-            variant: 'destructive',
-            title: "复制失败",
-            description: "无法复制到剪贴板"
-          });
+          
+          // 移动端显示黑色错误toast，PC端显示默认错误toast
+          if (!showMobileToast('复制失败', 'error')) {
+            toast({
+              variant: 'destructive',
+              title: "复制失败",
+              description: "无法复制到剪贴板"
+            });
+          }
         }
         
         document.body.removeChild(textArea);
       }
     } catch (error) {
       console.error('复制会员链接失败:', error);
-      toast({
-        variant: 'destructive',
-        title: "复制失败",
-        description: error instanceof Error ? error.message : "未知错误"
-      });
+      
+      // 移动端显示黑色错误toast，PC端显示默认错误toast
+      if (!showMobileToast('复制失败', 'error')) {
+        toast({
+          variant: 'destructive',
+          title: "复制失败",
+          description: error instanceof Error ? error.message : "未知错误"
+        });
+      }
     }
-  }, [toast]);
+  }, [toast, showMobileToast]);
 
   // 生成二维码名片
   const generateQRCodeCard = useCallback(async (member: Member) => {
@@ -1498,7 +1570,7 @@ function MembersPageContent() {
       </Dialog>
 
       {/* 主页面内容 */}
-      <div className="flex-1 flex flex-col px-3">
+      <div className="flex-1 flex flex-col">
         {/* 搜索和过滤 - 优化移动端布局 */}
         <div className="flex flex-col gap-3 mb-4">
           {/* 关键词搜索框 */}
