@@ -1,7 +1,7 @@
 'use client';
 
-import React, { memo, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { memo } from 'react';
 
 interface ThreeColumnLayoutProps {
   children: React.ReactNode;
@@ -19,77 +19,29 @@ export const ThreeColumnLayout = memo(function ThreeColumnLayout({
   className,
   useThreeColumns = false,
 }: ThreeColumnLayoutProps) {
-  const [isMobile, setIsMobile] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // 移动端遮罩层点击关闭侧边栏
-  const closeSidebar = () => {
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  };
-
   return (
-    <div className={cn('min-h-screen relative', className)}>
-      {/* 移动端遮罩层 */}
-      {isMobile && sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-[999]"
-          onClick={closeSidebar}
-        />
-      )}
-
-      {/* 侧边栏容器 */}
-      <div className={cn(
-        "fixed inset-y-0 z-[1000] transition-transform duration-300 ease-in-out",
-        // 桌面端：始终显示在左侧
-        "lg:left-0 lg:translate-x-0",
-        // 移动端：根据状态显示/隐藏
-        isMobile ? (
-          sidebarOpen ? "left-0 translate-x-0" : "left-0 -translate-x-full"
-        ) : "left-0"
-      )}>
-        {sidebarContent && 
-          React.cloneElement(sidebarContent as React.ReactElement, { 
-            isMobile,
-            sidebarOpen,
-            setSidebarOpen 
-          })
-        }
+    <div className={cn('min-h-screen', className)}>
+      {/* 侧边栏容器 - 在移动端隐藏 */}
+      <div className="hidden md:block fixed inset-y-0 left-0 z-[1000]">
+        {sidebarContent}
       </div>
 
-      {/* 中间栏容器 - 仅在三栏布局且非移动端时显示 */}
-      {useThreeColumns && middleContent && !isMobile && (
-        <div className="fixed inset-y-0 left-[57px] z-[999] w-[240px]">
+      {/* 中间栏容器 - 仅在三栏布局时显示，移动端隐藏 */}
+      {useThreeColumns && middleContent && (
+        <div className="hidden lg:block fixed inset-y-0 left-[57px] z-[999] w-[240px]">
           {middleContent}
         </div>
       )}
 
-      {/* 主内容区域 - 响应式边距 */}
+      {/* 主内容区域 - 移动端全宽，桌面端有边距 */}
       <div className={cn(
-        "relative transition-all duration-300 ease-in-out",
-        // 移动端：无左边距
-        "lg:ml-[60px]",
-        // 桌面端：根据是否有中间栏调整左侧边距
-        !isMobile && useThreeColumns && middleContent && "lg:ml-[297px]"
+        "relative w-full", 
+        // 移动端无边距，桌面端根据布局调整边距
+        "ml-0 md:ml-[60px]",
+        useThreeColumns && middleContent ? "lg:ml-[297px]" : "",
+        "transition-all duration-100 ease-in-out"
       )}>
-        {/* 为子组件提供移动端控制方法 */}
-        {React.cloneElement(children as React.ReactElement, { 
-          isMobile,
-          setSidebarOpen 
-        })}
+        {children}
       </div>
     </div>
   );

@@ -235,18 +235,20 @@ export default function BannerPage() {
   });
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-semibold">Banner管理</h2>
-        <Button onClick={() => setOpenDialog(true)}>
+    <div className="p-3 sm:p-4 md:p-6">
+      {/* 标题和操作按钮 - 移动端垂直排列 */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-semibold">Banner管理</h2>
+        <Button onClick={() => setOpenDialog(true)} className="w-full sm:w-auto">
           <PlusCircle className="h-4 w-4 mr-2" />
           新增Banner
         </Button>
       </div>
 
-      <Card className="p-4 mb-4">
-        <div className="flex gap-4">
-          <div className="w-[200px]">
+      {/* 筛选区域 - 移动端垂直排列 */}
+      <Card className="p-3 sm:p-4 mb-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="w-full sm:w-[200px]">
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger>
                 <SelectValue placeholder="选择分类" />
@@ -261,7 +263,7 @@ export default function BannerPage() {
           </div>
           
           <Select defaultValue="all">
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="状态" />
             </SelectTrigger>
             <SelectContent>
@@ -273,98 +275,189 @@ export default function BannerPage() {
         </div>
       </Card>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">缩略图</TableHead>
-              <TableHead>标题</TableHead>
-              <TableHead>所属分类</TableHead>
-              <TableHead>排序</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>展示时间</TableHead>
-              <TableHead>创建时间</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredBanners.map((banner) => (
-              <TableRow key={banner.id}>
-                <TableCell>
-                  <div className="w-[80px] h-[40px] relative">
-                    {banner.image_url?.startsWith('data:') ? (
-                      <img 
+      {/* 表格区域 - 桌面端显示表格，移动端显示卡片列表 */}
+      <Card className="overflow-hidden">
+        {/* 桌面端表格 */}
+        <div className="hidden lg:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">缩略图</TableHead>
+                <TableHead>标题</TableHead>
+                <TableHead>所属分类</TableHead>
+                <TableHead>排序</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead>展示时间</TableHead>
+                <TableHead>创建时间</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredBanners.map((banner) => (
+                <TableRow key={banner.id}>
+                  <TableCell>
+                    <div className="w-[80px] h-[40px] relative">
+                      {banner.image_url?.startsWith('data:') ? (
+                        <img 
+                          src={banner.image_url} 
+                          alt={banner.title}
+                          className="absolute inset-0 w-full h-full object-cover rounded"
+                        />
+                      ) : (
+                      <OptimizedImage 
                         src={banner.image_url} 
                         alt={banner.title}
+                        width={80}
+                        height={40}
                         className="absolute inset-0 w-full h-full object-cover rounded"
                       />
-                    ) : (
-                    <OptimizedImage 
-                      src={banner.image_url} 
-                      alt={banner.title}
-                      width={80}
-                      height={40}
-                      className="absolute inset-0 w-full h-full object-cover rounded"
-                    />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>{banner.title}</TableCell>
-                <TableCell>{CATEGORY_MAP[banner.category_id as keyof typeof CATEGORY_MAP]}</TableCell>
-                <TableCell>{banner.sort_order}</TableCell>
-                <TableCell>
-                  {banner.status === 1 ? (
-                    <span className="text-green-600">显示</span>
-                  ) : (
-                    <span className="text-gray-400">隐藏</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {banner.start_time ? (
-                    <div className="text-sm">
-                      <div>{new Date(banner.start_time).toLocaleDateString()}</div>
-                      <div>{new Date(banner.end_time).toLocaleDateString()}</div>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {new Date(banner.created_at).toLocaleString()}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => handleEdit(banner)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => toggleStatus(banner.id, banner.status)}
-                    >
-                      {banner.status === 1 ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
                       )}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => handleDelete(banner.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell>{banner.title}</TableCell>
+                  <TableCell>{CATEGORY_MAP[banner.category_id as keyof typeof CATEGORY_MAP]}</TableCell>
+                  <TableCell>{banner.sort_order}</TableCell>
+                  <TableCell>
+                    {banner.status === 1 ? (
+                      <span className="text-green-600">显示</span>
+                    ) : (
+                      <span className="text-gray-400">隐藏</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {banner.start_time ? (
+                      <div className="text-sm">
+                        <div>{new Date(banner.start_time).toLocaleDateString()}</div>
+                        <div>{new Date(banner.end_time).toLocaleDateString()}</div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(banner.created_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleEdit(banner)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => toggleStatus(banner.id, banner.status)}
+                      >
+                        {banner.status === 1 ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleDelete(banner.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* 移动端卡片列表 */}
+        <div className="lg:hidden">
+          {filteredBanners.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              暂无Banner数据
+            </div>
+          ) : (
+            <div className="divide-y">
+              {filteredBanners.map((banner) => (
+                <div key={banner.id} className="p-4">
+                  <div className="flex gap-3">
+                    {/* 缩略图 */}
+                    <div className="w-[60px] h-[30px] flex-shrink-0 relative">
+                      {banner.image_url?.startsWith('data:') ? (
+                        <img 
+                          src={banner.image_url} 
+                          alt={banner.title}
+                          className="absolute inset-0 w-full h-full object-cover rounded"
+                        />
+                      ) : (
+                        <OptimizedImage 
+                          src={banner.image_url} 
+                          alt={banner.title}
+                          width={60}
+                          height={30}
+                          className="absolute inset-0 w-full h-full object-cover rounded"
+                        />
+                      )}
+                    </div>
+                    
+                    {/* 内容区域 */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm truncate">{banner.title}</h3>
+                      <div className="mt-1 space-y-1">
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <span>分类: {CATEGORY_MAP[banner.category_id as keyof typeof CATEGORY_MAP]}</span>
+                          <span>排序: {banner.sort_order}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className={banner.status === 1 ? "text-green-600" : "text-gray-400"}>
+                            {banner.status === 1 ? "显示" : "隐藏"}
+                          </span>
+                          <span className="text-gray-500">
+                            {new Date(banner.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 操作按钮 */}
+                    <div className="flex flex-col gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEdit(banner)}
+                        className="h-7 px-2"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => toggleStatus(banner.id, banner.status)}
+                        className="h-7 px-2"
+                      >
+                        {banner.status === 1 ? (
+                          <EyeOff className="h-3 w-3" />
+                        ) : (
+                          <Eye className="h-3 w-3" />
+                        )}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDelete(banner.id)}
+                        className="h-7 px-2 text-red-500 hover:text-red-600"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Card>
 
       <LazyBannerDialog 

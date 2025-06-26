@@ -188,12 +188,22 @@ export default function IncomePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <div className="flex-1 flex">
+    <div className="min-h-screen">
+      <div className="p-3 sm:p-4 md:p-6">
+        {/* 页面标题和操作按钮 - 移动端优化 */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+          <h1 className="text-lg sm:text-xl font-semibold">收入管理</h1>
+          <Button
+            onClick={() => setNewIncomeDialogOpen(true)}
+            className="w-full sm:w-auto"
+          >
+            新增收入
+          </Button>
+        </div>
 
-        {/* 操作功能区域 - 应该位于内容区域的左侧而非二级菜单下 */}
-        <div className="w-[240px] border-r border-gray-200 bg-white fixed left-[297px] top-[48px] bottom-0 z-[5]">
-          <div className="flex flex-col p-4 space-y-4">
+        {/* 筛选区域 - 移动端垂直排列 */}
+        <Card className="p-3 sm:p-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">搜索</label>
               <Input
@@ -204,7 +214,7 @@ export default function IncomePage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">支付方式筛选</label>
+              <label className="text-sm font-medium text-gray-700">支付方式</label>
               <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="支付方式" />
@@ -220,7 +230,7 @@ export default function IncomePage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">年份筛选</label>
+              <label className="text-sm font-medium text-gray-700">年份</label>
               <Select value={yearFilter} onValueChange={setYearFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="选择年份" />
@@ -236,7 +246,7 @@ export default function IncomePage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">月份筛选</label>
+              <label className="text-sm font-medium text-gray-700">月份</label>
               <Select value={monthFilter} onValueChange={setMonthFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="选择月份" />
@@ -250,20 +260,14 @@ export default function IncomePage() {
               </Select>
             </div>
           </div>
-        </div>
+        </Card>
 
-        {/* 主要内容区域 */}
-        <div className="flex-1 overflow-hidden ml-[537px]">
-          {/* 固定在顶部的操作区域 */}
-          <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[537px] z-[60]">
-            <Button
-              onClick={() => setNewIncomeDialogOpen(true)}
-              size="sm"
-              className="h-[28px]"
-            >
-              新增收入
-            </Button>
+        {/* 数据统计 */}
+        <div className="mb-4">
+          <div className="text-sm text-gray-500">
+            共 {totalCount} 条记录
           </div>
+        </div>
           
           <div className="space-y-6 h-[calc(100vh-88px)] overflow-auto mt-[38px]">
             <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[537px] right-0 bg-white z-50 px-4">

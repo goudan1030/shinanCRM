@@ -1498,11 +1498,11 @@ function MembersPageContent() {
       </Dialog>
 
       {/* 主页面内容 */}
-      <div className="flex-1 flex flex-col">
-        {/* 搜索和过滤 */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center mb-4">
+      <div className="flex-1 flex flex-col p-3 sm:p-4 md:p-6">
+        {/* 搜索和过滤 - 优化移动端布局 */}
+        <div className="flex flex-col gap-3 mb-4">
           {/* 关键词搜索框 */}
-          <div className="flex gap-2 w-full md:w-auto">
+          <div className="flex gap-2">
             <Input
               placeholder="搜索会员编号/微信/手机"
               value={searchKeyword}
@@ -1514,13 +1514,15 @@ function MembersPageContent() {
                   setSearchTerm(searchKeyword);
                 }
               }}
-              className="w-full md:w-[300px]"
+              className="flex-1"
             />
-            <Button onClick={() => setSearchTerm(searchKeyword)}>搜索</Button>
+            <Button onClick={() => setSearchTerm(searchKeyword)} className="px-4">
+              搜索
+            </Button>
           </div>
           
-          {/* 筛选下拉框 */}
-          <div className="flex gap-2 w-full md:w-auto">
+          {/* 筛选下拉框 - 移动端垂直排列，桌面端水平排列 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:flex gap-2">
             <Select 
               value={statusFilter !== null ? statusFilter : 'ALL'} 
               onValueChange={(value) => {
@@ -1532,7 +1534,7 @@ function MembersPageContent() {
               }}
               defaultValue={statusFilter !== null ? statusFilter : 'ALL'}
             >
-              <SelectTrigger className="w-full md:w-[150px]">
+              <SelectTrigger className="w-full md:w-[120px]">
                 <SelectValue placeholder="状态筛选" />
               </SelectTrigger>
               <SelectContent>
@@ -1554,7 +1556,7 @@ function MembersPageContent() {
               }}
               defaultValue={typeFilter !== null ? typeFilter : 'ALL'}
             >
-              <SelectTrigger className="w-full md:w-[150px]">
+              <SelectTrigger className="w-full md:w-[120px]">
                 <SelectValue placeholder="会员类型" />
               </SelectTrigger>
               <SelectContent>
@@ -1565,7 +1567,6 @@ function MembersPageContent() {
               </SelectContent>
             </Select>
             
-            {/* 添加性别筛选 */}
             <Select 
               value={genderFilter !== null ? genderFilter : 'ALL'} 
               onValueChange={(value) => {
@@ -1577,7 +1578,7 @@ function MembersPageContent() {
               }}
               defaultValue={genderFilter !== null ? genderFilter : 'ALL'}
             >
-              <SelectTrigger className="w-full md:w-[150px]">
+              <SelectTrigger className="w-full md:w-[120px]">
                 <SelectValue placeholder="性别筛选" />
               </SelectTrigger>
               <SelectContent>
@@ -1587,31 +1588,20 @@ function MembersPageContent() {
               </SelectContent>
             </Select>
             
-            {/* 添加清除筛选按钮 */}
+            {/* 清除筛选按钮 */}
             <Button 
               variant="outline" 
               onClick={clearFilters}
-              className="hidden md:flex"
+              className="w-full md:w-auto"
             >
               清除筛选
             </Button>
           </div>
           
-          <div className="flex-1" />
-          
-          {/* 操作按钮 */}
-          <div className="flex items-center gap-2">
-            {/* 在移动端显示清除筛选按钮 */}
-            <Button 
-              variant="outline" 
-              onClick={clearFilters}
-              className="md:hidden"
-            >
-              清除筛选
-            </Button>
-            
-            <Link href="/members/new">
-              <Button>
+          {/* 操作按钮组 - 移动端垂直排列，桌面端水平排列 */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+            <Link href="/members/new" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">
                 新增会员
               </Button>
             </Link>
@@ -1619,7 +1609,7 @@ function MembersPageContent() {
             <Button 
               variant="outline"
               onClick={handleExport}
-              className="flex items-center gap-1"
+              className="flex items-center justify-center gap-1 w-full sm:w-auto"
             >
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -1636,13 +1626,14 @@ function MembersPageContent() {
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              导出会员
+              <span className="hidden sm:inline">导出会员</span>
+              <span className="sm:hidden">导出</span>
             </Button>
             
             <Button
               variant="outline"
               onClick={() => setIsColumnSelectorOpen(!isColumnSelectorOpen)}
-              className="relative"
+              className="relative w-full sm:w-auto"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1658,7 +1649,8 @@ function MembersPageContent() {
               >
                 <path d="M3 3h18v18H3zM12 3v18M3 12h18" />
               </svg>
-              显示字段
+              <span className="hidden sm:inline">显示字段</span>
+              <span className="sm:hidden">字段</span>
             </Button>
             
             {isColumnSelectorOpen && (
