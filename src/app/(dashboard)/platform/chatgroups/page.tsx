@@ -280,7 +280,104 @@ export default function ChatGroupsPage() {
         </Button>
       </div>
 
-      <Card>
+      {/* 移动端卡片布局 */}
+      <div className="lg:hidden space-y-4">
+        {loading ? (
+          <Card className="p-6 text-center">
+            加载中...
+          </Card>
+        ) : chatGroups.length === 0 ? (
+          <Card className="p-6 text-center text-muted-foreground">
+            暂无群聊数据
+          </Card>
+        ) : (
+          chatGroups.map((group) => (
+            <Card key={group.id} className="p-4">
+              <div className="flex gap-3">
+                {/* 二维码图片 */}
+                <div className="w-16 h-16 flex-shrink-0">
+                  {group.qrcode_image ? (
+                    <img 
+                      src={group.qrcode_image} 
+                      alt={`${group.name}二维码`} 
+                      className="w-full h-full object-cover rounded-md"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
+                      <span className="text-xs text-gray-400">无二维码</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* 内容区域 */}
+                <div className="flex-1 min-w-0">
+                  {/* 群聊名称和状态 */}
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-medium truncate">{group.name}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs ml-2 ${
+                      group.is_active === 1 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {group.is_active === 1 ? '启用' : '停用'}
+                    </span>
+                  </div>
+                  
+                  {/* 详细信息 */}
+                  <div className="space-y-1 text-sm text-gray-600 mb-3">
+                    <div className="flex items-center gap-4">
+                      <span>序号: {group.display_order}</span>
+                      <span>成员: {group.member_count || 0}人</span>
+                    </div>
+                    <div>
+                      创建时间: {new Date(group.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  
+                  {/* 操作按钮 */}
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => handleEdit(group)}
+                    >
+                      编辑
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => adjustOrder(group.id, 'up')}
+                    >
+                      上移
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => adjustOrder(group.id, 'down')}
+                    >
+                      下移
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="h-7 text-xs text-red-600"
+                      onClick={() => handleDelete(group.id)}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* 桌面端表格布局 */}
+      <Card className="hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>

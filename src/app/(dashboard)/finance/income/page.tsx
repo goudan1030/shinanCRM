@@ -227,89 +227,166 @@ export default function IncomePage() {
           </div>
         </div>
 
-        <div className="bg-white shadow-sm rounded-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="sticky top-0 bg-[#f9fafb] z-40 border-b border-gray-200">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">会员编号</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支付日期</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支付方式</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">金额</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">备注</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
-                      <div className="flex items-center justify-center">
-                        <div className="w-5 h-5 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mr-2"></div>
-                        加载中...
-                      </div>
-                    </td>
-                  </tr>
-                ) : records.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
-                      暂无数据
-                    </td>
-                  </tr>
-                ) : (
-                  records.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.member_no}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(record.payment_date).toLocaleDateString('zh-CN')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getPaymentMethodText(record.payment_method)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">¥{record.amount.toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-[200px] truncate">{record.notes || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(record.created_at).toLocaleString('zh-CN')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                        <div className="flex items-center justify-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedRecordId(record.id);
-                              setEditIncomeData({
-                                member_no: record.member_no,
-                                payment_date: record.payment_date.split('T')[0],
-                                payment_method: record.payment_method,
-                                amount: record.amount.toString(),
-                                notes: record.notes || ''
-                              });
-                              setEditDialogOpen(true);
-                            }}
-                            className="h-8 px-2 text-primary hover:bg-primary/10"
-                          >
-                            编辑
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedRecordId(record.id);
-                              setDeleteDialogOpen(true);
-                            }}
-                            className="h-8 px-2 text-destructive hover:bg-destructive/10"
-                          >
-                            删除
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        {loading ? (
+          <div className="bg-white shadow-sm rounded-sm">
+            <div className="px-6 py-8 text-center text-sm text-gray-500">
+              <div className="flex items-center justify-center">
+                <div className="w-5 h-5 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mr-2"></div>
+                加载中...
+              </div>
+            </div>
           </div>
-        </div>
+        ) : records.length === 0 ? (
+          <div className="bg-white shadow-sm rounded-sm">
+            <div className="px-6 py-8 text-center text-sm text-gray-500">
+              暂无数据
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* 移动端卡片布局 */}
+            <div className="lg:hidden space-y-4">
+              {records.map((record) => (
+                <div key={record.id} className="bg-white rounded-lg border p-4 shadow-sm">
+                  {/* 卡片头部 */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-base">{record.member_no}</span>
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                          {getPaymentMethodText(record.payment_method)}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {new Date(record.payment_date).toLocaleDateString('zh-CN')}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-medium text-green-600">
+                        ¥{record.amount.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 卡片内容 */}
+                  <div className="space-y-2 text-sm mb-3">
+                    {record.notes && (
+                      <div>
+                        <span className="text-gray-500">备注：</span>
+                        <span>{record.notes}</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-gray-500">创建时间：</span>
+                      <span>{new Date(record.created_at).toLocaleString('zh-CN')}</span>
+                    </div>
+                  </div>
+
+                  {/* 卡片操作按钮 */}
+                  <div className="flex gap-2 pt-3 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 h-8 text-xs"
+                      onClick={() => {
+                        setSelectedRecordId(record.id);
+                        setEditIncomeData({
+                          member_no: record.member_no,
+                          payment_date: record.payment_date.split('T')[0],
+                          payment_method: record.payment_method,
+                          amount: record.amount.toString(),
+                          notes: record.notes || ''
+                        });
+                        setEditDialogOpen(true);
+                      }}
+                    >
+                      编辑
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 h-8 text-xs text-red-600"
+                      onClick={() => {
+                        setSelectedRecordId(record.id);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 桌面端表格布局 */}
+            <div className="hidden lg:block bg-white shadow-sm rounded-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="sticky top-0 bg-[#f9fafb] z-40 border-b border-gray-200">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">会员编号</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支付日期</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支付方式</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">金额</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">备注</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {records.map((record) => (
+                      <tr key={record.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.member_no}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(record.payment_date).toLocaleDateString('zh-CN')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{getPaymentMethodText(record.payment_method)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">¥{record.amount.toLocaleString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-[200px] truncate">{record.notes || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(record.created_at).toLocaleString('zh-CN')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedRecordId(record.id);
+                                setEditIncomeData({
+                                  member_no: record.member_no,
+                                  payment_date: record.payment_date.split('T')[0],
+                                  payment_method: record.payment_method,
+                                  amount: record.amount.toString(),
+                                  notes: record.notes || ''
+                                });
+                                setEditDialogOpen(true);
+                              }}
+                              className="h-8 px-2 text-primary hover:bg-primary/10"
+                            >
+                              编辑
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedRecordId(record.id);
+                                setDeleteDialogOpen(true);
+                              }}
+                              className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                            >
+                              删除
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* 新增收入Dialog */}

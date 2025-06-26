@@ -208,7 +208,91 @@ export default function ArticlePage() {
         </Button>
       </div>
 
-      <Card>
+      {/* 移动端卡片布局 */}
+      <div className="lg:hidden space-y-4">
+        {articles.map((article) => (
+          <Card key={article.id} className="p-4">
+            <div className="flex gap-3">
+              {/* 封面图片 */}
+              <div className="w-16 h-16 flex-shrink-0">
+                <img 
+                  src={article.cover_url} 
+                  alt={article.title}
+                  className="w-full h-full object-cover rounded"
+                />
+              </div>
+              
+              {/* 内容区域 */}
+              <div className="flex-1 min-w-0">
+                {/* 标题和状态 */}
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {article.is_top === 1 && (
+                      <ArrowUp className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                    )}
+                    <h3 className="font-medium truncate">{article.title}</h3>
+                  </div>
+                  <div className="flex items-center gap-1 ml-2">
+                    {article.is_hidden === 0 ? (
+                      <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">显示</span>
+                    ) : (
+                      <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">隐藏</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* 摘要 */}
+                <p className="text-sm text-gray-600 mb-2 line-clamp-2">{article.summary}</p>
+                
+                {/* 统计信息 */}
+                <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                  <span>浏览 {article.views}</span>
+                  <span>{new Date(article.created_at).toLocaleDateString()}</span>
+                </div>
+                
+                {/* 操作按钮 */}
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => handleEdit(article)}
+                  >
+                    编辑
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => toggleStatus(article.id, article.is_hidden)}
+                  >
+                    {article.is_hidden === 0 ? '隐藏' : '显示'}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className={cn("h-7 text-xs", article.is_top === 1 && "bg-orange-50 text-orange-600")}
+                    onClick={() => toggleTop(article.id, article.is_top)}
+                  >
+                    {article.is_top === 1 ? '取消置顶' : '置顶'}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="h-7 text-xs text-red-600"
+                    onClick={() => handleDelete(article.id)}
+                  >
+                    删除
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* 桌面端表格布局 */}
+      <Card className="hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>
