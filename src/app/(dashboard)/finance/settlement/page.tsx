@@ -176,8 +176,8 @@ export default function SettlementPage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <div className="flex-1 flex">
-        {/* 操作功能区域 - 应该位于内容区域的左侧而非二级菜单下 */}
-        <div className="w-[240px] border-r border-gray-200 bg-white fixed left-[297px] top-[48px] bottom-0 z-[5]">
+        {/* 操作功能区域 - 只在桌面端显示 */}
+        <div className="hidden lg:block w-[240px] border-r border-gray-200 bg-white fixed left-[297px] top-[48px] bottom-0 z-[5]">
           <div className="flex flex-col p-4 space-y-4">
             <SearchFilter
               searchKeyword={searchKeyword}
@@ -191,9 +191,9 @@ export default function SettlementPage() {
         </div>
 
         {/* 主要内容区域 */}
-        <div className="flex-1 overflow-hidden ml-[537px]">
-          {/* 固定在顶部的操作区域 */}
-          <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[537px] z-[60]">
+        <div className="flex-1 overflow-hidden lg:ml-[537px]">
+          {/* 固定在顶部的操作区域 - 桌面端 */}
+          <div className="hidden lg:flex h-[40px] bg-white items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[537px] z-[60]">
             <Button
               onClick={() => setNewExpenseDialogOpen(true)}
               size="sm"
@@ -210,10 +210,47 @@ export default function SettlementPage() {
               自动结算
             </Button>
           </div>
+
+          {/* 移动端筛选和操作区域 */}
+          <div className="lg:hidden bg-white border-b p-4 space-y-4">
+            <div className="flex justify-between items-center">
+              <h1 className="text-lg font-semibold">结算管理</h1>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setAutoSettleDialogOpen(true)}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                >
+                  自动结算
+                </Button>
+                <Button
+                  onClick={() => setNewExpenseDialogOpen(true)}
+                  size="sm"
+                  className="h-8 text-xs"
+                >
+                  新增结算
+                </Button>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <SearchFilter
+                searchKeyword={searchKeyword}
+                setSearchKeyword={setSearchKeyword}
+                yearFilter={yearFilter}
+                setYearFilter={setYearFilter}
+                monthFilter={monthFilter}
+                setMonthFilter={setMonthFilter}
+              />
+            </div>
+          </div>
           
-          <div className="space-y-6 h-[calc(100vh-88px)] overflow-auto mt-[38px]">
+          {/* 内容区域 */}
+          <div className="space-y-6 h-[calc(100vh-88px)] lg:h-[calc(100vh-88px)] overflow-auto lg:mt-[38px] p-4 lg:p-0">
+            {/* 桌面端分页信息 */}
             {totalPages > 1 && (
-              <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[537px] right-0 bg-white z-50 px-4">
+              <div className="hidden lg:flex h-[36px] items-center justify-between border-t fixed bottom-0 left-[537px] right-0 bg-white z-50 px-4">
                 <div className="text-sm text-gray-500">
                   共 {totalCount} 条记录
                 </div>
@@ -306,6 +343,20 @@ export default function SettlementPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* 移动端分页 */}
+                {totalPages > 1 && (
+                  <div className="lg:hidden flex items-center justify-between border-t pt-4">
+                    <div className="text-sm text-gray-500">
+                      共 {totalCount} 条记录
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
 
                 {/* 桌面端表格布局 */}
                 <div className="hidden lg:block bg-white shadow-sm rounded-sm">

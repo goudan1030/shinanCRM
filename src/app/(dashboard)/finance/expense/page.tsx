@@ -158,8 +158,8 @@ export default function ExpensePage() {
     <div className="flex flex-col h-screen overflow-hidden">
       <div className="flex-1 flex">
 
-        {/* 操作功能区域 - 应该位于内容区域的左侧而非二级菜单下 */}
-        <div className="w-[240px] border-r border-gray-200 bg-white fixed left-[297px] top-[48px] bottom-0 z-[5]">
+        {/* 操作功能区域 - 只在桌面端显示 */}
+        <div className="hidden lg:block w-[240px] border-r border-gray-200 bg-white fixed left-[297px] top-[48px] bottom-0 z-[5]">
           <div className="flex flex-col p-4 space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">搜索</label>
@@ -206,9 +206,9 @@ export default function ExpensePage() {
         </div>
 
         {/* 主要内容区域 */}
-        <div className="flex-1 overflow-hidden ml-[537px]">
-          {/* 固定在顶部的操作区域 */}
-          <div className="h-[40px] bg-white flex items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[537px] z-[60]">
+        <div className="flex-1 overflow-hidden lg:ml-[537px]">
+          {/* 固定在顶部的操作区域 - 桌面端 */}
+          <div className="hidden lg:flex h-[40px] bg-white items-center px-4 space-x-2 border-b fixed top-[48px] right-0 left-[537px] z-[60]">
             <Button
               onClick={() => setNewExpenseDialogOpen(true)}
               size="sm"
@@ -217,10 +217,72 @@ export default function ExpensePage() {
               新增支出
             </Button>
           </div>
+
+          {/* 移动端筛选和操作区域 */}
+          <div className="lg:hidden bg-white border-b p-4 space-y-4">
+            <div className="flex justify-between items-center">
+              <h1 className="text-lg font-semibold">支出管理</h1>
+              <Button
+                onClick={() => setNewExpenseDialogOpen(true)}
+                size="sm"
+                className="h-8"
+              >
+                新增支出
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">搜索</label>
+                <Input 
+                  placeholder="搜索备注"
+                  value={searchKeyword}
+                  onChange={handleSearchChange}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">年份筛选</label>
+                  <Select value={yearFilter} onValueChange={setYearFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择年份" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 10 }, (_, i) => {
+                        const year = new Date().getFullYear() - i;
+                        return (
+                          <SelectItem key={year} value={String(year)}>{year}年</SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">月份筛选</label>
+                  <Select value={monthFilter} onValueChange={setMonthFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择月份" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部</SelectItem>
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}月</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
           
-          <div className="space-y-6 h-[calc(100vh-88px)] overflow-auto mt-[38px]">
+          {/* 内容区域 */}
+          <div className="space-y-6 h-[calc(100vh-88px)] lg:h-[calc(100vh-88px)] overflow-auto lg:mt-[38px] p-4 lg:p-0">
+            {/* 桌面端分页信息 */}
             {totalPages > 1 && (
-              <div className="h-[36px] flex items-center justify-between border-t fixed bottom-0 left-[537px] right-0 bg-white z-50 px-4">
+              <div className="hidden lg:flex h-[36px] items-center justify-between border-t fixed bottom-0 left-[537px] right-0 bg-white z-50 px-4">
                 <div className="text-sm text-gray-500">
                   共 {totalCount} 条记录
                 </div>
@@ -319,6 +381,20 @@ export default function ExpensePage() {
                     </div>
                   ))}
                 </div>
+
+                {/* 移动端分页 */}
+                {totalPages > 1 && (
+                  <div className="lg:hidden flex items-center justify-between border-t pt-4">
+                    <div className="text-sm text-gray-500">
+                      共 {totalCount} 条记录
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
 
                 {/* 桌面端表格布局 */}
                 <div className="hidden lg:block bg-white shadow-sm rounded-sm">
