@@ -1,37 +1,52 @@
-import { updateBannerStatus, getBannerById } from '@/lib/services/banner-service';
-import { BannerStatusUpdate } from '@/types/banner';
-import { apiSuccess, apiError, handleApiError } from '@/lib/api-utils';
+import { NextRequest } from 'next/server';
+import { createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-utils';
+import { executeQuery } from '@/lib/database-netlify';
 
+/**
+ * 更新Banner状态
+ */
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const id = parseInt(params.id);
+    const body = await request.json() as { status: number | string };
     
     if (isNaN(id)) {
-      return apiError('无效的ID参数', 400);
+      return createErrorResponse('无效的Banner ID', 400);
     }
+
+    const { status: rawStatus } = body;
     
-    // 检查Banner是否存在
-    const banner = await getBannerById(id);
-    if (!banner) {
-      return apiError('未找到Banner', 404);
+    // 处理状态值：数据库存储0/1，前端可能传0/1或'active'/'inactive'
+    let dbStatus: number;
+    if (typeof rawStatus === 'number') {
+      dbStatus = rawStatus;
+    } else if (typeof rawStatus === 'string') {
+      dbStatus = rawStatus === 'active' ? 1 : 0;
+    } else {
+      return createErrorResponse('状态值无效', 400);
     }
-    
-    const data = await request.json() as BannerStatusUpdate;
     
     // 验证状态值
-    if (typeof data.status !== 'number' || ![0, 1].includes(data.status)) {
-      return apiError('状态值必须是 0 或 1', 400);
+    if (![0, 1].includes(dbStatus)) {
+      return createErrorResponse('状态值必须是0或1', 400);
     }
 
-    // 更新数据库
-    await updateBannerStatus(id, data.status);
+    await executeQuery(
+      'UPDATE banners SET status = ?, updated_at = NOW() WHERE id = ?',
+      [dbStatus, id]
+    );
 
-    return apiSuccess(null, '状态更新成功', {
-      cache: { type: 'no-cache' }
-    });
+    const response = createSuccessResponse(null, '状态更新成功');
+    
+    // 设置防缓存头
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('更新Banner状态失败:', error);
     return handleApiError(error);

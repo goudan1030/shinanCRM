@@ -42,6 +42,15 @@ const CATEGORY_MAP = {
   3: '弹窗Banner'
 } as const;
 
+// 定义API响应类型
+interface ApiResponse {
+  success?: boolean;
+  status?: string;
+  data?: any;
+  error?: string;
+  message?: string;
+}
+
 export default function BannerPage() {
   const { toast } = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -56,16 +65,25 @@ export default function BannerPage() {
   const fetchBanners = async () => {
     try {
       const response = await fetch('/api/platform/banner');
-      const result = await response.json();
-      if (result.status === 'success') {
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json() as ApiResponse;
+      console.log('API响应:', result); // 调试用，查看实际响应格式
+      
+      // 兼容不同的响应格式
+      if (result.success === true || result.status === 'success') {
         console.log('Banner数据:', result.data); // 打印获取到的数据
-        setBanners(result.data);
+        setBanners(result.data || []);
       } else {
-        console.error('获取Banner列表失败:', result.error);
+        const errorMsg = result.error || result.message || "获取Banner列表失败";
+        console.error('获取Banner列表失败:', errorMsg);
         toast({
           variant: "destructive",
           title: "获取失败",
-          description: result.error || "获取Banner列表失败"
+          description: errorMsg
         });
       }
     } catch (error) {
@@ -73,7 +91,7 @@ export default function BannerPage() {
       toast({
         variant: "destructive",
         title: "获取失败",
-        description: "网络错误，请稍后重试"
+        description: error instanceof Error ? error.message : "网络错误，请稍后重试"
       });
     }
   };
@@ -93,10 +111,10 @@ export default function BannerPage() {
         })
       });
 
-      const result = await response.json();
+      const result = await response.json() as ApiResponse;
 
-      if (result.status !== 'success') {
-        throw new Error(result.error || '更新状态失败');
+      if (result.success !== true && result.status !== 'success') {
+        throw new Error(result.error || result.message || '更新状态失败');
       }
 
       // 更新本地状态
@@ -133,10 +151,10 @@ export default function BannerPage() {
         method: 'DELETE'
       });
 
-      const result = await response.json();
+      const result = await response.json() as ApiResponse;
 
-      if (result.status !== 'success') {
-        throw new Error(result.error || '删除失败');
+      if (result.success !== true && result.status !== 'success') {
+        throw new Error(result.error || result.message || '删除失败');
       }
 
       toast({

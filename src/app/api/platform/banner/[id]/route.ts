@@ -1,55 +1,71 @@
-import { deleteBanner, getBannerById } from '@/lib/services/banner-service';
-import { apiSuccess, apiError, handleApiError } from '@/lib/api-utils';
+import { createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-utils';
+import { executeQuery } from '@/lib/database-netlify';
+import { NextRequest } from 'next/server';
 
-// 获取单个Banner
+/**
+ * 获取单个Banner
+ */
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const id = parseInt(params.id);
-
+    
     if (isNaN(id)) {
-      return apiError('无效的ID参数', 400);
+      return createErrorResponse('无效的Banner ID', 400);
     }
 
-    const banner = await getBannerById(id);
+    const [rows] = await executeQuery(
+      'SELECT * FROM banners WHERE id = ?',
+      [id]
+    );
+
+    const banners = Array.isArray(rows) ? rows : [];
+    const banner = banners[0];
 
     if (!banner) {
-      return apiError('未找到Banner', 404);
+      return createErrorResponse('Banner不存在', 404);
     }
 
-    return apiSuccess(banner, '获取成功');
+    const response = createSuccessResponse(banner, '获取成功');
+    
+    // 设置防缓存头
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('获取Banner失败:', error);
     return handleApiError(error);
   }
 }
 
-// 删除Banner
+/**
+ * 删除Banner
+ */
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const id = parseInt(params.id);
-
+    
     if (isNaN(id)) {
-      return apiError('无效的ID参数', 400);
+      return createErrorResponse('无效的Banner ID', 400);
     }
 
-    // 检查Banner是否存在
-    const banner = await getBannerById(id);
-    if (!banner) {
-      return apiError('未找到Banner', 404);
-    }
+    await executeQuery('DELETE FROM banners WHERE id = ?', [id]);
 
-    // 删除Banner
-    await deleteBanner(id);
-
-    return apiSuccess(null, '删除成功', {
-      cache: { type: 'no-cache' }
-    });
+    const response = createSuccessResponse(null, '删除成功');
+    
+    // 设置防缓存头
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('删除Banner失败:', error);
     return handleApiError(error);

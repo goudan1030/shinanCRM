@@ -1,76 +1,115 @@
-import { createBanner, updateBanner, getBannerList } from '@/lib/services/banner-service';
-import { BannerCreateData, BannerUpdateData } from '@/types/banner';
-import { apiSuccess, apiError, handleApiError } from '@/lib/api-utils';
+import { NextRequest } from 'next/server';
+import { createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-utils';
+import { executeQuery } from '@/lib/database-netlify';
 
-// 缓存控制常量
-const PUBLIC_CACHE_MAX_AGE = 60; // 公共缓存最大时间(秒)
-const PRIVATE_CACHE_MAX_AGE = 300; // 私有缓存最大时间(秒)
+interface BannerCreateData {
+  title: string;
+  image_url: string;
+  link_url?: string;
+  sort_order?: number;
+  status?: string;
+}
 
-// 获取Banner列表
-export async function GET(request: Request) {
+interface BannerUpdateData extends BannerCreateData {
+  id: number;
+}
+
+/**
+ * 获取Banner列表
+ */
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const status = searchParams.get('status');
-
-    const banners = await getBannerList({ category, status });
+    const [rows] = await executeQuery(`
+      SELECT id, title, image_url, link_url, sort_order, status, created_at, updated_at
+      FROM banners 
+      ORDER BY sort_order ASC, created_at DESC
+    `);
     
-    return apiSuccess(banners, '获取成功');
+    const banners = Array.isArray(rows) ? rows : [];
+    
+    const response = createSuccessResponse(banners, '获取成功');
+    
+    // 设置防缓存头
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error) {
     console.error('获取Banner列表失败:', error);
     return handleApiError(error);
   }
 }
 
-// 创建或更新Banner
-export async function POST(request: Request) {
+/**
+ * 创建Banner
+ */
+export async function POST(request: NextRequest) {
   try {
-    const data = await request.json();
+    const body = await request.json() as BannerCreateData;
+    const { title, image_url, link_url, sort_order = 0, status = 'active' } = body;
+
+    // 验证必需字段
+    if (!title || !image_url) {
+      return createErrorResponse('标题和图片链接不能为空', 400);
+    }
+
+    // 处理状态值：转换为数据库格式(0/1)
+    const dbStatus = status === 'active' ? 1 : 0;
+
+    // 插入Banner数据（添加默认category_id）
+    const [result] = await executeQuery(
+      'INSERT INTO banners (title, image_url, link_url, category_id, sort_order, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [title, image_url, link_url, 1, sort_order, dbStatus]
+    );
+
+    const insertResult = result as any;
+    const newId = insertResult.insertId;
+
+    const response = createSuccessResponse({ id: newId }, '保存成功');
     
-    // 验证必填字段
-    const requiredFields = ['category_id', 'title', 'sort_order', 'status'];
-    for (const field of requiredFields) {
-      if (data[field] === undefined || data[field] === '') {
-        return apiError(`${field} 不能为空`, 400);
-      }
-    }
-
-    // 验证 category_id 是否为数字
-    if (!Number.isInteger(data.category_id)) {
-      return apiError('category_id 必须是整数', 400);
-    }
-
-    // 使用传入的图片URL（后续可以改为真实的图片上传）
-    const image_url = data.image_url || 'https://placeholder.com/banner.jpg';
+    // 设置防缓存头
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
     
-    // 准备数据对象
-    const bannerData: BannerCreateData | BannerUpdateData = {
-      category_id: data.category_id,
-      title: data.title,
-      image_url,
-      link_url: data.link_url || null,
-      sort_order: data.sort_order,
-      status: data.status,
-      start_time: data.start_time || null,
-      end_time: data.end_time || null,
-      remark: data.remark || null
-    };
-
-    if (data.id) {
-      // 更新
-      await updateBanner(data.id, bannerData as BannerUpdateData);
-      return apiSuccess(null, '更新成功', { 
-        cache: { type: 'no-cache' }
-      });
-    } else {
-      // 新增
-      const newId = await createBanner(bannerData as BannerCreateData);
-      return apiSuccess({ id: newId }, '保存成功', { 
-        cache: { type: 'no-cache' }
-      });
-    }
+    return response;
   } catch (error) {
-    console.error('保存Banner失败:', error);
+    console.error('创建Banner失败:', error);
+    return handleApiError(error);
+  }
+}
+
+/**
+ * 更新Banner
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json() as BannerUpdateData;
+    const { id, title, image_url, link_url, sort_order, status } = body;
+
+    if (!id) {
+      return createErrorResponse('Banner ID不能为空', 400);
+    }
+
+    // 处理状态值：转换为数据库格式(0/1)
+    const dbStatus = status === 'active' ? 1 : 0;
+
+    await executeQuery(
+      'UPDATE banners SET title = ?, image_url = ?, link_url = ?, sort_order = ?, status = ?, updated_at = NOW() WHERE id = ?',
+      [title, image_url, link_url, sort_order, dbStatus, id]
+    );
+
+    const response = createSuccessResponse(null, '更新成功');
+    
+    // 设置防缓存头
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
+  } catch (error) {
+    console.error('更新Banner失败:', error);
     return handleApiError(error);
   }
 } 

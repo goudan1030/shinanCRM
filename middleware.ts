@@ -45,26 +45,30 @@ export function middleware(request: NextRequest) {
   
   console.log('中间件处理路径:', pathname, '是否Netlify环境:', isNetlify);
   
-  // 处理静态资源的缓存
+  // 处理静态资源 - 禁用缓存
   if (
     pathname.startsWith('/_next') || 
     pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf)$/)
   ) {
     const response = NextResponse.next();
     
-    // 为静态资源添加缓存控制
-    response.headers.set(
-      'Cache-Control', 
-      'public, max-age=86400, s-maxage=31536000, stale-while-revalidate=31536000'
-    );
+    // 禁用静态资源缓存
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
     return response;
   }
 
-  // 处理API请求的缓存
+  // 处理API请求 - 禁用缓存
   if (pathname.includes('/api/')) {
     // 跳过认证检查的API路由
     if (isPublicPath(pathname)) {
       const response = NextResponse.next();
+      
+      // 禁用API缓存
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
       
       // 为Netlify环境添加特殊的CORS头
       if (isNetlify) {
@@ -85,7 +89,11 @@ export function middleware(request: NextRequest) {
     
     if (!authToken) {
       return NextResponse.json(
-        { error: '未授权访问' },
+        { 
+          success: false,
+          error: '未授权访问',
+          message: '请先登录'
+        },
         { status: 401 }
       );
     }
@@ -98,28 +106,10 @@ export function middleware(request: NextRequest) {
       response.headers.set('Access-Control-Allow-Origin', request.headers.get('origin') || '*');
     }
     
-    // 动态API接口（可能经常变化的数据）
-    if (
-      pathname.includes('/api/dashboard') ||
-      pathname.includes('/api/members')
-    ) {
-      // 短期缓存 - 1分钟，并允许后台刷新
-      response.headers.set(
-        'Cache-Control',
-        'public, max-age=60, s-maxage=120, stale-while-revalidate=600'
-      );
-    } 
-    // 相对静态的API数据
-    else if (
-      pathname.includes('/api/platform') ||
-      pathname.includes('/api/miniapp/config')
-    ) {
-      // 中等缓存期 - 1小时
-      response.headers.set(
-        'Cache-Control',
-        'public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400'
-      );
-    }
+    // 禁用所有API缓存
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
     
     return response;
   }
