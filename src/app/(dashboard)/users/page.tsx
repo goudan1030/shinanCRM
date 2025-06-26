@@ -566,6 +566,16 @@ function UsersPageContent() {
                   >
                     编辑
                   </Button>
+                  {user.registered === 1 && user.member_id && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs text-blue-600"
+                      onClick={() => router.push(`/members/${user.member_id}`)}
+                    >
+                      查看资料
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
