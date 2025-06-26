@@ -72,7 +72,16 @@ export default function DashboardLayout({
       {/* 顶部标题栏 - 移动端全宽，桌面端留侧边栏空间 */}
       <header className="fixed top-0 right-0 h-[48px] bg-white border-b z-[90] transition-all duration-300 left-0 md:left-[57px]">
         <div className="h-full flex items-center justify-between px-3 sm:px-4">
-          <h1 className="text-base sm:text-lg font-medium">{pageTitle}</h1>
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-sm">
+              <img 
+                src="/logo.svg" 
+                alt="Logo" 
+                className="h-6 w-6"
+              />
+            </div>
+            <h1 className="text-base sm:text-lg font-medium text-gray-800">{pageTitle}</h1>
+          </div>
           
           {/* 移动端菜单按钮 */}
           <button
