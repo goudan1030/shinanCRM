@@ -199,7 +199,7 @@ export default function ArticlePage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-4 md:p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-semibold">文章管理</h2>
         <Button onClick={() => setOpenDialog(true)}>
