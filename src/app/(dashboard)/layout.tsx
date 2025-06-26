@@ -3,6 +3,7 @@
 import { Sidebar } from '@/components/layout/sidebar';
 import { usePathname } from 'next/navigation';
 import { ThreeColumnLayout } from '@/components/layout/three-column-layout';
+import { Menu } from 'lucide-react';
 
 interface TitleMap {
   [key: string]: string;
@@ -30,11 +31,17 @@ const titleMap: TitleMap = {
   '/system/cache': '缓存管理'
 };
 
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+  isMobile?: boolean;
+  setSidebarOpen?: (open: boolean) => void;
+}
+
 export default function DashboardLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+  isMobile,
+  setSidebarOpen,
+}: DashboardLayoutProps) {
   const pathname = usePathname();
   const pageTitle = titleMap[pathname] || 'CRM系统';
 
@@ -43,14 +50,29 @@ export default function DashboardLayout({
       sidebarContent={<Sidebar />}
       className="bg-gray-50"
     >
-      <header className="fixed top-0 right-0 h-[48px] bg-white border-b z-[90] transition-all duration-300 group-hover:left-[207px] left-[57px]">
-        <div className="h-full flex items-center px-4">
-          <h1 className="text-lg font-medium">{pageTitle}</h1>
+      <header className={`
+        fixed top-0 right-0 h-16 bg-white border-b z-[90] transition-all duration-300
+        ${isMobile ? 'left-0' : 'group-hover:left-[207px] left-[57px] lg:left-[57px]'}
+      `}>
+        <div className="h-full flex items-center justify-between px-4">
+          <div className="flex items-center gap-4">
+            {/* 移动端汉堡菜单按钮 */}
+            {isMobile && (
+              <button
+                onClick={() => setSidebarOpen?.(true)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors lg:hidden"
+              >
+                <Menu className="h-5 w-5 text-gray-600" />
+              </button>
+            )}
+            <h1 className="text-lg font-medium text-gray-900">{pageTitle}</h1>
+          </div>
         </div>
       </header>
-      <div className="pt-[48px] h-screen overflow-hidden bg-white">
+      
+      <div className={`pt-16 h-screen overflow-hidden bg-white`}>
         <main className="h-full overflow-auto mx-auto relative z-[1]">
-          <div>{children}</div>
+          <div className="min-h-full">{children}</div>
         </main>
       </div>
     </ThreeColumnLayout>

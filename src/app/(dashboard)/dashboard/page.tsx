@@ -146,101 +146,119 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen p-6 space-y-8">
-      <h1 className="text-2xl font-bold tracking-tight">仪表盘</h1>
+    <div className="flex flex-col h-full p-4 lg:p-6 space-y-6 lg:space-y-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl lg:text-2xl font-bold tracking-tight">仪表盘</h1>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-base font-medium text-muted-foreground">总会员数</CardTitle>
-            <CardDescription className="text-4xl font-bold text-foreground">{dashboardData.totalMembers}</CardDescription>
+      {/* 数据卡片网格 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+        <Card className="hover:shadow-lg transition-shadow duration-200">
+          <CardHeader className="space-y-2 pb-3">
+            <CardTitle className="text-sm lg:text-base font-medium text-muted-foreground">总会员数</CardTitle>
+            <CardDescription className="text-2xl lg:text-4xl font-bold text-foreground">{dashboardData.totalMembers}</CardDescription>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-base font-medium text-muted-foreground">当月收入</CardTitle>
-            <CardDescription className="text-4xl font-bold text-foreground">¥{dashboardData.monthlyIncome.toLocaleString()}</CardDescription>
+        
+        <Card className="hover:shadow-lg transition-shadow duration-200">
+          <CardHeader className="space-y-2 pb-3">
+            <CardTitle className="text-sm lg:text-base font-medium text-muted-foreground">当月收入</CardTitle>
+            <CardDescription className="text-2xl lg:text-4xl font-bold text-foreground">¥{dashboardData.monthlyIncome.toLocaleString()}</CardDescription>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-base font-medium text-muted-foreground">当月已结算金额</CardTitle>
-            <CardDescription className="text-4xl font-bold text-foreground">¥{dashboardData.settledAmount.toLocaleString()}</CardDescription>
+        
+        <Card className="hover:shadow-lg transition-shadow duration-200">
+          <CardHeader className="space-y-2 pb-3">
+            <CardTitle className="text-sm lg:text-base font-medium text-muted-foreground">当月已结算金额</CardTitle>
+            <CardDescription className="text-2xl lg:text-4xl font-bold text-foreground">¥{dashboardData.settledAmount.toLocaleString()}</CardDescription>
           </CardHeader>
         </Card>
+        
         <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+          className="cursor-pointer hover:shadow-lg transition-shadow duration-200 ring-1 ring-blue-100 hover:ring-blue-200"
           onClick={handleUnsettledCardClick}
         >
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-base font-medium text-muted-foreground">当月待结算金额</CardTitle>
-            <CardDescription className="text-4xl font-bold text-foreground">¥{dashboardData.unsettledAmount.toLocaleString()}</CardDescription>
-            <p className="text-xs text-muted-foreground mt-1">点击查看结算详情或进行结算</p>
+          <CardHeader className="space-y-2 pb-3">
+            <CardTitle className="text-sm lg:text-base font-medium text-muted-foreground">当月待结算金额</CardTitle>
+            <CardDescription className="text-2xl lg:text-4xl font-bold text-foreground">¥{dashboardData.unsettledAmount.toLocaleString()}</CardDescription>
+            <p className="text-xs text-muted-foreground">点击查看结算详情或进行结算</p>
           </CardHeader>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium text-muted-foreground">会员增长趋势</CardTitle>
+      {/* 图表区域 */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6 flex-1 min-h-0">
+        <Card className="flex flex-col">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base lg:text-lg font-medium text-muted-foreground">会员增长趋势</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="flex-1 min-h-0">
+            <div className="h-full min-h-[200px] lg:min-h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dashboardData.memberTrend}>
+                <BarChart data={dashboardData.memberTrend} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted/20" />
-                  <XAxis dataKey="month" className="text-xs text-muted-foreground" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis className="text-xs text-muted-foreground" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                  <XAxis 
+                    dataKey="month" 
+                    className="text-xs text-muted-foreground" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                  />
+                  <YAxis 
+                    className="text-xs text-muted-foreground" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: 'var(--radius)',
                       boxShadow: 'var(--shadow)',
-                      color: 'hsl(var(--foreground))',
-                      padding: '8px'
+                      fontSize: '14px'
                     }}
-                    labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
                   />
-                  <Bar
-                    dataKey="value"
-                    fill="hsl(var(--primary))"
+                  <Bar 
+                    dataKey="value" 
+                    fill="hsl(var(--primary))" 
                     radius={[4, 4, 0, 0]}
-                    maxBarSize={40}
+                    className="fill-primary"
                   />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium text-muted-foreground">收入趋势</CardTitle>
+
+        <Card className="flex flex-col">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base lg:text-lg font-medium text-muted-foreground">收入趋势</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="flex-1 min-h-0">
+            <div className="h-full min-h-[200px] lg:min-h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dashboardData.incomeTrend}>
+                <BarChart data={dashboardData.incomeTrend} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted/20" />
-                  <XAxis dataKey="month" className="text-xs text-muted-foreground" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis className="text-xs text-muted-foreground" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                  <XAxis 
+                    dataKey="month" 
+                    className="text-xs text-muted-foreground" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                  />
+                  <YAxis 
+                    className="text-xs text-muted-foreground" 
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: 'var(--radius)',
                       boxShadow: 'var(--shadow)',
-                      color: 'hsl(var(--foreground))',
-                      padding: '8px'
+                      fontSize: '14px'
                     }}
-                    labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
                   />
-                  <Bar
-                    dataKey="value"
-                    fill="hsl(var(--primary))"
+                  <Bar 
+                    dataKey="value" 
+                    fill="hsl(var(--primary))" 
                     radius={[4, 4, 0, 0]}
-                    maxBarSize={40}
+                    className="fill-green-500"
                   />
                 </BarChart>
               </ResponsiveContainer>
