@@ -124,7 +124,7 @@ export function ArticleDialog({
         onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-[800px]">
+      <DialogContent className="w-[95%] max-w-[800px] mx-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? '编辑' : '新增'}文章</DialogTitle>
           <DialogDescription>

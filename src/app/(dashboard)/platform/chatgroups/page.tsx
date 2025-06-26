@@ -483,7 +483,7 @@ export default function ChatGroupsPage() {
 
       {/* 添加/编辑对话框 */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="w-[95%] max-w-[500px] mx-auto">
           <DialogHeader>
             <DialogTitle>{dialogMode === 'add' ? '新增群聊' : '编辑群聊'}</DialogTitle>
             <DialogDescription>
