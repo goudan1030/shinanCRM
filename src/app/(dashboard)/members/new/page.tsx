@@ -405,7 +405,7 @@ export default function NewMemberPage() {
 
   return (
     <div className="overflow-auto">
-      <div className="max-w-[1200px] mx-auto p-6">
+      <div className="max-w-[1200px] mx-auto p-3 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button
@@ -437,7 +437,7 @@ export default function NewMemberPage() {
             清空表单
           </Button>
         </div>
-        <Card className="border-none shadow-none p-6">
+        <Card className="border-none shadow-none p-3 md:p-6">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-6">
               <div>
