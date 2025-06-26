@@ -741,7 +741,24 @@ function MembersPageContent() {
   };
 
   const handleUpgrade = async () => {
-    if (!selectedMemberId || !upgradeType) return;
+    if (!selectedMemberId || !upgradeType) {
+      toast({
+        variant: 'destructive',
+        title: '升级失败',
+        description: '请选择会员和升级类型'
+      });
+      return;
+    }
+
+    // 验证日期
+    if (!upgradeDate || isNaN(upgradeDate.getTime())) {
+      toast({
+        variant: 'destructive',
+        title: '升级失败',
+        description: '请选择有效的升级日期'
+      });
+      return;
+    }
     
     setUpgradeLoading(true);
     try {
@@ -771,7 +788,7 @@ function MembersPageContent() {
           type: upgradeType,
           payment_time: paymentTime,
           expiry_time: expiryTime,
-          notes: `${new Date().toLocaleString('zh-CN')} 将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
+          notes: `${new Date().toLocaleString('zh-CN')} 将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : upgradeType === 'ANNUAL' ? '年费会员' : '普通会员'}`
         })
       });
 
@@ -780,13 +797,18 @@ function MembersPageContent() {
         throw new Error(errorData.error || '会员升级失败');
       }
 
+      const result = await response.json();
+      
       toast({
         title: '会员升级成功',
-        description: `已将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : '年费会员'}`
+        description: result.message || `已将会员升级为${upgradeType === 'ONE_TIME' ? '一次性会员' : upgradeType === 'ANNUAL' ? '年费会员' : '普通会员'}`
       });
 
-      // 关闭对话框
+      // 关闭对话框并重置状态
       setUpgradeDialogOpen(false);
+      setSelectedMemberId(null);
+      setSelectedMemberType(null);
+      setUpgradeDate(new Date());
       
       // 刷新路由缓存
       router.refresh();
@@ -1357,9 +1379,38 @@ function MembersPageContent() {
               <Input
                 type="date"
                 value={upgradeDate.toISOString().split('T')[0]}
-                onChange={(e) => setUpgradeDate(new Date(e.target.value))}
+                onChange={(e) => {
+                  try {
+                    const inputValue = e.target.value;
+                    if (inputValue) {
+                      // 验证日期格式
+                      const selectedDate = new Date(inputValue);
+                      if (!isNaN(selectedDate.getTime())) {
+                        setUpgradeDate(selectedDate);
+                      } else {
+                        // 如果日期无效，不更新状态，保持原有值
+                        console.warn('无效的日期格式:', inputValue);
+                        toast({
+                          variant: 'destructive',
+                          title: '日期格式错误',
+                          description: '请选择有效的日期'
+                        });
+                      }
+                    }
+                  } catch (error) {
+                    console.error('日期处理错误:', error);
+                    toast({
+                      variant: 'destructive',
+                      title: '日期处理失败',
+                      description: '请重新选择日期'
+                    });
+                  }
+                }}
                 className="w-full"
+                min={new Date().toISOString().split('T')[0]} // 设置最小日期为今天
+                max={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // 最大日期为一年后
               />
+              <p className="text-xs text-gray-500">请选择升级日期，默认为今天</p>
             </div>
           </div>
           <DialogFooter>

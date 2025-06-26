@@ -33,13 +33,6 @@ interface MemberData {
 
 export async function POST(request: Request) {
   try {
-    console.log('=== 开始创建会员 ===');
-    
-    // 首先测试数据库连接
-    const dbConnected = await testNetlifyConnection();
-    if (!dbConnected) {
-      throw new Error('数据库连接失败');
-    }
     
     // 使用自定义认证替代next-auth
     const session = await getSession().catch(err => {

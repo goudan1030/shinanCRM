@@ -50,14 +50,17 @@ export async function POST(
     
     console.log(`会员升级API: 认证成功，用户ID: ${userId}`);
 
-    const { type, remainingMatches, reason } = await request.json() as { 
-      type: 'NORMAL' | 'ANNUAL',
+    const { type, remainingMatches, reason, payment_time, expiry_time, notes } = await request.json() as { 
+      type: 'NORMAL' | 'ANNUAL' | 'ONE_TIME',
       remainingMatches?: number,
-      reason?: string
+      reason?: string,
+      payment_time?: string,
+      expiry_time?: string,
+      notes?: string
     };
 
     // 验证类型参数
-    if (!type || !['NORMAL', 'ANNUAL'].includes(type)) {
+    if (!type || !['NORMAL', 'ANNUAL', 'ONE_TIME'].includes(type)) {
       return NextResponse.json(
         { error: '无效的会员类型' },
         { status: 400 }
@@ -111,6 +114,9 @@ export async function POST(
     } else if (type === 'ANNUAL') {
       // 升级为年费会员默认增加匹配次数
       newRemainingMatches = (member.remaining_matches || 0) + 5;
+    } else if (type === 'ONE_TIME') {
+      // 一次性会员默认设置为1次匹配
+      newRemainingMatches = 1;
     }
 
     // 更新会员类型和匹配次数
@@ -119,9 +125,30 @@ export async function POST(
       [type, newRemainingMatches, memberId]
     );
 
+    // 记录升级日志（如果提供了notes）
+    if (notes) {
+      try {
+        await pool.execute(
+          'INSERT INTO member_operation_logs (member_id, operation_type, old_values, new_values, created_at, operator_id) VALUES (?, ?, ?, ?, NOW(), ?)',
+          [
+            memberId,
+            'UPGRADE',
+            JSON.stringify({ type: member.type, remaining_matches: member.remaining_matches }),
+            JSON.stringify({ type, remaining_matches: newRemainingMatches, notes }),
+            userId
+          ]
+        );
+      } catch (logError) {
+        console.warn('记录升级日志失败:', logError);
+        // 不影响主要操作
+      }
+    }
+
+    const typeText = type === 'ANNUAL' ? '年费会员' : type === 'ONE_TIME' ? '一次性会员' : '普通会员';
+    
     return NextResponse.json({
       success: true,
-      message: `会员已升级为${type === 'ANNUAL' ? '年费' : '普通'}会员，匹配次数为 ${newRemainingMatches} 次`
+      message: `会员已升级为${typeText}，匹配次数为 ${newRemainingMatches} 次`
     });
 
   } catch (error) {
