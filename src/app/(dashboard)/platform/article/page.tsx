@@ -210,39 +210,50 @@ export default function ArticlePage() {
 
       {/* 移动端卡片布局 */}
       <div className="lg:hidden space-y-4">
-        {articles.map((article) => (
-          <Card key={article.id} className="p-4">
-            <div className="flex gap-3">
-              {/* 封面图片 */}
-              <div className="w-16 h-16 flex-shrink-0">
-                <img 
-                  src={article.cover_url} 
-                  alt={article.title}
-                  className="w-full h-full object-cover rounded"
-                />
-              </div>
-              
-              {/* 内容区域 */}
-              <div className="flex-1 min-w-0">
-                {/* 标题和状态 */}
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
+        {articles.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            暂无文章数据
+          </div>
+        ) : (
+          articles.map((article) => (
+            <div key={article.id} className="bg-white rounded-lg border p-4 shadow-sm">
+              {/* 卡片头部 */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
                     {article.is_top === 1 && (
                       <ArrowUp className="h-4 w-4 text-orange-500 flex-shrink-0" />
                     )}
-                    <h3 className="font-medium truncate">{article.title}</h3>
+                    <h3 className="font-medium text-base leading-relaxed">{article.title}</h3>
                   </div>
-                  <div className="flex items-center gap-1 ml-2">
-                    {article.is_hidden === 0 ? (
-                      <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">显示</span>
-                    ) : (
-                      <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">隐藏</span>
-                    )}
+                  <div className="text-sm text-gray-600">
+                    <span>浏览 {article.views} · {new Date(article.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
-                
+                <span className={`px-2 py-1 rounded-full text-xs flex-shrink-0 ml-2 ${
+                  article.is_hidden === 0 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {article.is_hidden === 0 ? '显示' : '隐藏'}
+                </span>
+              </div>
+
+              {/* 封面图片 - 全宽展示 */}
+              <div className="w-full h-32 relative rounded overflow-hidden mb-3">
+                <img 
+                  src={article.cover_url} 
+                  alt={article.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              {/* 文章内容 */}
+              <div className="mb-3">
                 {/* 摘要 */}
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">{article.summary}</p>
+                {article.summary && (
+                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">{article.summary}</p>
+                )}
                 
                 {/* 链接地址 */}
                 {article.link_url && (
@@ -257,52 +268,46 @@ export default function ArticlePage() {
                     </a>
                   </div>
                 )}
-                
-                {/* 统计信息 */}
-                <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
-                  <span>浏览 {article.views}</span>
-                  <span>{new Date(article.created_at).toLocaleDateString()}</span>
-                </div>
-                
-                {/* 操作按钮 */}
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => handleEdit(article)}
-                  >
-                    编辑
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => toggleStatus(article.id, article.is_hidden)}
-                  >
-                    {article.is_hidden === 0 ? '隐藏' : '显示'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className={cn("h-7 text-xs", article.is_top === 1 && "bg-orange-50 text-orange-600")}
-                    onClick={() => toggleTop(article.id, article.is_top)}
-                  >
-                    {article.is_top === 1 ? '取消置顶' : '置顶'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="h-7 text-xs text-red-600"
-                    onClick={() => handleDelete(article.id)}
-                  >
-                    删除
-                  </Button>
-                </div>
+              </div>
+              
+              {/* 操作按钮 */}
+              <div className="flex flex-wrap gap-2 pt-3 border-t">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                  onClick={() => handleEdit(article)}
+                >
+                  编辑
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                  onClick={() => toggleStatus(article.id, article.is_hidden)}
+                >
+                  {article.is_hidden === 0 ? '隐藏' : '显示'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className={cn("h-8 px-3 text-xs", article.is_top === 1 && "bg-orange-50 text-orange-600")}
+                  onClick={() => toggleTop(article.id, article.is_top)}
+                >
+                  {article.is_top === 1 ? '取消置顶' : '置顶'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="h-8 px-3 text-xs text-red-600"
+                  onClick={() => handleDelete(article.id)}
+                >
+                  删除
+                </Button>
               </div>
             </div>
-          </Card>
-        ))}
+          ))
+        )}
       </div>
 
       {/* 桌面端表格布局 */}
