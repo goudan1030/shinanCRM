@@ -381,45 +381,40 @@ export default function BannerPage() {
           ) : (
             filteredBanners.map((banner) => (
               <div key={banner.id} className="bg-white rounded-lg border p-4 shadow-sm">
-                {/* 卡片头部 */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3 flex-1">
-                    {/* Banner图片 */}
-                    <div className="w-16 h-10 flex-shrink-0 relative rounded overflow-hidden">
-                      {banner.image_url?.startsWith('data:') ? (
-                        <img 
-                          src={banner.image_url} 
-                          alt={banner.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <OptimizedImage 
-                          src={banner.image_url} 
-                          alt={banner.title}
-                          width={64}
-                          height={40}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                    
-                    {/* Banner标题和分类 */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm truncate mb-1">{banner.title}</h3>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                          {CATEGORY_MAP[banner.category_id as keyof typeof CATEGORY_MAP]}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          banner.status === 1 
-                            ? "bg-green-100 text-green-800" 
-                            : "bg-gray-100 text-gray-600"
-                        }`}>
-                          {banner.status === 1 ? "显示" : "隐藏"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                {/* Banner图片 - 全宽展示 */}
+                <div className="w-full h-32 relative rounded overflow-hidden mb-3">
+                  {banner.image_url?.startsWith('data:') ? (
+                    <img 
+                      src={banner.image_url} 
+                      alt={banner.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <OptimizedImage 
+                      src={banner.image_url} 
+                      alt={banner.title}
+                      width={400}
+                      height={128}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+
+                {/* Banner标题 - 换行展示 */}
+                <h3 className="font-medium text-base mb-3 leading-relaxed">{banner.title}</h3>
+
+                {/* 分类和状态标签 */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                    {CATEGORY_MAP[banner.category_id as keyof typeof CATEGORY_MAP]}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    banner.status === 1 
+                      ? "bg-green-100 text-green-800" 
+                      : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {banner.status === 1 ? "显示" : "隐藏"}
+                  </span>
                 </div>
 
                 {/* 卡片内容 */}
