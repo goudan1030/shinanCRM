@@ -27,7 +27,7 @@ const nextConfig = {
       }
     ],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840], // 响应式图片尺寸
-    minimumCacheTTL: 3600, // 增加图片缓存时间（1小时）
+    minimumCacheTTL: 0, // 禁用图片缓存
     dangerouslyAllowSVG: true, // 允许SVG图片（小心使用）
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
@@ -132,7 +132,7 @@ const nextConfig = {
     return config;
   },
   
-  // 强化缓存策略
+  // 移除所有缓存策略，确保数据实时更新
   headers: async () => {
     return [
       {
@@ -150,50 +150,23 @@ const nextConfig = {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
+          // 禁用所有缓存
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
           // 预加载字体资源
           {
             key: 'Link',
             value: '</fonts/geist.woff2>; rel=preload; as=font; crossorigin=anonymous, </fonts/geist-mono.woff2>; rel=preload; as=font; crossorigin=anonymous',
-          },
-        ],
-      },
-      {
-        // 静态资源缓存
-        source: '/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          }
-        ],
-      },
-      {
-        // 字体文件缓存
-        source: '/fonts/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          }
-        ],
-      },
-      {
-        // 图片缓存
-        source: '/images/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
-          }
-        ],
-      },
-      {
-        // API缓存策略
-        source: '/api/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=60, s-maxage=120, stale-while-revalidate=600',
           },
         ],
       },

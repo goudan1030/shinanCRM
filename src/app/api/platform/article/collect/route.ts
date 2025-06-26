@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 
 export async function POST(request: Request) {
   try {
-    const { url } = await request.json();
+    const { url } = await request.json() as { url: string };
 
     // 使用内置的 fetch
     const response = await fetch(url, {
@@ -14,9 +14,10 @@ export async function POST(request: Request) {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
         'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
-      },
-      next: { revalidate: 0 } // 禁用缓存
+        'Upgrade-Insecure-Requests': '1',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
     });
 
     if (!response.ok) {

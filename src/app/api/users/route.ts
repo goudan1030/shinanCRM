@@ -4,32 +4,19 @@ import { executeQuery, testNetlifyConnection } from '@/lib/database-netlify';
 // 获取所有用户
 export async function GET(request: Request) {
   try {
-    console.log('=== 开始获取用户列表 ===');
-    
-    // 首先测试数据库连接
-    const dbConnected = await testNetlifyConnection();
-    if (!dbConnected) {
-      throw new Error('数据库连接失败');
-    }
-    
     // 从URL参数中获取分页信息
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('pageSize') || '25');
     
-    console.log('分页参数:', { page, pageSize });
-    
     // 计算偏移量
     const offset = (page - 1) * pageSize;
     
     // 查询总记录数
-    console.log('查询用户总数...');
     const [countResult] = await executeQuery('SELECT COUNT(*) as total FROM users');
     const total = (countResult as any[])[0].total;
-    console.log('用户总数:', total);
     
     // 分页查询用户并关联会员信息
-    console.log('查询用户列表...');
     const [users] = await executeQuery(
       `SELECT u.*, vm.member_id 
        FROM users u
@@ -37,8 +24,6 @@ export async function GET(request: Request) {
        ORDER BY u.created_at DESC LIMIT ? OFFSET ?`,
       [pageSize, offset]
     );
-    
-    console.log('✓ 用户列表查询成功，返回', (users as any[]).length, '条记录');
     
     return NextResponse.json({ 
       success: true, 
@@ -86,14 +71,6 @@ export async function GET(request: Request) {
 // 创建新用户
 export async function POST(request: Request) {
   try {
-    console.log('=== 开始创建用户 ===');
-    
-    // 首先测试数据库连接
-    const dbConnected = await testNetlifyConnection();
-    if (!dbConnected) {
-      throw new Error('数据库连接失败');
-    }
-    
     const data = await request.json();
     const { phone, username, nickname, password, member_type, status } = data as {
       phone: string;
@@ -104,8 +81,6 @@ export async function POST(request: Request) {
       status?: string;
     };
     
-    console.log('创建用户数据:', { phone, username, nickname, member_type, status });
-    
     // 基本验证
     if (!phone) {
       return NextResponse.json(
@@ -115,10 +90,8 @@ export async function POST(request: Request) {
     }
     
     // 检查手机号是否已存在
-    console.log('检查手机号是否已存在...');
     const [existingUsers] = await executeQuery('SELECT * FROM users WHERE phone = ?', [phone]);
     if ((existingUsers as any[]).length > 0) {
-      console.log('手机号已存在:', phone);
       return NextResponse.json(
         { success: false, error: '该手机号已注册' },
         { status: 400 }
@@ -126,7 +99,6 @@ export async function POST(request: Request) {
     }
     
     // 插入新用户
-    console.log('插入新用户...');
     const [result] = await executeQuery(
       'INSERT INTO users (phone, username, nickname, password, member_type, status) VALUES (?, ?, ?, ?, ?, ?)',
       [
@@ -140,7 +112,6 @@ export async function POST(request: Request) {
     );
     
     const userId = (result as any).insertId;
-    console.log('✓ 用户创建成功:', { userId });
     
     return NextResponse.json({ 
       success: true, 

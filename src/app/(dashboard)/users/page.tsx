@@ -50,7 +50,7 @@ interface Session {
 }
 
 // 定义可用的列
-type ColumnKey = 'phone' | 'username' | 'nickname' | 'status' | 'avatar' | 'created_at' | 'last_login_at' | 'registered' | 'member_type' | 'refresh_count' | 'actions';
+type ColumnKey = 'phone' | 'username' | 'nickname' | 'status' | 'created_at' | 'last_login_at' | 'registered' | 'member_type' | 'refresh_count' | 'actions';
 
 // 可用列定义
 const availableColumns: { key: ColumnKey; label: string }[] = [
@@ -58,10 +58,9 @@ const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'username', label: '用户名' },
   { key: 'nickname', label: '昵称' },
   { key: 'status', label: '状态' },
-  { key: 'avatar', label: '头像' },
+  { key: 'registered', label: '资料完善' },
   { key: 'created_at', label: '创建时间' },
   { key: 'last_login_at', label: '最后登录' },
-  { key: 'registered', label: '资料完善' },
   { key: 'member_type', label: '会员类型' },
   { key: 'refresh_count', label: '刷新次数' },
   { key: 'actions', label: '操作' }
@@ -105,7 +104,7 @@ function ColumnSelector({
   
   // 重置为默认设置
   const resetToDefault = () => {
-    const defaultColumns: ColumnKey[] = ['phone', 'username', 'nickname', 'status', 'member_type', 'created_at', 'refresh_count', 'actions'];
+    const defaultColumns: ColumnKey[] = ['phone', 'username', 'nickname', 'status', 'registered', 'member_type', 'created_at', 'refresh_count', 'actions'];
     setSelectedColumns(defaultColumns);
     setVisibleColumns(defaultColumns);
     localStorage.setItem('userTableVisibleColumns', JSON.stringify(defaultColumns));
@@ -170,7 +169,7 @@ function UsersPageContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>([
-    'phone', 'username', 'nickname', 'status', 'member_type', 'created_at', 'refresh_count', 'actions'
+    'phone', 'username', 'nickname', 'status', 'registered', 'member_type', 'created_at', 'refresh_count', 'actions'
   ]);
   
   // 分页相关状态
@@ -482,7 +481,6 @@ function UsersPageContent() {
                 {visibleColumns.includes('username') && <th className="px-4 py-3 text-left font-medium">用户名</th>}
                 {visibleColumns.includes('nickname') && <th className="px-4 py-3 text-left font-medium">昵称</th>}
                 {visibleColumns.includes('status') && <th className="px-4 py-3 text-left font-medium">状态</th>}
-                {visibleColumns.includes('avatar') && <th className="px-4 py-3 text-left font-medium">头像</th>}
                 {visibleColumns.includes('created_at') && <th className="px-4 py-3 text-left font-medium">创建时间</th>}
                 {visibleColumns.includes('last_login_at') && <th className="px-4 py-3 text-left font-medium">最后登录</th>}
                 {visibleColumns.includes('registered') && <th className="px-4 py-3 text-left font-medium">资料完善</th>}
@@ -514,11 +512,6 @@ function UsersPageContent() {
                     {visibleColumns.includes('status') && (
                       <td className="px-4 py-2">
                         <Skeleton className="h-4 w-[80px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('avatar') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-8 w-8 rounded-full" />
                       </td>
                     )}
                     {visibleColumns.includes('created_at') && (
@@ -587,23 +580,6 @@ function UsersPageContent() {
                         }`}>
                           {getStatusText(user.status as string)}
                         </span>
-                      </td>
-                    )}
-                    {visibleColumns.includes('avatar') && (
-                      <td className="px-4 py-2">
-                        {user.avatar ? (
-                          <div className="w-8 h-8 rounded-full overflow-hidden">
-                            <img 
-                              src={user.avatar} 
-                              alt={user.username || '用户头像'} 
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-500 text-xs">无</span>
-                          </div>
-                        )}
                       </td>
                     )}
                     {visibleColumns.includes('created_at') && (

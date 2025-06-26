@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getTokenFromCookieStore, verifyToken } from '../../../../lib/token';
 
 export async function GET() {
-  console.log('=== 开始检查用户会话 ===');
   try {
     // 获取并验证Token
     const token = await getTokenFromCookieStore();
