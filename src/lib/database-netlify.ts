@@ -107,7 +107,7 @@ function initializeEnvVars() {
 initializeEnvVars();
 
 /**
- * Netlify优化的数据库配置
+ * 性能优化的数据库配置
  */
 const netlifyDBConfig: PoolOptions = {
   // 基本连接信息
@@ -117,26 +117,25 @@ const netlifyDBConfig: PoolOptions = {
   password: dbPassword,
   database: process.env.DB_NAME,
   
-  // Serverless优化配置
+  // 性能优化配置
   waitForConnections: true,
-  connectionLimit: 5,              // 较小的连接池，适合serverless
+  connectionLimit: 10,             // 增加连接池大小
   queueLimit: 0,
   
-  // 较短的超时时间
-  connectTimeout: 10000,           // 增加到10秒以适应较慢的网络
+  // 优化超时设置
+  connectTimeout: 5000,            // 减少连接超时
   
-  // 其他优化选项
-  namedPlaceholders: true,
+  // 禁用不必要的功能
+  namedPlaceholders: false,        // 禁用命名占位符以提升性能
   
   // 远程访问安全设置
   ssl: {
-    // 禁用严格SSL验证以解决可能的证书问题
     rejectUnauthorized: false 
   },
   
   // 连接保持活动设置
   enableKeepAlive: true,
-  keepAliveInitialDelay: 10000     // 10秒钟心跳检测
+  keepAliveInitialDelay: 30000     // 30秒心跳检测
 };
 
 /**
@@ -149,33 +148,15 @@ let netlifyPool: Pool | null = null;
  */
 export function getNetlifyPool(): Pool {
   if (!netlifyPool) {
-    console.log('初始化Netlify数据库连接池...');
-    console.log('数据库连接信息:', {
-      host: netlifyDBConfig.host,
-      port: netlifyDBConfig.port,
-      user: netlifyDBConfig.user,
-      database: netlifyDBConfig.database
-    });
-    
     netlifyPool = mysql.createPool(netlifyDBConfig);
     
-    // 事件处理 - 由于TypeScript类型限制，使用更直接的方式
+    // 监听严重错误，只有在连接失败时才重置连接池
     const pool = netlifyPool as any;
     if (pool.on) {
-      // 监听连接建立
-      pool.on('connection', function(connection: any) {
-        console.log('新建数据库连接:', connection.threadId);
-      });
-      
-      // 监听错误
       pool.on('error', function(err: any) {
-        console.error('池级别数据库错误:', err);
-        
-        // 如果是连接错误，清除池实例以便下次重新创建
         if (err.code === 'PROTOCOL_CONNECTION_LOST' || 
             err.code === 'ECONNREFUSED' || 
             err.code === 'ER_ACCESS_DENIED_ERROR') {
-          console.log('连接失败，清除连接池实例');
           netlifyPool = null;
         }
       });
@@ -186,68 +167,36 @@ export function getNetlifyPool(): Pool {
 }
 
 /**
- * 执行数据库查询（带重试机制）
+ * 执行数据库查询（轻量级版本，移除连接测试以提升性能）
  */
 export async function executeQuery<T extends QueryResult = QueryResult>(
   sql: string, 
   params: any[] = []
 ): Promise<[T, mysql.FieldPacket[]]> {
-  let pool = getNetlifyPool();
-  let retries = 3;
+  const pool = getNetlifyPool();
   
-  while (retries > 0) {
-    try {
-      console.log('执行SQL查询:', { sql: sql.substring(0, 100) + '...', paramsLength: params.length });
-      
-      // 获取连接前再次测试连接池
-      await testNetlifyConnection();
-      
-      const result = await pool.execute<T>(sql, params);
-      console.log('✓ 查询执行成功');
-      return result;
-    } catch (error) {
-      const dbError = error as DBError;
-      console.error(`查询失败 (剩余重试次数: ${retries - 1}):`, dbError);
-      
-      // 记录详细的错误信息
-      if (dbError.code) {
-        console.error('错误代码:', dbError.code);
-        console.error('SQL状态:', dbError.sqlState);
-        console.error('SQL消息:', dbError.sqlMessage);
-        
-        // 如果是访问拒绝错误，打印更多诊断信息
-        if (dbError.code === 'ER_ACCESS_DENIED_ERROR') {
-          console.error('访问被拒绝。请检查数据库用户权限设置，确保该用户可以从当前主机访问。');
-          console.error('当前连接信息:', {
-            host: netlifyDBConfig.host,
-            user: netlifyDBConfig.user,
-            database: netlifyDBConfig.database
-          });
-        }
-      }
-      
-      retries--;
+  try {
+    // 直接执行查询，依赖连接池的自动连接管理
+    const result = await pool.execute<T>(sql, params);
+    return result;
+  } catch (error) {
+    const dbError = error as DBError;
+    
+    // 只在严重错误时记录日志
+    if (dbError.code === 'ER_ACCESS_DENIED_ERROR' || 
+        dbError.code === 'ECONNREFUSED' || 
+        dbError.code === 'PROTOCOL_CONNECTION_LOST') {
+      console.error('数据库连接错误:', {
+        code: dbError.code,
+        message: dbError.message
+      });
       
       // 如果是连接相关错误，重置连接池
-      if (dbError.code === 'PROTOCOL_CONNECTION_LOST' || 
-          dbError.code === 'ECONNREFUSED' || 
-          dbError.code === 'ER_ACCESS_DENIED_ERROR') {
-        netlifyPool = null;
-        pool = getNetlifyPool();
-      }
-      
-      if (retries === 0) {
-        throw error;
-      }
-      
-      // 重试前等待时间递增
-      const waitTime = (3 - retries) * 300;
-      console.log(`等待 ${waitTime}ms 后重试...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
+      netlifyPool = null;
     }
+    
+    throw error;
   }
-  
-  throw new Error('查询重试失败');
 }
 
 /**
