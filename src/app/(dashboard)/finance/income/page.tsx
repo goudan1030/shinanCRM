@@ -37,6 +37,7 @@ interface IncomeRecord {
 
 export default function IncomePage() {
   const { toast } = useToast();
+  const router = useRouter();
   const { session, isLoading } = useAuth() as { session: SessionType | null, isLoading: boolean };
   const [records, setRecords] = useState<IncomeRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,6 +113,46 @@ export default function IncomePage() {
       setLoading(false);
     }
   }, [currentPage, monthFilter, pageSize, paymentMethodFilter, searchKeyword, toast, yearFilter]);
+
+  // 创建一个强制刷新函数，用于操作后立即更新数据
+  const forceRefresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        searchKeyword: searchKeyword,
+        paymentMethod: paymentMethodFilter,
+        month: monthFilter,
+        year: yearFilter,
+        _t: Date.now().toString() // 强制时间戳
+      });
+
+      const response = await fetch(`/api/finance/income/list?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('获取数据失败');
+      }
+
+      const data = await response.json();
+      setRecords(data.records || []);
+      setTotalCount(data.total);
+      setTotalPages(data.totalPages);
+      
+      console.log('数据刷新成功，记录数量:', data.records?.length || 0);
+    } catch (error) {
+      console.error('刷新数据失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, monthFilter, pageSize, paymentMethodFilter, searchKeyword, yearFilter]);
 
   useEffect(() => {
     if (session) {
@@ -451,7 +492,9 @@ export default function IncomePage() {
                     amount: '',
                     notes: ''
                   });
-                  fetchRecords();
+                  
+                  // 立即刷新数据
+                  await forceRefresh();
                 } catch (error) {
                   console.error('创建收入记录失败:', error);
                   toast({
@@ -516,13 +559,8 @@ export default function IncomePage() {
 
                   setDeleteDialogOpen(false);
                   
-                  // 刷新路由缓存
-                  router.refresh();
-                  
-                  // 延迟一点时间后重新获取数据，确保后端更新生效
-                  setTimeout(() => {
-                  fetchRecords();
-                  }, 300);
+                  // 立即刷新数据，无需等待
+                  await forceRefresh();
                 } catch (error) {
                   console.error('删除收入记录失败:', error);
                   toast({
@@ -666,13 +704,8 @@ export default function IncomePage() {
 
                   setEditDialogOpen(false);
                   
-                  // 刷新路由缓存
-                  router.refresh();
-                  
-                  // 延迟一点时间后重新获取数据，确保后端更新生效
-                  setTimeout(() => {
-                  fetchRecords();
-                  }, 300);
+                  // 立即刷新数据，无需等待
+                  await forceRefresh();
                 } catch (error) {
                   console.error('更新收入记录失败:', error);
                   toast({

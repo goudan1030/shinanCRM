@@ -3,13 +3,6 @@ import { executeQuery, testNetlifyConnection } from '@/lib/database-netlify';
 
 export async function GET(request: Request) {
   try {
-    console.log('=== 开始获取支出记录 ===');
-    
-    // 首先测试数据库连接
-    const dbConnected = await testNetlifyConnection();
-    if (!dbConnected) {
-      throw new Error('数据库连接失败');
-    }
     
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');

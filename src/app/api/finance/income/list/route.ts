@@ -3,14 +3,6 @@ import { executeQuery, testNetlifyConnection } from '@/lib/database-netlify';
 
 export async function GET(request: Request) {
   try {
-    console.log('=== 开始获取收入记录 ===');
-    
-    // 首先测试数据库连接
-    const dbConnected = await testNetlifyConnection();
-    if (!dbConnected) {
-      throw new Error('数据库连接失败');
-    }
-    
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '25');
@@ -18,8 +10,6 @@ export async function GET(request: Request) {
     const paymentMethod = searchParams.get('paymentMethod') || '';
     const month = searchParams.get('month') || '';
     const year = searchParams.get('year') || '';
-
-    console.log('查询参数:', { page, pageSize, searchKeyword, paymentMethod, month, year });
 
     const offset = (page - 1) * pageSize;
 
@@ -78,24 +68,27 @@ export async function GET(request: Request) {
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     params.push(pageSize, offset);
 
-    console.log('执行计数查询...');
     // 执行计数查询
     const [countResult] = await executeQuery(countQuery, countParams);
     const total = (countResult as any[])[0].total;
-    console.log('收入记录总数:', total);
 
-    console.log('执行主查询...');
     // 执行主查询
     const [records] = await executeQuery(query, params);
-    console.log('✓ 收入记录查询成功，返回', (records as any[]).length, '条记录');
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       records,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize)
     });
+
+    // 设置防缓存头
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
   } catch (error) {
     console.error('获取收入记录失败:', error);
     
