@@ -1223,7 +1223,7 @@ function MembersPageContent() {
   }
 
   return (
-    <div className="space-y-4 p-3">
+    <div className="space-y-4">
       {/* 二维码生成对话框 */}
       <Dialog open={qrCodeDialogOpen} onOpenChange={handleQRCodeDialogClose}>
         <DialogContent className="max-w-md">
@@ -1498,7 +1498,7 @@ function MembersPageContent() {
       </Dialog>
 
       {/* 主页面内容 */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col px-3">
         {/* 搜索和过滤 - 优化移动端布局 */}
         <div className="flex flex-col gap-3 mb-4">
           {/* 关键词搜索框 */}
