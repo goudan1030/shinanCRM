@@ -20,15 +20,6 @@ interface SettlementRecord {
   created_at: string;
 }
 
-interface CalculationDetails {
-  period: string;
-  monthlyIncome: number;
-  monthlyExpense: number;
-  profitToSettle: number;
-  settledAmount: number;
-  amountToSettle: number;
-}
-
 export default function SettlementPage() {
   const { toast } = useToast();
   const { session, isLoading } = useAuth();
@@ -42,12 +33,6 @@ export default function SettlementPage() {
 
   const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
-
-  // 自动结算相关状态
-  const [autoSettleDialogOpen, setAutoSettleDialogOpen] = useState(false);
-  const [autoSettleLoading, setAutoSettleLoading] = useState(false);
-  const [calculationDetails, setCalculationDetails] = useState<CalculationDetails | null>(null);
-  const [autoSettleSuccess, setAutoSettleSuccess] = useState(false);
 
   const fetchRecords = useCallback(async () => {
     try {
@@ -110,59 +95,6 @@ export default function SettlementPage() {
   });
   const [newExpenseLoading, setNewExpenseLoading] = useState(false);
 
-  // 执行自动结算
-  const handleAutoSettle = async () => {
-    setAutoSettleLoading(true);
-    setCalculationDetails(null);
-    setAutoSettleSuccess(false);
-
-    try {
-      const response = await fetch('/api/finance/settlement/auto', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          operator_id: session?.user?.id
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setCalculationDetails(result.calculationDetails || null);
-        throw new Error(result.message || result.error || '自动结算失败');
-      }
-
-      setCalculationDetails(result.calculationDetails);
-      setAutoSettleSuccess(true);
-      
-      toast({
-        title: '自动结算成功',
-        description: `已创建结算记录，金额: ¥${Number(result.calculationDetails.amountToSettle).toLocaleString()}`
-      });
-      
-      // 刷新结算记录
-      fetchRecords();
-    } catch (error) {
-      console.error('自动结算失败:', error);
-      toast({
-        variant: 'destructive',
-        title: '自动结算失败',
-        description: error instanceof Error ? error.message : '操作失败，请重试'
-      });
-    } finally {
-      setAutoSettleLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (session) {
-      fetchRecords();
-    }
-  }, [session, fetchRecords]);
-  
-
   if (isLoading || loading) {
     return (
       <div className="flex flex-col h-screen overflow-hidden">
@@ -201,37 +133,19 @@ export default function SettlementPage() {
             >
               新增结算
             </Button>
-            <Button
-              onClick={() => setAutoSettleDialogOpen(true)}
-              size="sm"
-              variant="outline"
-              className="h-[28px]"
-            >
-              自动结算
-            </Button>
           </div>
 
           {/* 移动端筛选和操作区域 */}
           <div className="lg:hidden bg-white border-b p-4 space-y-4">
             <div className="flex justify-between items-center">
               <h1 className="text-lg font-semibold">结算管理</h1>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => setAutoSettleDialogOpen(true)}
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs"
-                >
-                  自动结算
-                </Button>
-                <Button
-                  onClick={() => setNewExpenseDialogOpen(true)}
-                  size="sm"
-                  className="h-8 text-xs"
-                >
-                  新增结算
-                </Button>
-              </div>
+              <Button
+                onClick={() => setNewExpenseDialogOpen(true)}
+                size="sm"
+                className="h-8"
+              >
+                新增结算
+              </Button>
             </div>
             
             <div className="space-y-4">
@@ -424,80 +338,6 @@ export default function SettlementPage() {
           </div>
         </div>
       </div>
-
-      {/* 自动结算对话框 */}
-      <Dialog open={autoSettleDialogOpen} onOpenChange={setAutoSettleDialogOpen}>
-        <DialogContent className="w-[95%] max-w-lg mx-auto">
-          <DialogHeader>
-            <DialogTitle>自动结算</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            {calculationDetails ? (
-              <div className="space-y-3">
-                <h3 className="text-md font-medium">{autoSettleSuccess ? '结算成功' : '结算详情'}</h3>
-                <div className="border rounded-md p-3 space-y-2 bg-gray-50">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">结算期间:</span>
-                    <span className="text-sm font-medium">{calculationDetails.period}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">当月收入:</span>
-                    <span className="text-sm font-medium">¥{calculationDetails.monthlyIncome.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">当月支出:</span>
-                    <span className="text-sm font-medium">¥{calculationDetails.monthlyExpense.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">应结算金额 (营业额的50%):</span>
-                    <span className="text-sm font-medium">¥{calculationDetails.profitToSettle.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">已结算金额:</span>
-                    <span className="text-sm font-medium">¥{calculationDetails.settledAmount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center font-medium">
-                    <span className="text-sm text-gray-600">本次结算金额:</span>
-                    <span className="text-sm font-medium text-primary">¥{calculationDetails.amountToSettle.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                {autoSettleSuccess && (
-                  <p className="text-sm text-green-600">
-                    结算记录已成功创建，可以在列表中查看。
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">
-                系统将自动计算当月待结算金额并创建结算记录。
-                <br />
-                结算金额计算公式: (当月收入 - 当月支出) / 2 - 已结算金额
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setAutoSettleDialogOpen(false);
-                setCalculationDetails(null);
-                setAutoSettleSuccess(false);
-              }}
-            >
-              {autoSettleSuccess ? '关闭' : '取消'}
-            </Button>
-            {!autoSettleSuccess && (
-              <Button
-                onClick={handleAutoSettle}
-                disabled={autoSettleLoading}
-              >
-                {autoSettleLoading ? '结算中...' : '开始结算'}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={newExpenseDialogOpen} onOpenChange={setNewExpenseDialogOpen}>
         <DialogContent className="w-[95%] max-w-lg mx-auto">
