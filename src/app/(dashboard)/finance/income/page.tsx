@@ -149,7 +149,7 @@ export default function IncomePage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-auto">
       <div className="p-3 sm:p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <h1 className="text-lg sm:text-xl font-semibold">收入管理</h1>
@@ -245,7 +245,7 @@ export default function IncomePage() {
         ) : (
           <>
             {/* 移动端卡片布局 */}
-            <div className="lg:hidden space-y-4">
+            <div className="lg:hidden space-y-4 pb-4">
               {records.map((record) => (
                 <div key={record.id} className="bg-white rounded-lg border p-4 shadow-sm">
                   {/* 卡片头部 */}

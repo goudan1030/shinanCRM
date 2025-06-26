@@ -155,7 +155,7 @@ export default function ExpensePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col min-h-screen">
       <div className="flex-1 flex">
 
         {/* 操作功能区域 - 只在桌面端显示 */}
@@ -219,7 +219,7 @@ export default function ExpensePage() {
           </div>
 
           {/* 移动端筛选和操作区域 */}
-          <div className="lg:hidden bg-white border-b p-4 space-y-4">
+          <div className="lg:hidden bg-white border-b p-4 space-y-4 sticky top-0 z-10">
             <div className="flex justify-between items-center">
               <h1 className="text-lg font-semibold">支出管理</h1>
               <Button
@@ -279,7 +279,7 @@ export default function ExpensePage() {
           </div>
           
           {/* 内容区域 */}
-          <div className="space-y-6 h-[calc(100vh-88px)] lg:h-[calc(100vh-88px)] overflow-auto lg:mt-[38px] p-4 lg:p-0">
+          <div className="space-y-6 overflow-auto lg:mt-[38px] p-4 lg:p-0 pb-20">
             {/* 桌面端分页信息 */}
             {totalPages > 1 && (
               <div className="hidden lg:flex h-[36px] items-center justify-between border-t fixed bottom-0 left-[537px] right-0 bg-white z-50 px-4">

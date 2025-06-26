@@ -1397,7 +1397,7 @@ function MembersPageContent() {
 
       {/* 撤销会员对话框 */}
       <Dialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
           <DialogHeader>
             <DialogTitle>撤销会员</DialogTitle>
             <DialogDescription>
@@ -1496,7 +1496,7 @@ function MembersPageContent() {
 
       {/* 会员匹配对话框 */}
       <Dialog open={matchDialogOpen} onOpenChange={setMatchDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-2xl mx-auto">
           <DialogHeader>
             <DialogTitle>匹配会员</DialogTitle>
             <DialogDescription>
@@ -1549,7 +1549,7 @@ function MembersPageContent() {
 
       {/* 删除会员对话框 */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95%] max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle>删除会员</DialogTitle>
             <DialogDescription>
@@ -1923,7 +1923,7 @@ function MembersPageContent() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 px-3 text-xs text-blue-600"
+                          className="h-8 px-3 text-xs text-blue-600 hidden"
                           onClick={() => {
                             if (member.remaining_matches <= 0) {
                               toast({
@@ -2169,11 +2169,11 @@ function MembersPageContent() {
                               </Button>
                               {member.status === 'ACTIVE' && (
                                 <>
-                                  <div className="h-4 border-r border-gray-300"></div>
+                                  <div className="h-4 border-r border-gray-300 hidden"></div>
                                   <Button
                                     variant="outline"
                                     size="xs"
-                                    className="h-7 px-2 py-0 text-xs border border-gray-300 text-blue-500 hover:bg-blue-50 shadow-sm"
+                                    className="h-7 px-2 py-0 text-xs border border-gray-300 text-blue-500 hover:bg-blue-50 shadow-sm hidden"
                                     onClick={() => {
                                       if (member.remaining_matches <= 0) {
                                         toast({
