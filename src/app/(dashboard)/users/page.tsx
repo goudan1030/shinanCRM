@@ -427,9 +427,14 @@ function UsersPageContent() {
             placeholder="搜索手机号/用户名/昵称"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full md:w-[300px]"
+            className="flex-1 md:w-[300px]"
           />
-          <Button onClick={handleSearch}>搜索</Button>
+          <Button 
+            onClick={handleSearch}
+            className="shrink-0 px-4 md:px-6"
+          >
+            搜索
+          </Button>
         </div>
         
         <div className="flex gap-2 w-full md:w-auto">
@@ -471,10 +476,125 @@ function UsersPageContent() {
         </div>
       </div>
       
-      {/* 用户表格 */}
-      <div className="rounded-md border overflow-hidden mb-[80px]">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+      {/* 用户列表 */}
+      {loading ? (
+        <div className="rounded-md border">
+          <div className="px-4 py-8 text-center text-muted-foreground">加载中...</div>
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="rounded-md border">
+          <div className="px-4 py-8 text-center text-muted-foreground">暂无用户数据</div>
+        </div>
+      ) : (
+        <>
+          {/* 移动端卡片布局 */}
+          <div className="lg:hidden space-y-4 mb-[60px]">
+            {filteredUsers.map((user) => (
+              <div key={user.id} className="bg-white rounded-lg border p-4 shadow-sm">
+                {/* 卡片头部 */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-base">{user.phone}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        user.member_type === '年费会员' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : user.member_type === '一次性会员'
+                          ? 'bg-purple-100 text-purple-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {user.member_type}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span>{user.username || '未设置'}</span>
+                      <span>{user.nickname || '未设置'}</span>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    user.status === 'active' 
+                      ? 'bg-green-100 text-green-800' 
+                      : user.status === 'need-setup'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {getStatusText(user.status as string)}
+                  </span>
+                </div>
+
+                {/* 卡片内容 */}
+                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                  <div>
+                    <span className="text-gray-500">资料完善：</span>
+                    <span>{getRegisteredText(user.registered)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">刷新次数：</span>
+                    <span>{user.refresh_count}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500">创建时间：</span>
+                    <span>{new Date(user.created_at).toLocaleString('zh-CN', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</span>
+                  </div>
+                  {user.last_login_at && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">最后登录：</span>
+                      <span>{new Date(user.last_login_at).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 卡片操作按钮 */}
+                <div className="flex flex-wrap gap-2 pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => router.push(`/users/${user.id}/edit`)}
+                  >
+                    编辑
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-xs text-green-600"
+                    onClick={() => openRefreshDialog(
+                      user.id as number,
+                      user.username || user.nickname || user.phone
+                    )}
+                  >
+                    增加刷新次数
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-xs text-red-600"
+                    onClick={() => handleDelete(user.id as number)}
+                  >
+                    删除
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 桌面端表格布局 */}
+          <div className="hidden lg:block">
+            <div className="rounded-md border overflow-hidden mb-[80px]">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
                 {visibleColumns.includes('phone') && <th className="px-4 py-3 text-left font-medium">手机号</th>}
@@ -670,16 +790,19 @@ function UsersPageContent() {
                 ))
               )}
             </tbody>
-          </table>
-        </div>
-      </div>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       
       {/* 分页 */}
-      <div className="h-[48px] flex items-center justify-between border-t fixed bottom-0 left-[57px] right-0 bg-white z-50 px-6 shadow-sm">
-        <div className="text-sm text-muted-foreground flex items-center">
-          <span className="mr-2">共 {totalCount} 条记录</span>
+      <div className="h-[48px] flex items-center justify-between border-t fixed bottom-0 left-0 md:left-[57px] right-0 bg-white z-50 px-3 md:px-6 shadow-sm">
+        <div className="text-xs md:text-sm text-muted-foreground flex items-center">
+          <span className="mr-1 md:mr-2">共 {totalCount} 条</span>
           <select 
-            className="ml-2 px-2 py-1 border border-gray-300 rounded text-sm"
+            className="ml-1 md:ml-2 px-1 md:px-2 py-1 border border-gray-300 rounded text-xs md:text-sm"
             value={pageSize}
             onChange={(e) => {
               const newSize = Number(e.target.value);
@@ -694,9 +817,9 @@ function UsersPageContent() {
             <option value="100">100条/页</option>
           </select>
         </div>
-        <div className="flex gap-2 items-center">
-          <div className="flex items-center text-sm mr-4">
-            <span className="mr-2">跳至</span>
+        <div className="flex gap-1 md:gap-2 items-center">
+          <div className="hidden sm:flex items-center text-xs md:text-sm mr-2 md:mr-4">
+            <span className="mr-1 md:mr-2">跳至</span>
             <input 
               type="number" 
               min="1" 
@@ -708,9 +831,9 @@ function UsersPageContent() {
                   handlePageChange(value);
                 }
               }}
-              className="w-[50px] px-2 py-1 border border-gray-300 rounded text-center"
+              className="w-[40px] md:w-[50px] px-1 md:px-2 py-1 border border-gray-300 rounded text-center text-xs md:text-sm"
             />
-            <span className="ml-2">页</span>
+            <span className="ml-1 md:ml-2">页</span>
           </div>
           
           <Button
@@ -718,10 +841,10 @@ function UsersPageContent() {
             size="sm"
             onClick={() => handlePageChange(1)}
             disabled={currentPage === 1}
-            className="h-8 min-w-[40px] px-2"
+            className="h-7 md:h-8 min-w-[30px] md:min-w-[40px] px-1 md:px-2"
           >
             <span className="sr-only">首页</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="11 17 6 12 11 7"></polyline>
               <polyline points="18 17 13 12 18 7"></polyline>
             </svg>
@@ -732,15 +855,15 @@ function UsersPageContent() {
             size="sm"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="h-8 min-w-[40px] px-2"
+            className="h-7 md:h-8 min-w-[30px] md:min-w-[40px] px-1 md:px-2"
           >
             <span className="sr-only">上一页</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </Button>
           
-          <span className="px-4 text-sm">
+          <span className="px-2 md:px-4 text-xs md:text-sm">
             {currentPage} / {totalPages}
           </span>
           
@@ -749,10 +872,10 @@ function UsersPageContent() {
             size="sm"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="h-8 min-w-[40px] px-2"
+            className="h-7 md:h-8 min-w-[30px] md:min-w-[40px] px-1 md:px-2"
           >
             <span className="sr-only">下一页</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
           </Button>
@@ -762,10 +885,10 @@ function UsersPageContent() {
             size="sm"
             onClick={() => handlePageChange(totalPages)}
             disabled={currentPage === totalPages}
-            className="h-8 min-w-[40px] px-2"
+            className="h-7 md:h-8 min-w-[30px] md:min-w-[40px] px-1 md:px-2"
           >
             <span className="sr-only">尾页</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="13 17 18 12 13 7"></polyline>
               <polyline points="6 17 11 12 6 7"></polyline>
             </svg>
