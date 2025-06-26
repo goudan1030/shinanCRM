@@ -27,6 +27,7 @@ const formSchema = z.object({
   cover_url: z.string().min(1, '请上传封面图片'),
   content: z.string().min(1, '请输入文章内容'),
   summary: z.string().optional(),
+  link_url: z.string().optional(),
   is_hidden: z.number(),
   is_top: z.number(),
   sort_order: z.number(),
@@ -56,6 +57,7 @@ export function ArticleDialog({
       cover_url: initialData?.cover_url || '',
       content: initialData?.content || '',
       summary: initialData?.summary || '',
+      link_url: initialData?.link_url || '',
       is_hidden: initialData?.is_hidden || 0,
       is_top: initialData?.is_top || 0,
       sort_order: initialData?.sort_order || 0,
@@ -206,6 +208,20 @@ export function ArticleDialog({
                       className="resize-none" 
                       {...field} 
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="link_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>链接地址</FormLabel>
+                  <FormControl>
+                    <Input placeholder="请输入文章链接地址(选填)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -244,6 +244,20 @@ export default function ArticlePage() {
                 {/* 摘要 */}
                 <p className="text-sm text-gray-600 mb-2 line-clamp-2">{article.summary}</p>
                 
+                {/* 链接地址 */}
+                {article.link_url && (
+                  <div className="mb-2">
+                    <a 
+                      href={article.link_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-800 underline truncate block"
+                    >
+                      🔗 {article.link_url}
+                    </a>
+                  </div>
+                )}
+                
                 {/* 统计信息 */}
                 <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
                   <span>浏览 {article.views}</span>
@@ -299,6 +313,7 @@ export default function ArticlePage() {
               <TableHead className="w-[100px]">封面</TableHead>
               <TableHead>标题</TableHead>
               <TableHead>摘要</TableHead>
+              <TableHead>链接</TableHead>
               <TableHead>浏览次数</TableHead>
               <TableHead>状态</TableHead>
               <TableHead>发布时间</TableHead>
@@ -326,6 +341,20 @@ export default function ArticlePage() {
                   </div>
                 </TableCell>
                 <TableCell className="max-w-[200px] truncate">{article.summary}</TableCell>
+                <TableCell className="max-w-[150px]">
+                  {article.link_url ? (
+                    <a 
+                      href={article.link_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 underline truncate block"
+                    >
+                      {article.link_url}
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
                 <TableCell>{article.views}</TableCell>
                 <TableCell>
                   {article.is_hidden === 0 ? (
