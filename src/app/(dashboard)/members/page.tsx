@@ -253,8 +253,9 @@ function MembersPageContent() {
 
       if (statusFilter) queryParams.set('status', statusFilter);
       if (genderFilter) queryParams.set('gender', genderFilter);
-      if (searchTerm) queryParams.set('search', searchTerm);
-      if (typeFilter) queryParams.set('type', typeFilter);
+      // 修复搜索参数名称问题
+      if (searchTerm) queryParams.set('searchKeyword', searchTerm);
+      if (typeFilter) queryParams.set('memberType', typeFilter);
       
       // 使用统一的API端点，通过查询参数处理筛选
       const apiUrl = '/api/members';
@@ -1685,8 +1686,164 @@ function MembersPageContent() {
 
       {/* 主页面内容 */}
       <div className="flex-1 flex flex-col">
-        {/* 搜索和过滤 - 优化移动端布局 */}
+        {/* 搜索和过滤 - 优化PC端布局 */}
         <div className="flex flex-col gap-3 mb-4">
+          {/* PC端：水平布局 */}
+          <div className="hidden md:flex md:flex-wrap md:items-center md:gap-3">
+            {/* 搜索框区域 */}
+            <div className="flex gap-2 md:w-auto">
+              <Input
+                placeholder="搜索会员编号/微信/手机"
+                value={searchKeyword}
+                onChange={(e) => {
+                  setSearchKeyword(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setSearchTerm(searchKeyword);
+                  }
+                }}
+                className="w-[280px]"
+              />
+              <Button onClick={() => setSearchTerm(searchKeyword)} className="px-4">
+                搜索
+              </Button>
+            </div>
+            
+            {/* 筛选选择器 */}
+            <div className="flex gap-2">
+              <Select 
+                value={statusFilter !== null ? statusFilter : 'ALL'} 
+                onValueChange={(value) => {
+                  if (value === 'ALL') {
+                    setStatusFilter(null);
+                  } else {
+                    setStatusFilter(value);
+                  }
+                }}
+                defaultValue={statusFilter !== null ? statusFilter : 'ALL'}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="状态筛选" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部状态</SelectItem>
+                  <SelectItem value="ACTIVE">激活</SelectItem>
+                  <SelectItem value="REVOKED">撤销</SelectItem>
+                  <SelectItem value="SUCCESS">成功</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select 
+                value={typeFilter !== null ? typeFilter : 'ALL'} 
+                onValueChange={(value) => {
+                  if (value === 'ALL') {
+                    setTypeFilter(null);
+                  } else {
+                    setTypeFilter(value);
+                  }
+                }}
+                defaultValue={typeFilter !== null ? typeFilter : 'ALL'}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="会员类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部类型</SelectItem>
+                  <SelectItem value="NORMAL">普通会员</SelectItem>
+                  <SelectItem value="ONE_TIME">一次性会员</SelectItem>
+                  <SelectItem value="ANNUAL">年费会员</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select 
+                value={genderFilter !== null ? genderFilter : 'ALL'} 
+                onValueChange={(value) => {
+                  if (value === 'ALL') {
+                    setGenderFilter(null);
+                  } else {
+                    setGenderFilter(value);
+                  }
+                }}
+                defaultValue={genderFilter !== null ? genderFilter : 'ALL'}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="性别筛选" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部性别</SelectItem>
+                  <SelectItem value="male">男</SelectItem>
+                  <SelectItem value="female">女</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* 清除筛选按钮 */}
+              <Button 
+                variant="outline" 
+                onClick={clearFilters}
+                className="w-auto"
+              >
+                清除筛选
+              </Button>
+            </div>
+            
+            {/* 操作按钮组 */}
+            <div className="flex gap-2 ml-auto">
+              <Link href="/members/new">
+                <Button>
+                  新增会员
+                </Button>
+              </Link>
+              
+              <Button 
+                variant="outline"
+                onClick={handleExport}
+                className="flex items-center gap-1"
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="16" 
+                  height="16" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                导出会员
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => setIsColumnSelectorOpen(!isColumnSelectorOpen)}
+                className="relative"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="mr-2"
+                >
+                  <path d="M3 3h18v18H3zM12 3v18M3 12h18" />
+                </svg>
+                显示字段
+              </Button>
+            </div>
+          </div>
+
+          {/* 移动端：垂直布局（保持不变） */}
+          <div className="md:hidden flex flex-col gap-3">
           {/* 关键词搜索框 */}
           <div className="flex gap-2">
             <Input
@@ -1707,8 +1864,8 @@ function MembersPageContent() {
             </Button>
           </div>
           
-          {/* 筛选下拉框 - 移动端垂直排列，桌面端水平排列 */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 md:flex gap-2">
+            {/* 筛选下拉框 - 移动端垂直排列 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <Select 
               value={statusFilter !== null ? statusFilter : 'ALL'} 
               onValueChange={(value) => {
@@ -1720,7 +1877,7 @@ function MembersPageContent() {
               }}
               defaultValue={statusFilter !== null ? statusFilter : 'ALL'}
             >
-              <SelectTrigger className="w-full md:w-[120px]">
+                <SelectTrigger className="w-full">
                 <SelectValue placeholder="状态筛选" />
               </SelectTrigger>
               <SelectContent>
@@ -1742,7 +1899,7 @@ function MembersPageContent() {
               }}
               defaultValue={typeFilter !== null ? typeFilter : 'ALL'}
             >
-              <SelectTrigger className="w-full md:w-[120px]">
+                <SelectTrigger className="w-full">
                 <SelectValue placeholder="会员类型" />
               </SelectTrigger>
               <SelectContent>
@@ -1764,7 +1921,7 @@ function MembersPageContent() {
               }}
               defaultValue={genderFilter !== null ? genderFilter : 'ALL'}
             >
-              <SelectTrigger className="w-full md:w-[120px]">
+                <SelectTrigger className="w-full">
                 <SelectValue placeholder="性别筛选" />
               </SelectTrigger>
               <SelectContent>
@@ -1773,19 +1930,18 @@ function MembersPageContent() {
                 <SelectItem value="female">女</SelectItem>
               </SelectContent>
             </Select>
+            </div>
             
-            {/* 清除筛选按钮 */}
+            {/* 操作按钮组 - 移动端垂直排列 */}
+            <div className="flex flex-col sm:flex-row gap-2">
             <Button 
               variant="outline" 
               onClick={clearFilters}
-              className="w-full md:w-auto"
+                className="w-full sm:w-auto"
             >
               清除筛选
             </Button>
-          </div>
           
-          {/* 操作按钮组 - 移动端垂直排列，桌面端水平排列 */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
             <Link href="/members/new" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto">
                 新增会员
@@ -1810,7 +1966,6 @@ function MembersPageContent() {
               >
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
               <span className="hidden sm:inline">导出会员</span>
               <span className="sm:hidden">导出</span>
@@ -1838,9 +1993,12 @@ function MembersPageContent() {
               <span className="hidden sm:inline">显示字段</span>
               <span className="sm:hidden">字段</span>
             </Button>
+            </div>
+          </div>
             
+          {/* 列选择器弹窗 */}
             {isColumnSelectorOpen && (
-              <div className="absolute right-4 top-[120px] bg-white border rounded-md shadow-lg p-4 z-[1002] w-[280px]">
+            <div className="absolute right-4 top-[180px] bg-white border rounded-md shadow-lg p-4 z-[1002] w-[280px]">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b pb-2">
                     <h3 className="font-medium text-sm">选择显示字段</h3>
@@ -1870,12 +2028,10 @@ function MembersPageContent() {
                 </div>
               </div>
             )}
-          </div>
         </div>
 
         {loading ? (
           <div className="rounded-md border">
-            {/* 使用相对定位容器和溢出滚动 */}
             <div className="relative overflow-x-auto" style={{ maxWidth: '100%' }}>
               <table className="w-full text-sm">
                 <thead className="bg-white sticky top-0 z-20">
@@ -1885,7 +2041,6 @@ function MembersPageContent() {
                     <th className="px-4 py-3 text-left font-medium bg-white">手机号</th>
                     <th className="px-4 py-3 text-left font-medium bg-white">会员类型</th>
                     <th className="px-4 py-3 text-left font-medium bg-white">状态</th>
-                    {/* 操作列固定在右侧 */}
                     <th className="px-4 py-3 text-left font-medium sticky right-0 bg-white shadow-[-4px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 min-w-[280px]">操作</th>
                   </tr>
                 </thead>
@@ -1897,7 +2052,6 @@ function MembersPageContent() {
                       <td className="px-4 py-3"><Skeleton className="h-4 w-[120px]" /></td>
                       <td className="px-4 py-3"><Skeleton className="h-4 w-[100px]" /></td>
                       <td className="px-4 py-3"><Skeleton className="h-4 w-[80px]" /></td>
-                      {/* 操作列固定在右侧 */}
                       <td className="px-4 py-3 sticky right-0 bg-white shadow-[-4px_0_5px_-2px_rgba(0,0,0,0.1)] z-10">
                         <div className="flex gap-1 items-center">
                           <Skeleton className="h-7 w-[36px]" />
@@ -1917,7 +2071,7 @@ function MembersPageContent() {
           <div className="rounded-md border">
             <div className="px-4 py-8 text-center text-muted-foreground">暂无会员数据</div>
           </div>
-        ) : (
+                ) : (
           <>
             {/* 移动端卡片布局 */}
             <div className="lg:hidden space-y-4 mb-[60px]">
@@ -2357,7 +2511,7 @@ function MembersPageContent() {
                 </div>
               </div>
             </div>
-
+            
             {/* 分页 */}
             <div className="h-[48px] flex items-center justify-between border-t fixed bottom-0 left-0 md:left-[57px] right-0 bg-white z-50 px-3 md:px-6 shadow-sm">
               <div className="text-xs md:text-sm text-muted-foreground flex items-center">
@@ -2392,8 +2546,8 @@ function MembersPageContent() {
                   <span className="ml-1 md:ml-2">页</span>
                 </div>
                 
-                <Button
-                  variant="outline"
+                <Button 
+                  variant="outline" 
                   size="sm"
                   onClick={() => handlePageChange(1)}
                   disabled={currentPage === 1}
@@ -2423,8 +2577,8 @@ function MembersPageContent() {
                   {currentPage} / {totalPages}
                 </span>
                 
-                <Button
-                  variant="outline"
+                <Button 
+                  variant="outline" 
                   size="sm"
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
@@ -2436,8 +2590,8 @@ function MembersPageContent() {
                   </svg>
                 </Button>
                 
-                <Button
-                  variant="outline"
+                <Button 
+                  variant="outline" 
                   size="sm"
                   onClick={() => handlePageChange(totalPages)}
                   disabled={currentPage === totalPages}
@@ -2453,8 +2607,8 @@ function MembersPageContent() {
             </div>
           </>
         )}
-      </div>
-    </div>
+                  </div>
+                </div>
   );
 }
 

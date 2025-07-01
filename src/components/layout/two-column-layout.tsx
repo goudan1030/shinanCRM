@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface TwoColumnLayoutProps {
@@ -20,8 +21,8 @@ export function TwoColumnLayout({
         {sidebarContent}
       </div>
 
-      {/* 右侧内容区域 - 移动端全宽，桌面端留边栏空间 */}
-      <div className="flex-1 w-full ml-0 md:ml-[57px]">
+      {/* 右侧内容区域 - 修复PC端宽度计算问题 */}
+      <div className="w-full md:w-[calc(100%-57px)] md:ml-[57px]">
         <div className={cn(
           "w-full max-w-none sm:max-w-[1200px] sm:mx-auto min-h-screen",
           className

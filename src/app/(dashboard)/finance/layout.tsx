@@ -53,8 +53,8 @@ export default function FinanceLayout({
           </div>
         </div>
 
-        {/* 主内容区域 - 移动端全宽，PC端添加左边距以避开导航 */}
-        <div className="w-full lg:ml-[240px]">
+        {/* 主内容区域 - 修复PC端宽度计算问题 */}
+        <div className="w-full lg:w-[calc(100%-240px)] lg:ml-[240px] overflow-hidden">
           {children}
         </div>
       </div>

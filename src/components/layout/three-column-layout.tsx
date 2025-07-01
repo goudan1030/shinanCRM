@@ -33,12 +33,15 @@ export const ThreeColumnLayout = memo(function ThreeColumnLayout({
         </div>
       )}
 
-      {/* 主内容区域 - 移动端全宽，桌面端有边距 */}
+      {/* 主内容区域 - 修复PC端宽度计算问题 */}
       <div className={cn(
-        "relative w-full", 
-        // 移动端无边距，桌面端根据布局调整边距
-        "ml-0 md:ml-[60px]",
-        useThreeColumns && middleContent ? "lg:ml-[297px]" : "",
+        "relative", 
+        // 移动端：全宽
+        "w-full",
+        // 桌面端：使用calc计算正确宽度，避免超出屏幕
+        "md:w-[calc(100%-60px)] md:ml-[60px]",
+        // 三栏布局时的宽度计算
+        useThreeColumns && middleContent ? "lg:w-[calc(100%-297px)] lg:ml-[297px]" : "",
         "transition-all duration-100 ease-in-out"
       )}>
         {children}

@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface FourColumnLayoutProps {
@@ -24,8 +25,8 @@ export function FourColumnLayout({
         {sidebarContent}
       </div>
 
-      {/* 主内容区域 - 调整左侧边距 */}
-      <div className="relative ml-[60px]">
+      {/* 主内容区域 - 修复PC端宽度计算问题 */}
+      <div className="relative w-[calc(100%-60px)] ml-[60px]">
         {children}
       </div>
     </div>
