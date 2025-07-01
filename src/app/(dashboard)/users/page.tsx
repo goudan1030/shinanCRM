@@ -32,6 +32,7 @@ interface User {
   last_login_at: string | null;
   registered: number;
   refresh_count: number;
+  view_count: number;
   member_type: '普通会员' | '一次性会员' | '年费会员';
   member_id?: string | null; // 关联的会员ID
   [key: string]: string | number | null | undefined;
@@ -50,7 +51,7 @@ interface Session {
 }
 
 // 定义可用的列
-type ColumnKey = 'phone' | 'username' | 'nickname' | 'status' | 'created_at' | 'last_login_at' | 'registered' | 'member_type' | 'refresh_count' | 'actions';
+type ColumnKey = 'phone' | 'username' | 'nickname' | 'status' | 'created_at' | 'last_login_at' | 'registered' | 'member_type' | 'refresh_count' | 'view_count' | 'actions';
 
 // 可用列定义
 const availableColumns: { key: ColumnKey; label: string }[] = [
@@ -63,6 +64,7 @@ const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'last_login_at', label: '最后登录' },
   { key: 'member_type', label: '会员类型' },
   { key: 'refresh_count', label: '刷新次数' },
+  { key: 'view_count', label: '查看次数' },
   { key: 'actions', label: '操作' }
 ];
 
@@ -104,7 +106,7 @@ function ColumnSelector({
   
   // 重置为默认设置
   const resetToDefault = () => {
-    const defaultColumns: ColumnKey[] = ['phone', 'username', 'nickname', 'status', 'registered', 'member_type', 'created_at', 'refresh_count', 'actions'];
+    const defaultColumns: ColumnKey[] = ['phone', 'username', 'nickname', 'status', 'registered', 'member_type', 'created_at', 'refresh_count', 'view_count', 'actions'];
     setSelectedColumns(defaultColumns);
     setVisibleColumns(defaultColumns);
     localStorage.setItem('userTableVisibleColumns', JSON.stringify(defaultColumns));
@@ -169,7 +171,7 @@ function UsersPageContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>([
-    'phone', 'username', 'nickname', 'status', 'registered', 'member_type', 'created_at', 'refresh_count', 'actions'
+    'phone', 'username', 'nickname', 'status', 'registered', 'member_type', 'created_at', 'refresh_count', 'view_count', 'actions'
   ]);
   
   // 分页相关状态
@@ -183,6 +185,12 @@ function UsersPageContent() {
   const [refreshCount, setRefreshCount] = useState<number>(1);
   const [refreshUserId, setRefreshUserId] = useState<number | null>(null);
   const [refreshUserName, setRefreshUserName] = useState<string>('');
+
+  // 增加查看次数对话框状态
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewCount, setViewCount] = useState<number>(1);
+  const [viewUserId, setViewUserId] = useState<number | null>(null);
+  const [viewUserName, setViewUserName] = useState<string>('');
 
   // 获取用户数据 - 将函数定义移到useEffect之前，以解决ReferenceError问题
   const fetchUsers = useCallback(async (page = 1, size = 25) => {
@@ -326,6 +334,70 @@ function UsersPageContent() {
         variant: "destructive",
         title: "更新失败",
         description: error instanceof Error ? error.message : "增加刷新次数失败，请重试"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 打开增加查看次数对话框
+  const openViewDialog = (userId: number, userName: string) => {
+    setViewUserId(userId);
+    setViewUserName(userName || '该用户');
+    setViewCount(1);
+    setViewDialogOpen(true);
+  };
+
+  // 提交增加查看次数
+  const submitViewCount = async () => {
+    if (!viewUserId) return;
+    
+    try {
+      setLoading(true);
+      
+      // 发送API请求增加查看次数
+      const response = await fetch('/api/users/view-count', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: viewUserId,
+          addCount: viewCount
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('增加查看次数失败');
+      }
+      
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || '增加查看次数失败');
+      }
+      
+      // 更新本地状态
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === viewUserId 
+            ? { ...user, view_count: result.newCount } 
+            : user
+        )
+      );
+      
+      toast({
+        title: "更新成功",
+        description: `已为${viewUserName}增加${viewCount}次查看次数，当前剩余${result.newCount}次`
+      });
+      
+      // 关闭对话框
+      setViewDialogOpen(false);
+    } catch (error) {
+      console.error('增加查看次数失败:', error);
+      toast({
+        variant: "destructive",
+        title: "更新失败",
+        description: error instanceof Error ? error.message : "增加查看次数失败，请重试"
       });
     } finally {
       setLoading(false);
@@ -478,9 +550,103 @@ function UsersPageContent() {
       
       {/* 用户列表 */}
       {loading ? (
-        <div className="rounded-md border">
-          <div className="px-4 py-8 text-center text-muted-foreground">加载中...</div>
-        </div>
+        <>
+          {/* 移动端加载状态 - 保持原有简单样式 */}
+          <div className="lg:hidden rounded-md border">
+            <div className="px-4 py-8 text-center text-muted-foreground">加载中...</div>
+          </div>
+
+          {/* PC端加载状态 - 显示表格骨架屏 */}
+          <div className="hidden lg:block">
+            <div className="rounded-md border overflow-hidden mb-[80px]">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      {visibleColumns.includes('phone') && <th className="px-4 py-3 text-left font-medium">手机号</th>}
+                      {visibleColumns.includes('username') && <th className="px-4 py-3 text-left font-medium">用户名</th>}
+                      {visibleColumns.includes('nickname') && <th className="px-4 py-3 text-left font-medium">昵称</th>}
+                      {visibleColumns.includes('status') && <th className="px-4 py-3 text-left font-medium">状态</th>}
+                      {visibleColumns.includes('created_at') && <th className="px-4 py-3 text-left font-medium">创建时间</th>}
+                      {visibleColumns.includes('last_login_at') && <th className="px-4 py-3 text-left font-medium">最后登录</th>}
+                      {visibleColumns.includes('registered') && <th className="px-4 py-3 text-left font-medium">资料完善</th>}
+                      {visibleColumns.includes('member_type') && <th className="px-4 py-3 text-left font-medium">会员类型</th>}
+                      {visibleColumns.includes('refresh_count') && <th className="px-4 py-3 text-left font-medium">刷新次数</th>}
+                      {visibleColumns.includes('view_count') && <th className="px-4 py-3 text-left font-medium">查看次数</th>}
+                      {visibleColumns.includes('actions') && <th className="px-4 py-3 text-left font-medium">操作</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* 渲染8行骨架屏，提供更好的加载体验 */}
+                    {Array(8).fill(0).map((_, index) => (
+                      <tr key={index} className="border-t animate-pulse">
+                        {visibleColumns.includes('phone') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-4 w-[120px]" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('username') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-4 w-[100px]" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('nickname') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-4 w-[80px]" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('status') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-6 w-[60px] rounded-full" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('created_at') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-4 w-[140px]" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('last_login_at') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-4 w-[140px]" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('registered') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-6 w-[60px] rounded-full" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('member_type') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-6 w-[80px] rounded-full" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('refresh_count') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-4 w-[40px]" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('view_count') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-4 w-[40px]" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('actions') && (
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              <Skeleton className="h-8 w-[50px] rounded" />
+                              <Skeleton className="h-8 w-[120px] rounded" />
+                              <Skeleton className="h-8 w-[50px] rounded" />
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </>
       ) : filteredUsers.length === 0 ? (
         <div className="rounded-md border">
           <div className="px-4 py-8 text-center text-muted-foreground">暂无用户数据</div>
@@ -531,6 +697,10 @@ function UsersPageContent() {
                   <div>
                     <span className="text-gray-500">刷新次数：</span>
                     <span>{user.refresh_count}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">查看次数：</span>
+                    <span>{user.view_count}</span>
                   </div>
                   <div className="col-span-2">
                     <span className="text-gray-500">创建时间：</span>
@@ -590,6 +760,17 @@ function UsersPageContent() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-8 px-3 text-xs text-blue-600"
+                    onClick={() => openViewDialog(
+                      user.id as number,
+                      user.username || user.nickname || user.phone
+                    )}
+                  >
+                    增加查看次数
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="h-8 px-3 text-xs text-red-600"
                     onClick={() => handleDelete(user.id as number)}
                   >
@@ -616,67 +797,12 @@ function UsersPageContent() {
                 {visibleColumns.includes('registered') && <th className="px-4 py-3 text-left font-medium">资料完善</th>}
                 {visibleColumns.includes('member_type') && <th className="px-4 py-3 text-left font-medium">会员类型</th>}
                 {visibleColumns.includes('refresh_count') && <th className="px-4 py-3 text-left font-medium">刷新次数</th>}
+                {visibleColumns.includes('view_count') && <th className="px-4 py-3 text-left font-medium">查看次数</th>}
                 {visibleColumns.includes('actions') && <th className="px-4 py-3 text-left font-medium">操作</th>}
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                // 加载状态
-                Array(3).fill(0).map((_, index) => (
-                  <tr key={index} className="border-t">
-                    {visibleColumns.includes('phone') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[150px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('username') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[150px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('nickname') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[100px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('status') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[80px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('created_at') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[120px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('last_login_at') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[120px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('registered') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[80px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('member_type') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[100px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('refresh_count') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[80px]" />
-                      </td>
-                    )}
-                    {visibleColumns.includes('actions') && (
-                      <td className="px-4 py-2">
-                        <Skeleton className="h-4 w-[100px]" />
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : filteredUsers.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 // 无数据状态
                 <tr className="border-t">
                   <td 
@@ -765,6 +891,9 @@ function UsersPageContent() {
                     {visibleColumns.includes('refresh_count') && (
                       <td className="px-4 py-2">{user.refresh_count}</td>
                     )}
+                    {visibleColumns.includes('view_count') && (
+                      <td className="px-4 py-2">{user.view_count}</td>
+                    )}
                     {visibleColumns.includes('actions') && (
                       <td className="px-4 py-2">
                         <div className="flex gap-2">
@@ -785,6 +914,17 @@ function UsersPageContent() {
                           >
                             <Plus className="h-3 w-3 mr-1" />
                             增加刷新次数
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openViewDialog(
+                              user.id as number,
+                              user.username || user.nickname || user.phone
+                            )}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            增加查看次数
                           </Button>
                           <Button 
                             variant="destructive" 
@@ -963,6 +1103,45 @@ function UsersPageContent() {
             </Button>
             <Button 
               onClick={submitRefreshCount}
+              disabled={loading}
+            >
+              {loading ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 增加查看次数对话框 */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>增加查看次数</DialogTitle>
+            <DialogDescription>
+              为 {viewUserName} 增加查看次数。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex items-center space-x-4">
+              <Label htmlFor="view-count" className="flex-shrink-0">增加次数：</Label>
+              <Input
+                id="view-count"
+                type="number"
+                value={viewCount}
+                onChange={(e) => setViewCount(Math.max(1, parseInt(e.target.value) || 1))}
+                min="1"
+                className="flex-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setViewDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button 
+              onClick={submitViewCount}
               disabled={loading}
             >
               {loading ? '保存中...' : '保存'}

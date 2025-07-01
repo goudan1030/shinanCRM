@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const [countResult] = await executeQuery('SELECT COUNT(*) as total FROM users');
     const total = (countResult as any[])[0].total;
     
-    // 分页查询用户并关联会员信息
+    // 分页查询用户并关联会员信息，包含view_count字段
     const [users] = await executeQuery(
       `SELECT u.*, vm.member_id 
        FROM users u

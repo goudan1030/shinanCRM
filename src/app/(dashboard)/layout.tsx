@@ -73,7 +73,8 @@ export default function DashboardLayout({
       <header className="fixed top-0 right-0 h-[48px] bg-white border-b z-[90] transition-all duration-300 left-0 md:left-[57px]">
         <div className="h-full flex items-center justify-between px-3 sm:px-4">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-sm">
+            {/* 移动端显示logo，PC端不显示logo（因为侧边栏已有logo） */}
+            <div className="md:hidden flex items-center justify-center w-8 h-8 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-sm">
               <img 
                 src="/logo.svg" 
                 alt="Logo" 

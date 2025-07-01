@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, AppWindow, Database, ChevronDown, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { useState } from 'react';
@@ -96,7 +96,6 @@ const navigation: NavigationItem[] = [
       { name: '安全设置', href: '/settings/security' }
     ]
   },
-  { name: '缓存管理', href: '/system', icon: Database },
 ];
 
 const menuRedirectMap = {
@@ -105,7 +104,6 @@ const menuRedirectMap = {
   '/miniapp': '/miniapp/config', // 小程序管理 -> 基础配置
   '/wecom': '/wecom/config', // 企业微信 -> 基础配置
   '/settings': '/settings/profile', // 系统设置 -> 个人资料
-  '/system': '/system/cache', // 缓存管理 -> 缓存管理
 };
 
 export function Sidebar({ className, onMenuClick }: SidebarProps) {
