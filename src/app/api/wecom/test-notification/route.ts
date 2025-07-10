@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendMemberRegistrationNotification, getWecomConfig, getWecomAccessToken, sendWecomMessageDetailed, formatMemberNotificationCard } from '@/lib/wecom-api';
+import { sendMemberRegistrationNotification, getWecomConfig, getWecomAccessToken, sendWecomMessageDetailed, formatMemberNotificationCard, formatMemberNotificationText, formatMemberNotificationMarkdown } from '@/lib/wecom-api';
 
 /**
  * 测试企业微信会员登记通知功能
@@ -82,8 +82,22 @@ export async function POST(request: Request) {
     };
     
     // 根据消息类型设置消息内容
-    if (messageType === 'textcard') {
-      message.textcard = formatMemberNotificationCard(testMemberData);
+    switch (messageType) {
+      case 'textcard':
+        message.textcard = formatMemberNotificationCard(testMemberData);
+        break;
+      case 'text':
+        message.text = {
+          content: formatMemberNotificationText(testMemberData)
+        };
+        break;
+      case 'markdown':
+        message.markdown = {
+          content: formatMemberNotificationMarkdown(testMemberData)
+        };
+        break;
+      default:
+        message.textcard = formatMemberNotificationCard(testMemberData);
     }
     
     debugInfo.steps[2].status = 'success';
