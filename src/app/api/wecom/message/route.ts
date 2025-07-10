@@ -20,16 +20,23 @@ export async function GET(request: NextRequest) {
     const nonce = searchParams.get('nonce');
     const echostr = searchParams.get('echostr');
 
-    console.log('企业微信URL验证请求:', { msg_signature, timestamp, nonce, echostr });
+    console.log('🔍 企业微信URL验证请求:', { 
+      msg_signature, 
+      timestamp, 
+      nonce, 
+      echostr: echostr ? echostr.substring(0, 10) + '...' : null,
+      url: request.url 
+    });
 
     // 检查必需参数
     if (!msg_signature || !timestamp || !nonce || !echostr) {
-      console.log('✗ 缺少必需参数');
+      console.log('❌ 缺少必需参数');
       return NextResponse.json({ error: '缺少必需参数' }, { status: 400 });
     }
 
-    // 验证签名（直接使用Token，不依赖数据库配置）
-    const token = process.env.WECOM_TOKEN || 'L411dhQg';
+    // 验证签名（使用固定Token）
+    const token = 'L411dhQg';
+    console.log('🔑 使用Token:', token);
     const signature = verifySignature(token, timestamp, nonce, echostr, msg_signature);
     
     if (signature) {
@@ -97,20 +104,41 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * 验证企业微信签名
+ * 验证企业微信签名（严格按照官方文档）
  */
 function verifySignature(token: string, timestamp: string | null, nonce: string | null, data: string | null, signature: string | null): boolean {
   if (!timestamp || !nonce || !data || !signature) {
+    console.log('❌ 签名验证失败：缺少必需参数', { timestamp: !!timestamp, nonce: !!nonce, data: !!data, signature: !!signature });
     return false;
   }
 
   try {
+    // 按照企业微信官方文档：将token、timestamp、nonce、echostr四个参数进行字典序排序
     const arr = [token, timestamp, nonce, data].sort();
     const str = arr.join('');
-    const hash = createHash('sha1').update(str).digest('hex');
-    return hash === signature;
+    
+    console.log('签名验证详情:', {
+      token,
+      timestamp,
+      nonce,
+      data: data.substring(0, 20) + '...',
+      sortedArray: arr,
+      joinedString: str.length > 100 ? str.substring(0, 100) + '...' : str
+    });
+    
+    // 使用SHA1加密
+    const hash = createHash('sha1').update(str, 'utf8').digest('hex').toLowerCase();
+    const receivedSig = signature.toLowerCase();
+    
+    console.log('签名对比:', {
+      calculated: hash,
+      received: receivedSig,
+      match: hash === receivedSig
+    });
+    
+    return hash === receivedSig;
   } catch (error) {
-    console.error('签名验证出错:', error);
+    console.error('签名验证过程出错:', error);
     return false;
   }
 }
