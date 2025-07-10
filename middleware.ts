@@ -33,7 +33,9 @@ const publicRoutes = [
 
 // 检查路径是否匹配公开路由
 function isPublicPath(path: string): boolean {
-  return publicRoutes.some(route => path.startsWith(route) || path === route);
+  const isPublic = publicRoutes.some(route => path.startsWith(route) || path === route);
+  console.log('公开路径检查:', { path, isPublic, routes: publicRoutes });
+  return isPublic;
 }
 
 // 检查路径是否匹配需要保护的路由
