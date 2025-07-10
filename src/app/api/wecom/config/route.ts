@@ -22,19 +22,39 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const { corp_id, agent_id, secret } = data;
+    const { 
+      corp_id, 
+      agent_id, 
+      secret, 
+      member_notification_enabled = true,
+      notification_recipients = '@all',
+      message_type = 'textcard',
+      custom_message_template = null
+    } = data;
 
     if (!corp_id || !agent_id || !secret) {
       return NextResponse.json(
-        { error: '请提供完整的配置信息' },
+        { error: '请提供完整的基础配置信息（企业ID、应用ID、应用Secret）' },
         { status: 400 }
       );
     }
 
-    // 使用 REPLACE INTO 确保只有一条记录
+    // 使用 REPLACE INTO 确保只有一条记录，包含新的通知配置字段
     await pool.execute(
-      'REPLACE INTO wecom_config (id, corp_id, agent_id, secret) VALUES (1, ?, ?, ?)',
-      [corp_id, agent_id, secret]
+      `REPLACE INTO wecom_config (
+        id, corp_id, agent_id, secret, 
+        member_notification_enabled, notification_recipients, 
+        message_type, custom_message_template
+      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        corp_id, 
+        agent_id, 
+        secret, 
+        member_notification_enabled,
+        notification_recipients,
+        message_type,
+        custom_message_template
+      ]
     );
 
     return NextResponse.json({ success: true });
