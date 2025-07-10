@@ -27,6 +27,7 @@ const publicRoutes = [
   '/api/wecom/verify',  // 企业微信URL验证专用API
   '/api/wecom/test-verify',  // 企业微信验证测试工具
   '/api/wecom/callback',  // 企业微信最简化回调验证
+  '/api/wecom/quick-config',  // 企业微信快速配置
   '/favicon.ico',
   '/_next',
   '/WW_verify_',  // 企业微信域名验证文件
