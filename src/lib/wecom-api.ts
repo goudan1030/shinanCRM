@@ -136,11 +136,31 @@ export async function getWecomAccessToken(config: WecomConfig): Promise<string |
 }
 
 /**
+ * 发送企业微信消息结果
+ */
+interface WecomSendResult {
+  success: boolean;
+  error?: string;
+  errorCode?: number;
+  data?: WecomMessageResponse;
+}
+
+/**
  * 发送企业微信消息
  */
 export async function sendWecomMessage(accessToken: string, message: WecomMessage): Promise<boolean> {
+  const result = await sendWecomMessageDetailed(accessToken, message);
+  return result.success;
+}
+
+/**
+ * 发送企业微信消息（详细结果）
+ */
+export async function sendWecomMessageDetailed(accessToken: string, message: WecomMessage): Promise<WecomSendResult> {
   try {
     const url = `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${accessToken}`;
+    
+    console.log('发送企业微信消息:', JSON.stringify(message, null, 2));
     
     const response = await fetch(url, {
       method: 'POST',
@@ -151,22 +171,40 @@ export async function sendWecomMessage(accessToken: string, message: WecomMessag
     });
     
     if (!response.ok) {
-      console.error('企业微信消息发送请求失败:', response.status, response.statusText);
-      return false;
+      const error = `HTTP请求失败: ${response.status} ${response.statusText}`;
+      console.error('企业微信消息发送请求失败:', error);
+      return {
+        success: false,
+        error: error
+      };
     }
     
     const data: WecomMessageResponse = await response.json();
+    console.log('企业微信API响应:', JSON.stringify(data, null, 2));
     
     if (data.errcode !== 0) {
-      console.error('企业微信消息发送失败:', data.errcode, data.errmsg);
-      return false;
+      const error = `企业微信API错误: ${data.errcode} - ${data.errmsg}`;
+      console.error('企业微信消息发送失败:', error);
+      return {
+        success: false,
+        error: error,
+        errorCode: data.errcode,
+        data: data
+      };
     }
     
     console.log('✓ 企业微信消息发送成功');
-    return true;
+    return {
+      success: true,
+      data: data
+    };
   } catch (error) {
-    console.error('企业微信消息发送出错:', error);
-    return false;
+    const errorMsg = `网络或其他错误: ${error instanceof Error ? error.message : '未知错误'}`;
+    console.error('企业微信消息发送出错:', errorMsg);
+    return {
+      success: false,
+      error: errorMsg
+    };
   }
 }
 
