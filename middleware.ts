@@ -24,6 +24,8 @@ const publicRoutes = [
   '/api/debug/db-test',  // 添加诊断API到公开路由
   '/api/wecom/message',  // 企业微信消息接收API
   '/api/wecom/message-test',  // 企业微信消息测试API
+  '/api/wecom/verify',  // 企业微信URL验证专用API
+  '/api/wecom/test-verify',  // 企业微信验证测试工具
   '/favicon.ico',
   '/_next',
   '/WW_verify_',  // 企业微信域名验证文件

@@ -22,19 +22,24 @@ export async function GET(request: NextRequest) {
 
     console.log('企业微信URL验证请求:', { msg_signature, timestamp, nonce, echostr });
 
-    // 获取企业微信配置
-    const config = await getWecomConfig();
-    if (!config) {
-      return NextResponse.json({ error: '企业微信配置不存在' }, { status: 400 });
+    // 检查必需参数
+    if (!msg_signature || !timestamp || !nonce || !echostr) {
+      console.log('✗ 缺少必需参数');
+      return NextResponse.json({ error: '缺少必需参数' }, { status: 400 });
     }
 
-    // 验证签名
-    const token = process.env.WECOM_TOKEN || 'your_token_here'; // 需要在环境变量中配置
+    // 验证签名（直接使用Token，不依赖数据库配置）
+    const token = process.env.WECOM_TOKEN || 'L411dhQg';
     const signature = verifySignature(token, timestamp, nonce, echostr, msg_signature);
     
     if (signature) {
       console.log('✓ 企业微信URL验证成功');
-      return new Response(echostr);
+      return new Response(echostr, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain',
+        }
+      });
     } else {
       console.log('✗ 企业微信URL验证失败');
       return NextResponse.json({ error: '签名验证失败' }, { status: 403 });
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
     console.log('收到消息体:', body);
 
     // 验证签名
-    const token = process.env.WECOM_TOKEN || 'your_token_here';
+    const token = process.env.WECOM_TOKEN || 'L411dhQg';
     const signature = verifySignature(token, timestamp, nonce, body, msg_signature);
     
     if (!signature) {
