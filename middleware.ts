@@ -24,6 +24,7 @@ const publicRoutes = [
   '/api/debug/db-test',  // 添加诊断API到公开路由
   '/favicon.ico',
   '/_next',
+  '/WW_verify_',  // 企业微信域名验证文件
 ];
 
 // 检查路径是否匹配公开路由
@@ -45,6 +46,12 @@ export function middleware(request: NextRequest) {
   
   console.log('中间件处理路径:', pathname, '是否Netlify环境:', isNetlify);
   
+  // 处理企业微信验证文件 - 直接返回，不做任何处理
+  if (pathname.startsWith('/WW_verify_')) {
+    console.log('企业微信验证文件访问:', pathname);
+    return NextResponse.next();
+  }
+
   // 处理静态资源 - 禁用缓存
   if (
     pathname.startsWith('/_next') || 
