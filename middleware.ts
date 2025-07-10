@@ -22,6 +22,8 @@ const publicRoutes = [
   '/api/auth/logout',
   '/api/auth/session',
   '/api/debug/db-test',  // 添加诊断API到公开路由
+  '/api/wecom/message',  // 企业微信消息接收API
+  '/api/wecom/message-test',  // 企业微信消息测试API
   '/favicon.ico',
   '/_next',
   '/WW_verify_',  // 企业微信域名验证文件
