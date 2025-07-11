@@ -40,6 +40,9 @@ const publicRoutes = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/session',
+  '/api/wecom/message', // 企业微信消息接收URL
+  '/api/wecom/verify',  // 企业微信验证URL
+  '/api/wecom/callback', // 企业微信回调URL
 ];
 
 // 中间件实现
