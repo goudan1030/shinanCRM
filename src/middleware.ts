@@ -43,6 +43,7 @@ const publicRoutes = [
   '/api/wecom/message', // 企业微信消息接收URL
   '/api/wecom/verify',  // 企业微信验证URL
   '/api/wecom/callback', // 企业微信回调URL
+  '/api/wecom/test-verify', // 企业微信测试验证API
 ];
 
 // 中间件实现
