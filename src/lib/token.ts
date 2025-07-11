@@ -171,8 +171,9 @@ export function setTokenCookie(response: NextResponse, token: string): NextRespo
   const isProduction = process.env.NODE_ENV === 'production';
   const isNetlify = process.env.NETLIFY === 'true';
   
-  // 在Netlify环境中，即使是production也可能需要特殊处理
-  const shouldSecure = isProduction && !isNetlify;
+  // 针对阿里云部署环境优化：即使在生产环境也不强制secure
+  // 让浏览器根据实际协议决定
+  const shouldSecure = false; // 暂时禁用secure，让HTTP也能工作
   
   console.log('设置Cookie配置:', {
     isProduction,
@@ -185,11 +186,11 @@ export function setTokenCookie(response: NextResponse, token: string): NextRespo
     name: TOKEN_COOKIE_NAME,
     value: token,
     httpOnly: true,                           // 仅服务器可访问Cookie
-    secure: shouldSecure,                     // 针对Netlify优化的secure设置
-    sameSite: isNetlify ? 'none' : 'lax',    // Netlify需要'none'来支持跨域
+    secure: shouldSecure,                     // 针对阿里云优化：禁用secure要求
+    sameSite: 'lax',                         // 使用lax，兼容性更好
     maxAge: 7 * 24 * 60 * 60,                 // 7天（秒）
     path: '/',                                // 所有路径可访问
-    domain: isNetlify ? undefined : undefined // 让浏览器自动处理域名
+    domain: undefined                         // 让浏览器自动处理域名
   });
   return response;
 }
