@@ -22,7 +22,7 @@ const publicRoutes = [
   '/api/auth/logout',
   '/api/auth/session',
   '/api/debug/db-test',  // 添加诊断API到公开路由
-  '/api/wecom/',  // 所有企业微信API（通配符）
+  '/api/wecom',  // 所有企业微信API（通配符）
   '/favicon.ico',
   '/_next',
   '/WW_verify_',  // 企业微信域名验证文件
