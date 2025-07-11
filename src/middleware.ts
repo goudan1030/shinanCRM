@@ -46,6 +46,7 @@ const publicRoutes = [
   '/api/wecom/test-verify', // 企业微信测试验证API
   '/api/wecom/ip-info', // 企业微信IP信息API
   '/api/wecom/simple-verify', // 企业微信简化验证API
+  '/api/wecom/standard-verify', // 企业微信官方标准验证API
 ];
 
 // 中间件实现
