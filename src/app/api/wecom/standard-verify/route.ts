@@ -32,11 +32,18 @@ export async function GET(request: NextRequest) {
     // 使用固定Token（与企业微信后台配置一致）
     const token = 'L411dhQg';
     
-    // 验证签名
+    // 验证签名（Next.js自动解码URL参数）
     const isValid = verifyWechatSignature(token, timestamp, nonce, echostr, msg_signature);
     
+    console.log('🔍 标准验证详情:', {
+      token, timestamp, nonce,
+      echostr: echostr?.substring(0, 20) + '...',
+      signature: msg_signature,
+      isValid
+    });
+    
     if (isValid) {
-      console.log('✅ 企业微信官方验证成功');
+      console.log('✅ 企业微信官方验证成功，返回echostr');
       // 严格按照官方文档：验证成功直接返回echostr
       return new Response(echostr, {
         status: 200,

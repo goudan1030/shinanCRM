@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const msg_signature = searchParams.get('msg_signature');
   const timestamp = searchParams.get('timestamp');
   const nonce = searchParams.get('nonce');
-  const echostr = searchParams.get('echostr');
+  const echostr = searchParams.get('echostr'); // Next.js自动解码URL参数
 
   // 记录所有请求详情
   const requestInfo = {
@@ -19,13 +19,18 @@ export async function GET(request: NextRequest) {
     method: request.method,
     headers: Object.fromEntries(request.headers.entries()),
     parameters: { msg_signature, timestamp, nonce, echostr },
+    rawUrl: request.url, // 原始URL
     ip: request.headers.get('x-forwarded-for') || 
         request.headers.get('x-real-ip') || 
         request.headers.get('cf-connecting-ip') || 
         'unknown'
   };
 
-  console.log('🔍 企业微信验证诊断:', requestInfo);
+  console.log('🔍 企业微信验证诊断:', {
+    ...requestInfo,
+    echostr_decoded: echostr,
+    echostr_length: echostr?.length || 0
+  });
 
   // 返回详细的诊断信息
   const diagnosticInfo = {
@@ -51,6 +56,7 @@ export async function GET(request: NextRequest) {
   // 如果有完整参数，进行签名验证
   if (msg_signature && timestamp && nonce && echostr) {
     const token = 'L411dhQg';
+    // Next.js的searchParams.get()已经自动解码了URL参数
     const params = [token, timestamp, nonce, echostr].sort();
     const str = params.join('');
     const hash = createHash('sha1').update(str, 'utf8').digest('hex');
@@ -63,18 +69,26 @@ export async function GET(request: NextRequest) {
       calculatedHash: hash,
       receivedSignature: msg_signature,
       isValid: hash === msg_signature,
-      signatureMatch: hash === msg_signature
+      signatureMatch: hash === msg_signature,
+      echostr_raw: echostr,
+      echostr_processed: echostr
     };
 
     // 如果验证成功，返回 echostr
     if (hash === msg_signature) {
-      console.log('✅ 诊断验证成功，返回echostr');
+      console.log('✅ 诊断验证成功，返回echostr:', echostr);
       return new Response(echostr, {
         status: 200,
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
           'X-Diagnosis': 'success'
         }
+      });
+    } else {
+      console.log('❌ 诊断验证失败:', {
+        calculated: hash,
+        received: msg_signature,
+        echostr: echostr
       });
     }
   }
