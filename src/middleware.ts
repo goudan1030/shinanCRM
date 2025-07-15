@@ -40,6 +40,9 @@ const publicRoutes = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/session',
+  '/api/debug/db-test',  // 数据库调试API
+  '/api/middleware-debug',  // middleware调试API
+  // 企业微信相关API - 不需要认证
   '/api/wecom/message', // 企业微信消息接收URL
   '/api/wecom/verify',  // 企业微信验证URL
   '/api/wecom/callback', // 企业微信回调URL
@@ -49,6 +52,15 @@ const publicRoutes = [
   '/api/wecom/standard-verify', // 企业微信官方标准验证API
   '/api/wecom/diagnosis', // 企业微信诊断工具API
   '/api/wecom/minimal-verify', // 企业微信最简验证API
+  '/api/wecom/manual-check', // 手动检查API
+  '/api/wecom/process-queue', // 队列处理API
+  '/api/wecom/test-auth', // 测试认证API
+  '/api/wecom/config', // 配置API
+  '/api/wecom/debug', // 调试API
+  '/api/wecom/test-connection', // 测试连接API
+  '/api/wecom/test-notification', // 测试通知API
+  '/api/wecom/test-query', // 测试查询API
+  '/api/wecom/simple', // 简单API
 ];
 
 // 中间件实现
