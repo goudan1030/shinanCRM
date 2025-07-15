@@ -22,6 +22,7 @@ const publicRoutes = [
   '/api/auth/logout',
   '/api/auth/session',
   '/api/debug/db-test',  // 添加诊断API到公开路由
+  '/api/middleware-debug',  // 添加middleware调试API
   '/favicon.ico',
   '/_next',
   '/WW_verify_',  // 企业微信域名验证文件
