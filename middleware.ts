@@ -82,8 +82,14 @@ export function middleware(request: NextRequest) {
 
   // 处理API请求 - 禁用缓存
   if (pathname.includes('/api/')) {
+    console.log('处理API请求:', { pathname, isNetlify });
+    
     // 跳过认证检查的API路由
-    if (isPublicPath(pathname)) {
+    const isPublic = isPublicPath(pathname);
+    console.log('API路径公开检查结果:', { pathname, isPublic });
+    
+    if (isPublic) {
+      console.log('API路径为公开路径，跳过认证');
       const response = NextResponse.next();
       
       // 禁用API缓存
@@ -109,6 +115,7 @@ export function middleware(request: NextRequest) {
     });
     
     if (!authToken) {
+      console.log('API请求无认证token，返回401');
       return NextResponse.json(
         { 
           success: false,
@@ -119,6 +126,7 @@ export function middleware(request: NextRequest) {
       );
     }
     
+    console.log('API请求认证通过');
     const response = NextResponse.next();
     
     // 为Netlify环境添加特殊的CORS头
