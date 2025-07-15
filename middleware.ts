@@ -22,28 +22,55 @@ const publicRoutes = [
   '/api/auth/logout',
   '/api/auth/session',
   '/api/debug/db-test',  // 添加诊断API到公开路由
-  '/api/wecom',  // 所有企业微信API（通配符）
-  '/api/wecom/manual-check',  // 手动检查API
-  '/api/wecom/process-queue',  // 队列处理API
   '/favicon.ico',
   '/_next',
   '/WW_verify_',  // 企业微信域名验证文件
 ];
 
+// 企业微信专用公开路由 - 这些API不需要认证
+const wecomPublicRoutes = [
+  '/api/wecom/callback',
+  '/api/wecom/verify',
+  '/api/wecom/manual-check',
+  '/api/wecom/process-queue',
+  '/api/wecom/test-auth',
+  '/api/wecom/config',
+  '/api/wecom/debug',
+  '/api/wecom/diagnosis',
+  '/api/wecom/message',
+  '/api/wecom/simple',
+  '/api/wecom/test-connection',
+  '/api/wecom/test-notification',
+  '/api/wecom/test-query'
+];
+
 // 检查路径是否匹配公开路由
 function isPublicPath(path: string): boolean {
-  const isPublic = publicRoutes.some(route => path.startsWith(route) || path === route);
+  // 检查通用公开路由
+  const isGeneralPublic = publicRoutes.some(route => path.startsWith(route) || path === route);
   
-  // 特别记录企业微信相关API的检查结果
+  // 检查企业微信专用公开路由
+  const isWecomPublic = wecomPublicRoutes.some(route => path.startsWith(route) || path === route);
+  
+  const result = isGeneralPublic || isWecomPublic;
+  
+  // 强制写入日志文件进行调试
   if (path.includes('/api/wecom/')) {
-    console.log('企业微信API路径检查:', { 
+    const logMessage = `[${new Date().toISOString()}] 企业微信API路径检查: ${JSON.stringify({ 
       path, 
-      isPublic, 
-      matchedRoutes: publicRoutes.filter(route => path.startsWith(route) || path === route)
-    });
+      isGeneralPublic,
+      isWecomPublic,
+      result,
+      matchedGeneralRoutes: publicRoutes.filter(route => path.startsWith(route) || path === route),
+      matchedWecomRoutes: wecomPublicRoutes.filter(route => path.startsWith(route) || path === route)
+    })}`;
+    
+    // 写入到标准错误输出，确保被PM2捕获
+    process.stderr.write(logMessage + '\n');
+    console.error(logMessage);
   }
   
-  return isPublic;
+  return result;
 }
 
 // 检查路径是否匹配需要保护的路由
@@ -58,11 +85,14 @@ export function middleware(request: NextRequest) {
   // 检测是否在Netlify环境
   const isNetlify = process.env.NETLIFY === 'true';
   
-  console.log('中间件处理路径:', pathname, '是否Netlify环境:', isNetlify);
+  // 强制记录所有请求到错误输出
+  const logMessage = `[${new Date().toISOString()}] 中间件处理: ${pathname} | Netlify: ${isNetlify}`;
+  process.stderr.write(logMessage + '\n');
+  console.error(logMessage);
   
   // 处理企业微信验证文件 - 直接返回，不做任何处理
   if (pathname.startsWith('/WW_verify_')) {
-    console.log('企业微信验证文件访问:', pathname);
+    process.stderr.write(`[${new Date().toISOString()}] 企业微信验证文件访问: ${pathname}\n`);
     return NextResponse.next();
   }
 
@@ -82,14 +112,14 @@ export function middleware(request: NextRequest) {
 
   // 处理API请求 - 禁用缓存
   if (pathname.includes('/api/')) {
-    console.log('处理API请求:', { pathname, isNetlify });
+    process.stderr.write(`[${new Date().toISOString()}] 处理API请求: ${pathname}\n`);
     
     // 跳过认证检查的API路由
     const isPublic = isPublicPath(pathname);
-    console.log('API路径公开检查结果:', { pathname, isPublic });
+    process.stderr.write(`[${new Date().toISOString()}] API路径公开检查结果: ${pathname} -> ${isPublic}\n`);
     
     if (isPublic) {
-      console.log('API路径为公开路径，跳过认证');
+      process.stderr.write(`[${new Date().toISOString()}] API路径为公开路径，跳过认证: ${pathname}\n`);
       const response = NextResponse.next();
       
       // 禁用API缓存
@@ -108,14 +138,14 @@ export function middleware(request: NextRequest) {
     
     // 检查认证 - 优化cookie读取
     const authToken = request.cookies.get('auth_token');
-    console.log('API请求认证检查:', { 
+    process.stderr.write(`[${new Date().toISOString()}] API请求认证检查: ${JSON.stringify({ 
       path: pathname, 
       hasToken: !!authToken?.value,
       tokenLength: authToken?.value?.length 
-    });
+    })}\n`);
     
     if (!authToken) {
-      console.log('API请求无认证token，返回401');
+      process.stderr.write(`[${new Date().toISOString()}] API请求无认证token，返回401: ${pathname}\n`);
       return NextResponse.json(
         { 
           success: false,
@@ -126,7 +156,7 @@ export function middleware(request: NextRequest) {
       );
     }
     
-    console.log('API请求认证通过');
+    process.stderr.write(`[${new Date().toISOString()}] API请求认证通过: ${pathname}\n`);
     const response = NextResponse.next();
     
     // 为Netlify环境添加特殊的CORS头
@@ -151,19 +181,19 @@ export function middleware(request: NextRequest) {
   // 验证其他页面 - 尤其是受保护的路由
   const authToken = request.cookies.get('auth_token');
   
-  console.log('页面访问认证检查:', { 
+  process.stderr.write(`[${new Date().toISOString()}] 页面访问认证检查: ${JSON.stringify({ 
     path: pathname, 
     hasToken: !!authToken?.value,
     tokenLength: authToken?.value?.length,
     isProtected: isProtectedPath(pathname)
-  });
+  })}\n`);
   
   if (!authToken) {
     // 如果没有token，重定向到登录页
     const url = new URL('/login', request.url);
     // 保存原始URL以便登录后重定向回来
     url.searchParams.set('from', pathname);
-    console.log('无token，重定向到登录页:', url.toString());
+    process.stderr.write(`[${new Date().toISOString()}] 无token，重定向到登录页: ${url.toString()}\n`);
     return NextResponse.redirect(url);
   }
 
