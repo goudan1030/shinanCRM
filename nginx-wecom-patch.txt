@@ -1,0 +1,13 @@
+# 在 admin.xinghun.info.conf 的 server 块中，在 location / 之前添加：
+
+    # 企业微信回调 - 不重定向
+    location /api/wecom/ {
+        proxy_pass http://127.0.0.1:3002;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+# 然后重启nginx：
+# nginx -t && nginx -s reload 

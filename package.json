@@ -32,7 +32,11 @@
     "optimize:components": "node scripts/analyze-component-render.js",
     "optimize:lazy-load": "ts-node scripts/detect-lazy-load-candidates.ts",
     "deploy": "npm run build && node scripts/fix-netlify-deploy.js",
-    "deploy:netlify": "npm run build && node scripts/fix-netlify-deploy.js"
+    "deploy:netlify": "npm run build && node scripts/fix-netlify-deploy.js",
+    "monitor:queue": "node scripts/monitor-notification-queue.js",
+    "monitor:queue:daemon": "node scripts/monitor-notification-queue.js --daemon",
+    "monitor:queue:manual": "node scripts/monitor-notification-queue.js --manual",
+    "monitor:queue:debug": "node scripts/monitor-notification-queue.js --debug"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 // 在Netlify环境使用优化的数据库连接
 import { executeQuery, testNetlifyConnection } from '@/lib/database-netlify';
 import { getSession } from '@/lib/auth';
-// 导入企业微信通知功能
-import { sendMemberRegistrationNotification } from '@/lib/wecom-api';
+
 
 // 定义会员数据类型
 interface MemberData {
@@ -118,22 +117,10 @@ export async function POST(request: Request) {
     const memberId = (result as any).insertId;
     console.log('✓ 会员创建成功:', { memberId });
 
-    // 异步发送企业微信通知（不阻塞响应）
-    // 构建完整的会员数据用于通知
-    const memberDataForNotification = {
-      ...data,
-      id: memberId,
-      created_at: new Date().toISOString()
-    };
-
-    // 在后台发送通知，不影响API响应速度
-    setImmediate(async () => {
-      try {
-        await sendMemberRegistrationNotification(memberDataForNotification);
-      } catch (error) {
-        console.error('发送企业微信通知失败（不影响会员创建）:', error);
-      }
-    });
+    // 企业微信通知已改为数据库触发器自动处理
+    // 数据库触发器会自动检测新增会员并添加到通知队列
+    // 后台监控脚本会定期处理队列并发送通知
+    console.log('✓ 会员创建成功，企业微信通知将由数据库触发器自动处理:', { memberId });
 
     return NextResponse.json({
       success: true,
