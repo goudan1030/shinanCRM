@@ -23,6 +23,8 @@ const publicRoutes = [
   '/api/auth/session',
   '/api/debug/db-test',  // 添加诊断API到公开路由
   '/api/wecom',  // 所有企业微信API（通配符）
+  '/api/wecom/manual-check',  // 手动检查API
+  '/api/wecom/process-queue',  // 队列处理API
   '/favicon.ico',
   '/_next',
   '/WW_verify_',  // 企业微信域名验证文件
@@ -31,7 +33,16 @@ const publicRoutes = [
 // 检查路径是否匹配公开路由
 function isPublicPath(path: string): boolean {
   const isPublic = publicRoutes.some(route => path.startsWith(route) || path === route);
-  console.log('公开路径检查:', { path, isPublic, routes: publicRoutes });
+  
+  // 特别记录企业微信相关API的检查结果
+  if (path.includes('/api/wecom/')) {
+    console.log('企业微信API路径检查:', { 
+      path, 
+      isPublic, 
+      matchedRoutes: publicRoutes.filter(route => path.startsWith(route) || path === route)
+    });
+  }
+  
   return isPublic;
 }
 
