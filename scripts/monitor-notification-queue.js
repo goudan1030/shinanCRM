@@ -17,7 +17,7 @@ const { URL } = require('url');
 // 配置
 const CONFIG = {
   // API 地址 - 根据环境自动选择
-  API_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+  API_URL: process.env.API_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   // 监控间隔（分钟）
   MONITOR_INTERVAL: parseInt(process.env.QUEUE_MONITOR_INTERVAL || '5'),
   // 最大重试次数
