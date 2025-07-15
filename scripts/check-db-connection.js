@@ -28,10 +28,10 @@ async function checkDatabaseConnection() {
     
     // 检查连接信息
     console.log('\n连接信息:');
-    const [connectionInfo] = await connection.query('SELECT @@version as version, database() as current_db, user() as current_user');
+    const [connectionInfo] = await connection.query('SELECT @@version as version, database() as current_db, user() as db_user');
     console.log('- MySQL版本:', connectionInfo[0].version);
     console.log('- 当前数据库:', connectionInfo[0].current_db);
-    console.log('- 当前用户:', connectionInfo[0].current_user);
+    console.log('- 当前用户:', connectionInfo[0].db_user);
     
     // 获取所有表格
     console.log('\n尝试查询所有表格...');
