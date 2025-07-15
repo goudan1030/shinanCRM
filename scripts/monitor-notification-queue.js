@@ -13,6 +13,39 @@
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
+const fs = require('fs');
+const path = require('path');
+
+// 加载环境变量
+function loadEnvFile() {
+  const envFiles = ['.env.local', '.env'];
+  
+  for (const envFile of envFiles) {
+    const envPath = path.join(process.cwd(), envFile);
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const lines = envContent.split('\n');
+      
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (trimmedLine && !trimmedLine.startsWith('#')) {
+          const [key, ...valueParts] = trimmedLine.split('=');
+          if (key && valueParts.length > 0) {
+            const value = valueParts.join('=').trim();
+            // 只设置未设置的环境变量
+            if (!process.env[key]) {
+              process.env[key] = value;
+            }
+          }
+        }
+      }
+      break; // 找到第一个文件就停止
+    }
+  }
+}
+
+// 加载环境变量
+loadEnvFile();
 
 // 配置
 const CONFIG = {
