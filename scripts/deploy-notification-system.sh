@@ -95,19 +95,51 @@ apply_database_migration() {
     # 检查是否有mysql客户端
     if command -v mysql >/dev/null 2>&1; then
         log_info "使用MySQL客户端执行迁移..."
-        mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < "$migration_file"
         
-        if [[ $? -eq 0 ]]; then
+        # 捕获错误输出
+        migration_output=$(mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < "$migration_file" 2>&1)
+        migration_exit_code=$?
+        
+        if [[ $migration_exit_code -eq 0 ]]; then
             log_success "数据库迁移执行成功"
+            echo "TRIGGER_MODE=true" >> .env.local
         else
-            log_error "数据库迁移执行失败"
-            exit 1
+            log_warning "数据库迁移执行失败"
+            echo "错误信息: $migration_output"
+            
+            # 检查是否是权限问题
+            if echo "$migration_output" | grep -q "SUPER privilege\|binary logging"; then
+                log_warning "检测到数据库权限限制（无SUPER权限或二进制日志问题）"
+                log_info "自动切换到备用方案：手动检查模式"
+                log_info "系统将每5-10分钟检查一次新成员注册，而不是实时触发"
+                
+                # 尝试创建简化版本（仅队列表）
+                local simple_migration="src/migrations/create_member_notification_trigger_simple.sql"
+                if [[ -f "$simple_migration" ]]; then
+                    log_info "尝试创建简化版本（仅队列表）..."
+                    simple_output=$(mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < "$simple_migration" 2>&1)
+                    if [[ $? -eq 0 ]]; then
+                        log_success "简化版本创建成功"
+                    else
+                        log_info "简化版本也失败，将使用无队列表的手动检查模式"
+                    fi
+                fi
+                
+                echo "TRIGGER_MODE=false" >> .env.local
+                echo "MANUAL_CHECK_MODE=true" >> .env.local
+            else
+                log_error "数据库迁移失败，原因未知"
+                echo "错误详情: $migration_output"
+                exit 1
+            fi
         fi
     else
         log_warning "MySQL客户端不可用"
         log_info "请手动执行以下SQL文件: $migration_file"
         log_info "或使用以下命令:"
         log_info "mysql -h\$DB_HOST -u\$DB_USER -p\$DB_PASSWORD \$DB_NAME < $migration_file"
+        echo "TRIGGER_MODE=false" >> .env.local
+        echo "MANUAL_CHECK_MODE=true" >> .env.local
     fi
 }
 
@@ -245,29 +277,71 @@ verify_deployment() {
 show_post_deployment_guide() {
     log_info "部署完成！后续配置指南:"
     echo ""
-    echo "1. 选择监控方式（二选一）："
-    echo "   a) 使用systemd服务（推荐）："
-    echo "      sudo cp notification-queue-monitor.service /etc/systemd/system/"
-    echo "      sudo systemctl daemon-reload"
-    echo "      sudo systemctl enable notification-queue-monitor"
-    echo "      sudo systemctl start notification-queue-monitor"
-    echo ""
-    echo "   b) 使用cron任务："
-    echo "      sudo crontab -u www-data notification-queue-cron"
-    echo ""
-    echo "2. 监控脚本使用："
-    echo "   - 一次性检查: node scripts/monitor-notification-queue.js"
-    echo "   - 持续监控: node scripts/monitor-notification-queue.js --daemon"
-    echo "   - 调试模式: node scripts/monitor-notification-queue.js --debug"
-    echo ""
-    echo "3. 验证功能："
-    echo "   - 创建一个测试会员，观察是否收到企业微信通知"
-    echo "   - 检查 member_notification_queue 表中的记录"
-    echo "   - 查看监控脚本的日志输出"
-    echo ""
-    echo "4. 环境变量："
+    
+    # 检查运行模式
+    if [[ "$MANUAL_CHECK_MODE" == "true" ]]; then
+        log_warning "检测到手动检查模式（由于数据库权限限制）"
+        echo "📋 手动检查模式配置:"
+        echo ""
+        echo "1. 选择监控方式（推荐使用手动模式）："
+        echo "   a) 使用systemd服务（推荐）："
+        echo "      sudo cp notification-queue-monitor.service /etc/systemd/system/"
+        echo "      sudo systemctl daemon-reload"
+        echo "      sudo systemctl enable notification-queue-monitor"
+        echo "      sudo systemctl start notification-queue-monitor"
+        echo ""
+        echo "   b) 使用cron任务（每10分钟检查）："
+        echo "      */10 * * * * cd $PROJECT_DIR && node scripts/monitor-notification-queue.js --manual"
+        echo ""
+        echo "   c) 使用npm脚本手动运行："
+        echo "      npm run monitor:queue:manual  # 单次检查"
+        echo "      npm run monitor:queue:debug   # 调试模式"
+        echo ""
+        echo "2. 工作原理："
+        echo "   - 系统每5-10分钟检查一次members表"
+        echo "   - 自动发现最近注册的新会员"
+        echo "   - 发送企业微信通知"
+        echo "   - 无需数据库触发器，适用于受限环境"
+        echo ""
+        echo "3. 验证功能："
+        echo "   - 运行: npm run monitor:queue:debug"
+        echo "   - 创建一个测试会员"
+        echo "   - 等待5-10分钟或手动运行检查"
+        echo "   - 观察是否收到企业微信通知"
+        echo ""
+    else
+        echo "✅ 触发器模式配置:"
+        echo ""
+        echo "1. 选择监控方式（二选一）："
+        echo "   a) 使用systemd服务（推荐）："
+        echo "      sudo cp notification-queue-monitor.service /etc/systemd/system/"
+        echo "      sudo systemctl daemon-reload"
+        echo "      sudo systemctl enable notification-queue-monitor"
+        echo "      sudo systemctl start notification-queue-monitor"
+        echo ""
+        echo "   b) 使用cron任务："
+        echo "      sudo crontab -u www-data notification-queue-cron"
+        echo ""
+        echo "2. 监控脚本使用："
+        echo "   - 一次性检查: npm run monitor:queue"
+        echo "   - 持续监控: npm run monitor:queue:daemon"
+        echo "   - 调试模式: npm run monitor:queue:debug"
+        echo ""
+        echo "3. 验证功能："
+        echo "   - 创建一个测试会员，应该立即收到企业微信通知"
+        echo "   - 检查 member_notification_queue 表中的记录"
+        echo "   - 查看监控脚本的日志输出"
+        echo ""
+    fi
+    
+    echo "4. 通用环境变量："
     echo "   - NEXT_PUBLIC_SITE_URL: 应用访问地址"
     echo "   - QUEUE_MONITOR_INTERVAL: 监控间隔（分钟，默认5）"
+    echo ""
+    echo "5. 故障排除："
+    echo "   - 检查企业微信配置: /wecom/config"
+    echo "   - 测试通知功能: npm run monitor:queue:debug"
+    echo "   - 查看系统日志: journalctl -u notification-queue-monitor"
     echo ""
 }
 
