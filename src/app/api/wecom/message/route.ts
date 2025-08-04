@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
     // 验证签名（使用固定Token）
     const token = 'L411dhQg';
     console.log('🔑 使用Token:', token);
-    const signature = verifySignature(token, timestamp, nonce, echostr, msg_signature);
+    const isValid = verifyWecomURL(token, timestamp, nonce, echostr, msg_signature);
     
-    if (signature) {
+    if (isValid) {
       console.log('✓ 企业微信URL验证成功');
       return new Response(echostr, {
         status: 200,
@@ -139,6 +139,40 @@ function verifySignature(token: string, timestamp: string | null, nonce: string 
     return hash === receivedSig;
   } catch (error) {
     console.error('签名验证过程出错:', error);
+    return false;
+  }
+}
+
+/**
+ * 企业微信URL验证专用函数（简化版本）
+ */
+function verifyWecomURL(token: string, timestamp: string, nonce: string, echostr: string, signature: string): boolean {
+  try {
+    // 企业微信URL验证的签名算法
+    const arr = [token, timestamp, nonce, echostr].sort();
+    const str = arr.join('');
+    
+    console.log('URL验证详情:', {
+      token,
+      timestamp,
+      nonce,
+      echostr: echostr.substring(0, 20) + '...',
+      sortedArray: arr,
+      joinedString: str
+    });
+    
+    const hash = createHash('sha1').update(str, 'utf8').digest('hex').toLowerCase();
+    const receivedSig = signature.toLowerCase();
+    
+    console.log('URL验证签名对比:', {
+      calculated: hash,
+      received: receivedSig,
+      match: hash === receivedSig
+    });
+    
+    return hash === receivedSig;
+  } catch (error) {
+    console.error('URL验证过程出错:', error);
     return false;
   }
 }

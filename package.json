@@ -40,7 +40,9 @@
     "test:wecom": "node scripts/test-wecom-query.js",
     "test:wecom:prod": "TEST_BASE_URL=https://admin.xinghun.info node scripts/test-wecom-query.js",
     "check:wecom": "node scripts/check-wecom-config.js",
-    "check:wecom:prod": "TEST_BASE_URL=https://admin.xinghun.info node scripts/check-wecom-config.js"
+    "check:wecom:prod": "TEST_BASE_URL=https://admin.xinghun.info node scripts/check-wecom-config.js",
+    "test:wecom-verify": "node scripts/test-wecom-verify.js",
+    "test:wecom-verify:prod": "TEST_BASE_URL=https://admin.xinghun.info node scripts/test-wecom-verify.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
