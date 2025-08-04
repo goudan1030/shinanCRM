@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getWecomConfig, getWecomAccessToken, sendWecomMessage } from '@/lib/wecom-api';
 import { executeQuery } from '@/lib/database-netlify';
+import { parseWecomXML, validateWecomXML, cleanXML } from '@/lib/wecom-xml-parser';
 
 /**
  * 企业微信消息接收API
@@ -90,17 +91,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '签名验证失败' }, { status: 403 });
     }
 
+    // 清理和验证XML
+    const cleanedXML = cleanXML(body);
+    console.log('清理后的XML:', cleanedXML.substring(0, 200) + '...');
+    
+    if (!validateWecomXML(cleanedXML)) {
+      console.log('XML格式验证失败');
+      return new Response('success'); // 返回success表示接收成功
+    }
+
     // 解析XML消息
-    const messageData = parseWeChatMessage(body);
+    const messageData = parseWecomXML(cleanedXML);
     console.log('解析的消息数据:', messageData);
 
     if (!messageData) {
+      console.log('XML解析失败');
       return new Response('success'); // 返回success表示接收成功
     }
 
     // 处理文本消息
     if (messageData.MsgType === 'text') {
       await handleTextMessage(messageData);
+    } else if (messageData.MsgType === 'event') {
+      console.log('收到事件消息:', messageData.Event);
+      // 可以在这里处理事件消息
+    } else {
+      console.log('未处理的消息类型:', messageData.MsgType);
     }
 
     return new Response('success');
@@ -189,37 +205,7 @@ function verifyWecomURL(token: string, timestamp: string, nonce: string, echostr
   }
 }
 
-/**
- * 解析微信XML消息
- */
-function parseWeChatMessage(xml: string): any {
-  try {
-    // 简单的XML解析 - 在生产环境中建议使用专业的XML解析库
-    const result: any = {};
-    
-    const patterns = {
-      ToUserName: /<ToUserName><!\[CDATA\[(.*?)\]\]><\/ToUserName>/,
-      FromUserName: /<FromUserName><!\[CDATA\[(.*?)\]\]><\/FromUserName>/,
-      CreateTime: /<CreateTime>(\d+)<\/CreateTime>/,
-      MsgType: /<MsgType><!\[CDATA\[(.*?)\]\]><\/MsgType>/,
-      Content: /<Content><!\[CDATA\[(.*?)\]\]><\/Content>/,
-      MsgId: /<MsgId>(\d+)<\/MsgId>/,
-      AgentID: /<AgentID>(\d+)<\/AgentID>/
-    };
 
-    for (const [key, pattern] of Object.entries(patterns)) {
-      const match = xml.match(pattern);
-      if (match) {
-        result[key] = match[1];
-      }
-    }
-
-    return Object.keys(result).length > 0 ? result : null;
-  } catch (error) {
-    console.error('解析XML消息出错:', error);
-    return null;
-  }
-}
 
 /**
  * 处理文本消息

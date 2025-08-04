@@ -34,7 +34,7 @@ const apiRoutePermissions: Record<string, string | string[]> = {
   '/api/members': 'user'
 };
 
-// 定义公开路由
+  // 定义公开路由
 const publicRoutes = [
   '/login',
   '/api/auth/login',
@@ -56,11 +56,14 @@ const publicRoutes = [
   '/api/wecom/process-queue', // 队列处理API
   '/api/wecom/test-auth', // 测试认证API
   '/api/wecom/config', // 配置API
+  '/api/wecom/config-check', // 配置检查API
+  '/api/wecom/status', // 状态监控API
   '/api/wecom/debug', // 调试API
   '/api/wecom/test-connection', // 测试连接API
   '/api/wecom/test-notification', // 测试通知API
   '/api/wecom/test-query', // 测试查询API
   '/api/wecom/simple', // 简单API
+  '/api/wecom/logs', // 日志查看API
 ];
 
 // 中间件实现
