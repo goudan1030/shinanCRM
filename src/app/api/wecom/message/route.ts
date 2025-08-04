@@ -34,8 +34,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '缺少必需参数' }, { status: 400 });
     }
 
-    // 验证签名（使用固定Token）
-    const token = 'L411dhQg';
+    // 从数据库获取Token
+    const [configRows] = await executeQuery('SELECT token FROM wecom_config WHERE id = 1');
+    const token = configRows[0]?.token || 'L411dhQg';
     console.log('🔑 使用Token:', token);
     const isValid = verifyWecomURL(token, timestamp, nonce, echostr, msg_signature);
     
@@ -73,8 +74,9 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     console.log('收到消息体:', body);
 
-    // 验证签名
-    const token = process.env.WECOM_TOKEN || 'L411dhQg';
+    // 从数据库获取Token
+    const [configRows] = await executeQuery('SELECT token FROM wecom_config WHERE id = 1');
+    const token = configRows[0]?.token || 'L411dhQg';
     const signature = verifySignature(token, timestamp, nonce, body, msg_signature);
     
     if (!signature) {
