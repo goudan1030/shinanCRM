@@ -121,7 +121,7 @@ function verifySignature(token: string, timestamp: string | null, nonce: string 
   }
 
   try {
-    // 按照企业微信官方文档：将token、timestamp、nonce、echostr四个参数进行字典序排序
+    // 按照企业微信官方文档：将token、timestamp、nonce、data四个参数进行字典序排序
     const arr = [token, timestamp, nonce, data].sort();
     const str = arr.join('');
     
@@ -135,8 +135,8 @@ function verifySignature(token: string, timestamp: string | null, nonce: string 
     });
     
     // 使用SHA1加密
-    const hash = createHash('sha1').update(str, 'utf8').digest('hex').toLowerCase();
-    const receivedSig = signature.toLowerCase();
+    const hash = createHash('sha1').update(str, 'utf8').digest('hex');
+    const receivedSig = signature;
     
     console.log('签名对比:', {
       calculated: hash,
@@ -156,7 +156,9 @@ function verifySignature(token: string, timestamp: string | null, nonce: string 
  */
 function verifyWecomURL(token: string, timestamp: string, nonce: string, echostr: string, signature: string): boolean {
   try {
-    // 企业微信URL验证的签名算法
+    // 企业微信官方文档要求的签名算法
+    // 1. 将token、timestamp、nonce、echostr四个参数进行字典序排序
+    // 2. 将四个参数拼接成一个字符串进行sha1加密
     const arr = [token, timestamp, nonce, echostr].sort();
     const str = arr.join('');
     
@@ -169,8 +171,9 @@ function verifyWecomURL(token: string, timestamp: string, nonce: string, echostr
       joinedString: str
     });
     
-    const hash = createHash('sha1').update(str, 'utf8').digest('hex').toLowerCase();
-    const receivedSig = signature.toLowerCase();
+    // 3. 进行sha1加密
+    const hash = createHash('sha1').update(str, 'utf8').digest('hex');
+    const receivedSig = signature;
     
     console.log('URL验证签名对比:', {
       calculated: hash,
@@ -178,6 +181,7 @@ function verifyWecomURL(token: string, timestamp: string, nonce: string, echostr
       match: hash === receivedSig
     });
     
+    // 4. 开发者获得加密后的字符串可与signature对比
     return hash === receivedSig;
   } catch (error) {
     console.error('URL验证过程出错:', error);
