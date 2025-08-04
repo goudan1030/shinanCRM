@@ -81,3 +81,30 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* 表格滚动条样式 - 只在PC端生效 */
+@media (min-width: 1024px) {
+  .table-scrollbar::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  .table-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+  
+  .table-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  
+  .table-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  
+  /* Firefox滚动条样式 */
+  .table-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+}

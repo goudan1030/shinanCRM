@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     }
 
     // 添加年月筛选
-    if (year) {
+    if (year && year !== 'all') {
       if (month && month !== 'all') {
         // 按年月筛选
         const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
@@ -43,6 +43,10 @@ export async function GET(request: Request) {
           endDate.toISOString().split('T')[0]
         );
       }
+    } else if (month && month !== 'all') {
+      // 仅按月份筛选（所有年份的该月份）
+      query += ' AND MONTH(settlement_date) = ?';
+      params.push(parseInt(month));
     }
 
     // 添加排序和分页

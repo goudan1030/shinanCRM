@@ -1,115 +1,216 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { getWecomConfig, getWecomAccessToken, sendWecomMessage } from '@/lib/wecom-api';
+import { executeQuery } from '@/lib/database-netlify';
 
 /**
- * 测试企业微信会员编号查询功能
- * POST /api/wecom/test-query
+ * 企业微信会员查询测试API
+ * 
+ * 用于测试企业微信会员查询功能
+ * 可以模拟发送消息和查询会员信息
  */
-export async function POST(request: NextRequest) {
+
+export async function GET(request: NextRequest) {
   try {
-    const { message } = await request.json();
-    
-    if (!message) {
+    const searchParams = request.nextUrl.searchParams;
+    const memberNumber = searchParams.get('number');
+    const testUser = searchParams.get('user') || 'test_user';
+    const agentId = searchParams.get('agent') || '1000011';
+
+    if (!memberNumber) {
       return NextResponse.json({
-        success: false,
-        error: '请提供测试消息内容'
+        error: '请提供会员编号参数',
+        usage: 'GET /api/wecom/test-query?number=M17071&user=test_user&agent=1000011'
       }, { status: 400 });
     }
 
-    console.log('测试查询消息:', message);
+    console.log(`🧪 开始测试会员查询: ${memberNumber}`);
 
-    // 提取会员编号
-    const memberNumber = extractMemberNumber(message);
+    // 1. 测试会员编号识别
+    const extractedNumber = extractMemberNumber(memberNumber);
+    console.log(`识别到的编号: ${extractedNumber}`);
+
+    // 2. 查询会员信息
+    const memberInfo = await getMemberByNumber(extractedNumber || memberNumber);
     
-    const result: any = {
-      inputMessage: message,
-      extractedMemberNumber: memberNumber,
-      timestamp: new Date().toISOString()
-    };
+    if (!memberInfo) {
+      return NextResponse.json({
+        success: false,
+        message: '未找到会员信息',
+        testNumber: memberNumber,
+        extractedNumber
+      });
+    }
 
-    if (memberNumber) {
-      console.log(`识别到会员编号: ${memberNumber}`);
-      
-      // 查询会员信息
-      try {
-        const memberInfo = await getMemberByNumber(memberNumber);
-        
-        if (memberInfo) {
-          result.queryResult = {
-            found: true,
-            memberInfo: {
-              id: memberInfo.id,
-              member_no: memberInfo.member_no,
-              gender: memberInfo.gender,
-              birth_year: memberInfo.birth_year,
-              status: memberInfo.status,
-              type: memberInfo.type,
-              created_at: memberInfo.created_at
-            },
-            formattedReply: formatMemberDetailsForReply(memberInfo)
+    // 3. 格式化会员信息
+    const formattedInfo = formatMemberDetailsForReply(memberInfo);
+
+    // 4. 尝试发送到企业微信（如果配置了）
+    let wecomResult = null;
+    try {
+      const config = await getWecomConfig();
+      if (config) {
+        const accessToken = await getWecomAccessToken(config);
+        if (accessToken) {
+          const message = {
+            touser: testUser,
+            msgtype: 'text' as const,
+            agentid: agentId,
+            text: {
+              content: formattedInfo
+            }
           };
-        } else {
-          result.queryResult = {
-            found: false,
-            message: `未找到会员编号为 "${memberNumber}" 的会员信息`
-          };
+          
+          const success = await sendWecomMessage(accessToken, message);
+          wecomResult = { success, config: { corpId: config.corp_id, agentId: config.agent_id } };
         }
-      } catch (error) {
-        result.queryResult = {
-          error: error instanceof Error ? error.message : '查询出错'
-        };
       }
-    } else {
-      result.queryResult = {
-        message: '未识别到会员编号，将显示帮助信息',
-        helpMessage: `💡 会员查询使用说明
-
-🔍 发送会员编号即可查询详细信息
-
-支持的编号格式：
-• M17071（M+数字）
-• 10921（纯数字）
-• A1234（字母+数字）
-
-📝 使用示例：
-直接发送：M17071
-直接发送：10921
-直接发送：查询 M17071
-
-💬 如有问题请联系管理员`
-      };
+    } catch (error) {
+      console.error('企业微信发送失败:', error);
+      wecomResult = { success: false, error: error.message };
     }
 
     return NextResponse.json({
       success: true,
-      result: result
+      testNumber: memberNumber,
+      extractedNumber,
+      memberInfo: {
+        id: memberInfo.id,
+        member_no: memberInfo.member_no,
+        nickname: memberInfo.nickname,
+        gender: memberInfo.gender,
+        type: memberInfo.type,
+        status: memberInfo.status
+      },
+      formattedInfo,
+      wecomResult
     });
 
   } catch (error) {
-    console.error('测试查询API出错:', error);
+    console.error('测试查询失败:', error);
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : '测试失败'
+      error: error.message
+    }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { memberNumber, testUser = 'test_user', agentId = '1000011' } = body;
+
+    if (!memberNumber) {
+      return NextResponse.json({
+        error: '请提供会员编号',
+        usage: 'POST /api/wecom/test-query with body: { memberNumber: "M17071", testUser: "user123", agentId: "1000011" }'
+      }, { status: 400 });
+    }
+
+    console.log(`🧪 开始POST测试会员查询: ${memberNumber}`);
+
+    // 模拟完整的消息处理流程
+    const extractedNumber = extractMemberNumber(memberNumber);
+    const memberInfo = await getMemberByNumber(extractedNumber || memberNumber);
+    
+    if (!memberInfo) {
+      return NextResponse.json({
+        success: false,
+        message: '未找到会员信息',
+        testNumber: memberNumber,
+        extractedNumber
+      });
+    }
+
+    // 尝试发送到企业微信
+    let wecomResult = null;
+    try {
+      const config = await getWecomConfig();
+      if (config) {
+        const accessToken = await getWecomAccessToken(config);
+        if (accessToken) {
+          const formattedInfo = formatMemberDetailsForReply(memberInfo);
+          const message = {
+            touser: testUser,
+            msgtype: 'text' as const,
+            agentid: agentId,
+            text: {
+              content: formattedInfo
+            }
+          };
+          
+          const success = await sendWecomMessage(accessToken, message);
+          wecomResult = { 
+            success, 
+            config: { 
+              corpId: config.corp_id, 
+              agentId: config.agent_id 
+            } 
+          };
+        }
+      }
+    } catch (error) {
+      console.error('企业微信发送失败:', error);
+      wecomResult = { success: false, error: error.message };
+    }
+
+    return NextResponse.json({
+      success: true,
+      testNumber: memberNumber,
+      extractedNumber,
+      memberFound: true,
+      memberInfo: {
+        id: memberInfo.id,
+        member_no: memberInfo.member_no,
+        nickname: memberInfo.nickname,
+        gender: memberInfo.gender,
+        type: memberInfo.type,
+        status: memberInfo.status
+      },
+      wecomResult
+    });
+
+  } catch (error) {
+    console.error('POST测试查询失败:', error);
+    return NextResponse.json({
+      success: false,
+      error: error.message
     }, { status: 500 });
   }
 }
 
 /**
- * 提取会员编号
+ * 智能识别会员编号
  */
 function extractMemberNumber(text: string): string | null {
+  // 清理文本，移除多余空格和特殊字符
+  const cleanText = text.replace(/[^\w\d]/g, ' ').trim();
+  
   // 匹配各种可能的会员编号格式
   const patterns = [
-    /M\d+/i,           // M17071, M12345
-    /\b\d{4,6}\b/,     // 10921, 12345
-    /\b\d{1,2}[A-Z]\d+/i, // 1A123, 2B456
-    /[A-Z]\d{4,}/i     // A1234, B5678
+    /M\d+/i,                    // M17071, M12345
+    /\b\d{4,6}\b/,              // 10921, 12345 (4-6位数字)
+    /\b\d{1,2}[A-Z]\d+/i,       // 1A123, 2B456
+    /[A-Z]\d{4,}/i,             // A1234, B5678
+    /\b[A-Z]\d{3,}\b/i,         // A123, B456 (字母+3位以上数字)
+    /\b\d{3,}[A-Z]\b/i,         // 123A, 456B (3位以上数字+字母)
   ];
   
   for (const pattern of patterns) {
-    const match = text.match(pattern);
+    const match = cleanText.match(pattern);
     if (match) {
-      return match[0].toUpperCase();
+      const number = match[0].toUpperCase();
+      console.log(`匹配到编号格式: ${pattern.source} -> ${number}`);
+      return number;
+    }
+  }
+  
+  // 如果没有匹配到标准格式，尝试提取纯数字
+  const numbers = cleanText.match(/\d+/g);
+  if (numbers && numbers.length > 0) {
+    const number = numbers[0];
+    if (number.length >= 3 && number.length <= 8) {
+      console.log(`提取到纯数字编号: ${number}`);
+      return number;
     }
   }
   
@@ -121,22 +222,50 @@ function extractMemberNumber(text: string): string | null {
  */
 async function getMemberByNumber(memberNumber: string): Promise<any> {
   try {
+    console.log(`开始查询会员编号: ${memberNumber}`);
+    
     // 支持多种查询方式
     const queries = [
-      'SELECT * FROM members WHERE member_no = ? AND deleted = 0',
-      'SELECT * FROM members WHERE UPPER(member_no) = ? AND deleted = 0',
-      'SELECT * FROM members WHERE id = ? AND deleted = 0'
+      {
+        sql: 'SELECT * FROM members WHERE member_no = ? AND deleted = 0',
+        params: [memberNumber],
+        desc: '精确匹配member_no'
+      },
+      {
+        sql: 'SELECT * FROM members WHERE UPPER(member_no) = ? AND deleted = 0',
+        params: [memberNumber.toUpperCase()],
+        desc: '大写匹配member_no'
+      },
+      {
+        sql: 'SELECT * FROM members WHERE id = ? AND deleted = 0',
+        params: [memberNumber],
+        desc: '按ID查询'
+      },
+      {
+        sql: 'SELECT * FROM members WHERE member_no LIKE ? AND deleted = 0',
+        params: [`%${memberNumber}%`],
+        desc: '模糊匹配member_no'
+      }
     ];
     
     for (const query of queries) {
-      const [rows] = await pool.execute(query, [memberNumber]);
-      const members = rows as any[];
-      
-      if (members.length > 0) {
-        return members[0];
+      try {
+        const [rows] = await executeQuery(query.sql, query.params);
+        const members = rows as any[];
+        
+        console.log(`查询方式: ${query.desc}, 结果数量: ${members.length}`);
+        
+        if (members.length > 0) {
+          console.log(`✓ 找到会员信息: ${members[0].member_no || members[0].id}`);
+          return members[0];
+        }
+      } catch (error) {
+        console.error(`查询方式 ${query.desc} 失败:`, error);
+        continue;
       }
     }
     
+    console.log(`❌ 未找到会员编号: ${memberNumber}`);
     return null;
   } catch (error) {
     console.error('查询会员信息出错:', error);
@@ -172,7 +301,9 @@ function formatMemberDetailsForReply(memberInfo: any): string {
     status,
     type,
     created_at,
-    updated_at
+    updated_at,
+    phone,
+    nickname
   } = memberInfo;
 
   // 格式化各种枚举值
@@ -230,6 +361,10 @@ function formatMemberDetailsForReply(memberInfo: any): string {
   const createdTime = created_at ? new Date(created_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '未知';
   const updatedTime = updated_at ? new Date(updated_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '未知';
 
+  // 计算年龄
+  const age = birth_year ? (new Date().getFullYear() - birth_year) : null;
+  const ageText = age ? `${age}岁` : '未填写';
+
   return `📋 会员详细信息
 
 🆔 基本信息
@@ -237,9 +372,11 @@ function formatMemberDetailsForReply(memberInfo: any): string {
 • 会员类型：${typeText}
 • 状态：${statusText}
 • 性别：${genderText}
-• 出生年份：${birth_year ? birth_year + '年' : '未填写'}
+• 年龄：${ageText}
 • 身高：${height ? height + 'cm' : '未填写'}
 • 体重：${weight ? weight + 'kg' : '未填写'}
+• 昵称：${nickname || '未填写'}
+• 手机：${phone ? phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '未填写'}
 
 🎓 教育职业
 • 学历：${educationText}
@@ -270,5 +407,5 @@ ${partner_requirement || '未填写'}
 • 更新时间：${updatedTime}
 
 ---
-查询完成 ✓`;
+✅ 查询完成 | 编号：${member_no || '未知'}`;
 } 

@@ -38,12 +38,13 @@ export async function GET(request: Request) {
     }
 
     // 添加年月筛选
-    if (year) {
-      if (month && month !== 'all') {
+    if (month && month !== 'all') {
+      // 按月份筛选
+      if (year && year !== 'all') {
         // 按年月筛选
         const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
         const endDate = new Date(parseInt(year), parseInt(month), 0);
-        const dateCondition = ' AND payment_date BETWEEN ? AND ?';
+        const dateCondition = ' AND DATE(payment_date) BETWEEN ? AND ?';
         query += dateCondition;
         countQuery += dateCondition;
         const startStr = startDate.toISOString().split('T')[0];
@@ -51,17 +52,24 @@ export async function GET(request: Request) {
         params.push(startStr, endStr);
         countParams.push(startStr, endStr);
       } else {
-        // 仅按年份筛选
-        const startDate = new Date(parseInt(year), 0, 1);
-        const endDate = new Date(parseInt(year), 11, 31);
-        const dateCondition = ' AND payment_date BETWEEN ? AND ?';
+        // 仅按月份筛选（所有年份的该月份）
+        const dateCondition = ' AND MONTH(payment_date) = ?';
         query += dateCondition;
         countQuery += dateCondition;
-        const startStr = startDate.toISOString().split('T')[0];
-        const endStr = endDate.toISOString().split('T')[0];
-        params.push(startStr, endStr);
-        countParams.push(startStr, endStr);
+        params.push(parseInt(month));
+        countParams.push(parseInt(month));
       }
+    } else if (year && year !== 'all') {
+      // 仅按年份筛选
+      const startDate = new Date(parseInt(year), 0, 1);
+      const endDate = new Date(parseInt(year), 11, 31);
+      const dateCondition = ' AND DATE(payment_date) BETWEEN ? AND ?';
+      query += dateCondition;
+      countQuery += dateCondition;
+      const startStr = startDate.toISOString().split('T')[0];
+      const endStr = endDate.toISOString().split('T')[0];
+      params.push(startStr, endStr);
+      countParams.push(startStr, endStr);
     }
 
     // 添加排序和分页到主查询

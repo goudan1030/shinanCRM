@@ -65,8 +65,8 @@ export default function ExpensePage() {
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 25;
 
-  const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
-  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
 
   const fetchRecords = useCallback(async () => {
     try {
@@ -107,6 +107,14 @@ export default function ExpensePage() {
       fetchRecords();
     }
   }, [session, fetchRecords]);
+
+  // 添加筛选条件变化时的数据刷新
+  useEffect(() => {
+    if (session) {
+      setCurrentPage(1); // 重置到第一页
+      fetchRecords();
+    }
+  }, [searchKeyword, yearFilter, monthFilter]);
 
   const [newExpenseDialogOpen, setNewExpenseDialogOpen] = useState(false);
   const [newExpenseData, setNewExpenseData] = useState({
@@ -178,6 +186,7 @@ export default function ExpensePage() {
                   <SelectValue placeholder="选择年份" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">全部</SelectItem>
                   {Array.from({ length: 10 }, (_, i) => {
                     const year = new Date().getFullYear() - i;
                     return (
@@ -250,6 +259,7 @@ export default function ExpensePage() {
                       <SelectValue placeholder="选择年份" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">全部</SelectItem>
                       {Array.from({ length: 10 }, (_, i) => {
                         const year = new Date().getFullYear() - i;
                         return (

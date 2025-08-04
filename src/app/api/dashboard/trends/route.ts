@@ -14,13 +14,14 @@ export async function GET(request: Request) {
     console.log('趋势数据API查询范围:', thirtyDaysAgoStr, '至', nowStr);
     console.log('当前系统时间:', now.toISOString());
 
-    // 获取会员增长趋势 - 只关注月和日，忽略年份
+    // 获取会员增长趋势 - 只查询最近30天的数据
     const [memberTrend] = await pool.execute(
       `SELECT 
         DATE_FORMAT(created_at, '%m月%d日') as date, 
         DATE_FORMAT(created_at, '%Y-%m-%d') as date_raw,
         COUNT(*) as value
       FROM members
+      WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
       GROUP BY MONTH(created_at), DAY(created_at), DATE_FORMAT(created_at, '%m月%d日'), DATE_FORMAT(created_at, '%Y-%m-%d')
       ORDER BY MONTH(created_at) DESC, DAY(created_at) DESC
       LIMIT 50`
@@ -31,13 +32,14 @@ export async function GET(request: Request) {
       memberTrend.slice(0, 5).map(item => JSON.stringify(item)) : 
       '没有数据');
 
-    // 获取收入趋势 - 只关注月和日，忽略年份
+    // 获取收入趋势 - 只查询最近30天的数据
     const [incomeTrend] = await pool.execute(
       `SELECT 
         DATE_FORMAT(payment_date, '%m月%d日') as date,
         DATE_FORMAT(payment_date, '%Y-%m-%d') as date_raw,
         COALESCE(SUM(amount), 0) as value
       FROM income_records
+      WHERE payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
       GROUP BY MONTH(payment_date), DAY(payment_date), DATE_FORMAT(payment_date, '%m月%d日'), DATE_FORMAT(payment_date, '%Y-%m-%d')
       ORDER BY MONTH(payment_date) DESC, DAY(payment_date) DESC
       LIMIT 50`
@@ -125,66 +127,11 @@ export async function GET(request: Request) {
       )
     );
 
-    // 检查是否有非零数据，特别关注5月份的数据
-    const hasNonZeroData = result.some(item => item.memberValue > 0 || item.incomeValue > 0);
-    const currentMonthData = result.filter(item => item.month.startsWith(`${currentMonth}月`));
-    
-    console.log('数据中存在非零值:', hasNonZeroData);
-    console.log(`${currentMonth}月份数据样本:`, currentMonthData.slice(0, 5).map(item => 
-      `${item.month}: 会员=${item.memberValue}, 收入=${item.incomeValue}`
-    ));
-
-    // 如果已经是5月，但仍然没有5月数据，查找2025年5月的数据
-    if (currentMonth === 5 && currentMonthData.every(item => item.memberValue === 0)) {
-      console.log('没有找到当前5月的会员数据，尝试查找2025年5月的数据');
-      
-      // 专门查询2025年5月的数据
-      const [may2025Data] = await pool.execute(
-        `SELECT 
-          DATE_FORMAT(created_at, '%d') as day, 
-          COUNT(*) as count
-        FROM members
-        WHERE MONTH(created_at) = 5 AND YEAR(created_at) = 2025
-        GROUP BY DAY(created_at)
-        ORDER BY DAY(created_at)`
-      );
-      
-      if (Array.isArray(may2025Data) && may2025Data.length > 0) {
-        console.log('找到2025年5月数据:', may2025Data.map(item => JSON.stringify(item)));
-        
-        // 将2025年5月的数据应用到当前图表中
-        may2025Data.forEach((item: any) => {
-          const day = parseInt(item.day);
-          const key = `5月${day}日`;
-          
-          if (trends.has(key)) {
-            const existingItem = trends.get(key);
-            existingItem.memberValue = Number(item.count);
-            console.log(`应用2025年5月数据: ${key} = ${item.count}`);
-          }
-        });
-      } else {
-        console.log('未找到2025年5月数据');
-      }
-    }
-
-    // 最后检查是否有数据，如果仍然没有，添加测试数据
+    // 检查最终数据状态
     const finalHasData = result.some(item => item.memberValue > 0 || item.incomeValue > 0);
     
     if (!finalHasData) {
-      console.log('经过所有处理后仍然没有数据，添加测试数据');
-      
-      // 添加一些随机测试数据
-      result.forEach(item => {
-        if (item.month.startsWith(`${currentMonth}月`)) {
-          const day = parseInt(item.month.replace(`${currentMonth}月`, '').replace('日', ''));
-          if (day % 3 === 0) { // 每隔几天添加一些数据
-            item.memberValue = 2 + Math.floor(Math.random() * 3);
-            item.incomeValue = Math.floor(Math.random() * 1000) + 500;
-            console.log(`添加测试数据: ${item.month} = 会员:${item.memberValue}, 收入:${item.incomeValue}`);
-          }
-        }
-      });
+      console.log('当前时间段内没有实际数据，返回空数据');
     }
 
     // 构建最终响应
@@ -229,8 +176,8 @@ function generateDateMap(now: Date, days: number): Map<string, any> {
     const month = date.getMonth() + 1;
     const day = date.getDate();
     
-    // 格式化为"M月D日"，确保与SQL查询结果一致 (不补零)
-    const dateStr = `${month}月${day}日`;
+    // 格式化为"MM月DD日"，确保与SQL查询结果一致 (带前导零)
+    const dateStr = `${String(month).padStart(2, '0')}月${String(day).padStart(2, '0')}日`;
     
     trends.set(dateStr, {
       month: dateStr,

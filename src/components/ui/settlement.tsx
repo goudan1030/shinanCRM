@@ -264,6 +264,7 @@ export function SearchFilter({
             <SelectValue placeholder="选择年份" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">全部</SelectItem>
             {Array.from({ length: 10 }, (_, i) => {
               const year = new Date().getFullYear() - i;
               return (

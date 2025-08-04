@@ -31,8 +31,8 @@ export default function SettlementPage() {
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 25;
 
-  const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
-  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
 
   const fetchRecords = useCallback(async () => {
     try {
@@ -76,6 +76,14 @@ export default function SettlementPage() {
       fetchRecords();
     }
   }, [session, fetchRecords]);
+
+  // 添加筛选条件变化时的数据刷新
+  useEffect(() => {
+    if (session) {
+      setCurrentPage(1); // 重置到第一页
+      fetchRecords();
+    }
+  }, [searchKeyword, yearFilter, monthFilter]);
 
   const [newExpenseDialogOpen, setNewExpenseDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);

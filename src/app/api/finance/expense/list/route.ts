@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     }
 
     // 添加年月筛选
-    if (year) {
+    if (year && year !== 'all') {
       if (month && month !== 'all') {
         // 按年月筛选
         const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
@@ -55,6 +55,13 @@ export async function GET(request: Request) {
         params.push(startStr, endStr);
         countParams.push(startStr, endStr);
       }
+    } else if (month && month !== 'all') {
+      // 仅按月份筛选（所有年份的该月份）
+      const dateCondition = ' AND MONTH(expense_date) = ?';
+      query += dateCondition;
+      countQuery += dateCondition;
+      params.push(parseInt(month));
+      countParams.push(parseInt(month));
     }
 
     // 添加排序和分页到主查询

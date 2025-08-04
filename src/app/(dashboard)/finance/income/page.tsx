@@ -43,8 +43,9 @@ export default function IncomePage() {
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 25;
 
-  const [monthFilter, setMonthFilter] = useState((new Date().getMonth() + 1).toString());
-  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
+  // 修改默认筛选条件：改为查看所有数据
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
 
   // Dialog状态
   const [newIncomeDialogOpen, setNewIncomeDialogOpen] = useState(false);
@@ -121,6 +122,14 @@ export default function IncomePage() {
     }
   }, [session]);
 
+  // 添加筛选条件变化时的数据刷新
+  useEffect(() => {
+    if (session) {
+      setCurrentPage(1); // 重置到第一页
+      fetchRecords();
+    }
+  }, [searchKeyword, paymentMethodFilter, yearFilter, monthFilter]);
+
   const getPaymentMethodText = (method: string) => {
     switch (method) {
       case 'ALIPAY':
@@ -195,6 +204,7 @@ export default function IncomePage() {
                   <SelectValue placeholder="选择年份" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">全部</SelectItem>
                   {Array.from({ length: 10 }, (_, i) => {
                     const year = new Date().getFullYear() - i;
                     return (

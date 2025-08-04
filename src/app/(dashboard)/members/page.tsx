@@ -2032,7 +2032,30 @@ function MembersPageContent() {
 
         {loading ? (
           <div className="rounded-md border">
-            <div className="relative overflow-x-auto" style={{ maxWidth: '100%' }}>
+            <div className="relative overflow-x-auto lg:overflow-x-scroll lg:overflow-y-hidden table-scrollbar" style={{ 
+              maxWidth: '100%',
+              // PC端固定滚动条样式
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#cbd5e1 #f1f5f9'
+            }}>
+              <style jsx>{`
+                @media (min-width: 1024px) {
+                  .lg\\:overflow-x-scroll::-webkit-scrollbar {
+                    height: 8px;
+                  }
+                  .lg\\:overflow-x-scroll::-webkit-scrollbar-track {
+                    background: #f1f5f9;
+                    border-radius: 4px;
+                  }
+                  .lg\\:overflow-x-scroll::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 4px;
+                  }
+                  .lg\\:overflow-x-scroll::-webkit-scrollbar-thumb:hover {
+                    background: #94a3b8;
+                  }
+                }
+              `}</style>
               <table className="w-full text-sm">
                 <thead className="bg-white sticky top-0 z-20">
                   <tr>
@@ -2265,8 +2288,31 @@ function MembersPageContent() {
               </div>
 
               <div className="rounded-md border overflow-hidden mb-[60px]">
-                {/* 使用相对定位容器和溢出滚动 */}
-                <div className="relative overflow-x-auto" style={{ maxWidth: '100%' }}>
+                {/* 使用相对定位容器和溢出滚动 - 只在PC端显示固定滚动条 */}
+                <div className="relative overflow-x-auto lg:overflow-x-scroll lg:overflow-y-hidden table-scrollbar" style={{ 
+                  maxWidth: '100%',
+                  // PC端固定滚动条样式
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#cbd5e1 #f1f5f9'
+                }}>
+                  <style jsx>{`
+                    @media (min-width: 1024px) {
+                      .lg\\:overflow-x-scroll::-webkit-scrollbar {
+                        height: 8px;
+                      }
+                      .lg\\:overflow-x-scroll::-webkit-scrollbar-track {
+                        background: #f1f5f9;
+                        border-radius: 4px;
+                      }
+                      .lg\\:overflow-x-scroll::-webkit-scrollbar-thumb {
+                        background: #cbd5e1;
+                        border-radius: 4px;
+                      }
+                      .lg\\:overflow-x-scroll::-webkit-scrollbar-thumb:hover {
+                        background: #94a3b8;
+                      }
+                    }
+                  `}</style>
                   <table className="w-full text-sm">
                   <thead className="bg-white sticky top-0 z-20">
                     <tr>

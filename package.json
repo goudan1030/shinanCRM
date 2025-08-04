@@ -36,7 +36,11 @@
     "monitor:queue": "node scripts/monitor-notification-queue.js",
     "monitor:queue:daemon": "node scripts/monitor-notification-queue.js --daemon",
     "monitor:queue:manual": "node scripts/monitor-notification-queue.js --manual",
-    "monitor:queue:debug": "node scripts/monitor-notification-queue.js --debug"
+    "monitor:queue:debug": "node scripts/monitor-notification-queue.js --debug",
+    "test:wecom": "node scripts/test-wecom-query.js",
+    "test:wecom:prod": "TEST_BASE_URL=https://admin.xinghun.info node scripts/test-wecom-query.js",
+    "check:wecom": "node scripts/check-wecom-config.js",
+    "check:wecom:prod": "TEST_BASE_URL=https://admin.xinghun.info node scripts/check-wecom-config.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
