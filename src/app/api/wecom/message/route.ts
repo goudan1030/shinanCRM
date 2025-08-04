@@ -30,8 +30,14 @@ export async function GET(request: NextRequest) {
 
     // 检查必需参数
     if (!msg_signature || !timestamp || !nonce || !echostr) {
-      console.log('❌ 缺少必需参数');
-      return NextResponse.json({ error: '缺少必需参数' }, { status: 400 });
+      console.log('❌ 缺少必需参数，返回200状态');
+      // 企业微信可能会先发送无参数的请求来检查URL可达性
+      return new Response('success', {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain',
+        }
+      });
     }
 
     // 从数据库获取Token
