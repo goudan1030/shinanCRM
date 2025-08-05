@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { UserPayload, verifyToken, getTokenFromCookieStore } from './token';
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 import { compare } from 'bcrypt';
 
 export interface User {
@@ -116,7 +116,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           // 查询用户
-          const [rows] = await pool.execute(
+          const [rows] = await executeQuery(
             'SELECT * FROM admin_users WHERE username = ?',
             [credentials.username]
           );
@@ -174,7 +174,7 @@ export const authOptions: NextAuthOptions = {
 export async function hasPermission(userId: string | number, permission: string): Promise<boolean> {
   try {
     // 查询用户角色
-    const [rows] = await pool.execute(
+    const [rows] = await executeQuery(
       'SELECT role FROM admin_users WHERE id = ?',
       [userId]
     );
@@ -192,7 +192,7 @@ export async function hasPermission(userId: string | number, permission: string)
     }
 
     // 查询角色权限
-    const [permRows] = await pool.execute(
+    const [permRows] = await executeQuery(
       'SELECT permissions FROM admin_roles WHERE role_name = ?',
       [role]
     );

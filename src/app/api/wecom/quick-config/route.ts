@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 /**
  * 快速更新企业微信配置
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     });
 
     // 使用 REPLACE INTO 确保只有一条记录
-    await pool.execute(
+    await executeQuery(
       `REPLACE INTO wecom_config (
         id, corp_id, agent_id, secret, 
         member_notification_enabled, notification_recipients, 

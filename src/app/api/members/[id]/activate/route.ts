@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function POST(
   request: Request,

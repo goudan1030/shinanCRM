@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '../../../../../lib/mysql';
+import { executeQuery } from '../../../../../lib/database-netlify';
 import { RowDataPacket } from 'mysql2';
 
 export async function GET() {
@@ -20,7 +20,7 @@ export async function GET() {
 
     try {
       // 查询expense_records表中当月的支出记录
-      const [results] = await pool.execute<RowDataPacket[]>(
+      const [results] = await executeQuery<RowDataPacket[]>(
         'SELECT SUM(amount) as total FROM expense_records WHERE expense_date BETWEEN ? AND ?',
         [firstDayStr, lastDayStr]
       );

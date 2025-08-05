@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { updateUserProfile } from '@/lib/mysql';
+import { updateUserProfile } from '@/lib/database-netlify';
 
 export async function PUT(request: Request) {
   try {

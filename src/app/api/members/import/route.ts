@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/database';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 检查手机号是否已存在
-        const [existing] = await pool.execute(
+        const [existing] = await executeQuery(
           'SELECT id FROM members WHERE phone = ? AND deleted = 0',
           [member.phone]
         );
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         const memberNo = `M${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
         // 插入会员数据
-        await pool.execute(
+        await executeQuery(
           `INSERT INTO members (
             member_no, name, gender, age, phone, city, 
             member_type, status, created_at, updated_at

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { updateUserPassword, authenticateUser } from '@/lib/mysql';
+import { updateUserPassword, authenticateUser } from '@/lib/database-netlify';
 
 export async function PUT(request: Request) {
   try {

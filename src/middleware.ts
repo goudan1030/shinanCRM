@@ -64,6 +64,8 @@ const publicRoutes = [
   '/api/wecom/test-query', // 测试查询API
   '/api/wecom/simple', // 简单API
   '/api/wecom/logs', // 日志查看API
+  '/api/wecom/callback/data', // 第三方应用数据回调
+  '/api/wecom/callback/command', // 第三方应用指令回调
 ];
 
 // 中间件实现

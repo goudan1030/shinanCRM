@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
@@ -35,7 +35,7 @@ export async function POST(
     const memberId = params.id;
     
     // 先查询会员信息
-    const [members] = await pool.execute(
+    const [members] = await executeQuery(
       'SELECT member_no, nickname, status FROM members WHERE id = ?',
       [memberId]
     );
@@ -58,7 +58,7 @@ export async function POST(
     }
 
     // 更新会员状态
-    await pool.execute(
+    await executeQuery(
       'UPDATE members SET status = ?, updated_at = NOW() WHERE id = ?',
       [status, memberId]
     );

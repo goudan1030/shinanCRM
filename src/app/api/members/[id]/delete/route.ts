@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/database';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function DELETE(
   request: NextRequest,
@@ -16,7 +16,7 @@ export async function DELETE(
     }
 
     // 软删除：标记为已删除而不是真正删除
-    const [result] = await pool.execute(
+    const [result] = await executeQuery(
       'UPDATE members SET deleted = 1, updated_at = NOW() WHERE id = ?',
       [memberId]
     );

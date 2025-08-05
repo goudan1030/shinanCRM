@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateUser } from '../../../../lib/database';
+import { authenticateUser } from '../../../../lib/database-netlify';
 import { generateToken, setTokenCookie } from '../../../../lib/token';
 
 export async function POST(request: Request) {

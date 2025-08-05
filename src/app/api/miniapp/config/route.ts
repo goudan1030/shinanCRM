@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 // 获取小程序配置
 export async function GET() {
   try {
-    const [rows] = await pool.execute(
+    const [rows] = await executeQuery(
       'SELECT * FROM miniapp_config LIMIT 1'
     );
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     }
 
     // 使用 REPLACE INTO 确保只有一条记录
-    await pool.execute(
+    await executeQuery(
       'REPLACE INTO miniapp_config (id, appid, appsecret) VALUES (1, ?, ?)',
       [appid, appsecret]
     );

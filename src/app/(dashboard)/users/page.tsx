@@ -21,7 +21,7 @@ import { Settings, Plus } from 'lucide-react';
 interface User {
   id: number;
   phone: string;
-  status: 'not-logged-in' | 'need-setup' | 'active';
+  status: 'temporary' | 'active' | 'disabled';
   username: string | null;
   nickname: string | null;
   password: string | null;
@@ -29,11 +29,9 @@ interface User {
   notification_enabled: number;
   created_at: string;
   updated_at: string;
-  last_login_at: string | null;
   registered: number;
   refresh_count: number;
   view_count: number;
-  member_type: '普通会员' | '一次性会员' | '年费会员';
   member_id?: string | null; // 关联的会员ID
   [key: string]: string | number | null | undefined;
 }
@@ -51,18 +49,15 @@ interface Session {
 }
 
 // 定义可用的列
-type ColumnKey = 'phone' | 'username' | 'nickname' | 'status' | 'created_at' | 'last_login_at' | 'registered' | 'member_type' | 'refresh_count' | 'view_count' | 'actions';
+type ColumnKey = 'phone' | 'nickname' | 'status' | 'created_at' | 'registered' | 'refresh_count' | 'view_count' | 'actions';
 
 // 可用列定义
 const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'phone', label: '手机号' },
-  { key: 'username', label: '用户名' },
   { key: 'nickname', label: '昵称' },
   { key: 'status', label: '状态' },
   { key: 'registered', label: '资料完善' },
   { key: 'created_at', label: '创建时间' },
-  { key: 'last_login_at', label: '最后登录' },
-  { key: 'member_type', label: '会员类型' },
   { key: 'refresh_count', label: '刷新次数' },
   { key: 'view_count', label: '查看次数' },
   { key: 'actions', label: '操作' }
@@ -106,7 +101,7 @@ function ColumnSelector({
   
   // 重置为默认设置
   const resetToDefault = () => {
-    const defaultColumns: ColumnKey[] = ['phone', 'username', 'nickname', 'status', 'registered', 'member_type', 'created_at', 'refresh_count', 'view_count', 'actions'];
+    const defaultColumns: ColumnKey[] = ['phone', 'nickname', 'status', 'registered', 'created_at', 'refresh_count', 'view_count', 'actions'];
     setSelectedColumns(defaultColumns);
     setVisibleColumns(defaultColumns);
     localStorage.setItem('userTableVisibleColumns', JSON.stringify(defaultColumns));
@@ -166,12 +161,10 @@ function UsersPageContent() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [memberType, setMemberType] = useState('all');
-  const [status, setStatus] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>([
-    'phone', 'username', 'nickname', 'status', 'registered', 'member_type', 'created_at', 'refresh_count', 'view_count', 'actions'
+    'phone', 'nickname', 'status', 'registered', 'created_at', 'refresh_count', 'view_count', 'actions'
   ]);
   
   // 分页相关状态
@@ -439,19 +432,37 @@ function UsersPageContent() {
     }
   };
 
-  // 获取状态文本
-  const getStatusText = (status: string): string => {
-    const statusMap: Record<string, string> = {
-      'not-logged-in': '未登录',
-      'need-setup': '待设置',
-      'active': '正常'
-    };
-    return statusMap[status] || status;
-  };
-
   // 获取资料完善状态文本
   const getRegisteredText = (registered: number): string => {
     return registered === 1 ? '已完善' : '未完善';
+  };
+
+  // 获取状态文本
+  const getStatusText = (status: string): string => {
+    switch (status) {
+      case 'active':
+        return '已激活';
+      case 'temporary':
+        return '临时';
+      case 'disabled':
+        return '已禁用';
+      default:
+        return status;
+    }
+  };
+
+  // 获取状态样式
+  const getStatusStyle = (status: string): string => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'temporary':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'disabled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   // 根据筛选条件构建显示的用户列表
@@ -461,20 +472,13 @@ function UsersPageContent() {
     const matchesSearch = 
       !searchQuery || 
       (user.phone && user.phone.toLowerCase().includes(searchLower)) || 
-      (user.username && user.username.toLowerCase().includes(searchLower)) || 
       (user.nickname && user.nickname.toLowerCase().includes(searchLower));
     
     // 会员类型过滤
     const matchesMemberType = 
-      memberType === 'all' || 
-      user.member_type === memberType;
+      true; // 移除memberType过滤，因为member_type字段已移除
     
-    // 状态过滤
-    const matchesStatus = 
-      status === 'all' || 
-      user.status === status;
-    
-    return matchesSearch && matchesMemberType && matchesStatus;
+    return matchesSearch && matchesMemberType;
   });
 
   // 处理页码变更
@@ -496,7 +500,7 @@ function UsersPageContent() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="flex gap-2 w-full md:w-auto">
           <Input
-            placeholder="搜索手机号/用户名/昵称"
+            placeholder="搜索手机号/昵称"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 md:w-[300px]"
@@ -510,29 +514,7 @@ function UsersPageContent() {
         </div>
         
         <div className="flex gap-2 w-full md:w-auto">
-          <Select value={memberType} onValueChange={setMemberType}>
-            <SelectTrigger className="w-full md:w-[150px]">
-              <SelectValue placeholder="会员类型" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">所有类型</SelectItem>
-              <SelectItem value="普通会员">普通会员</SelectItem>
-              <SelectItem value="一次性会员">一次性会员</SelectItem>
-              <SelectItem value="年费会员">年费会员</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-full md:w-[150px]">
-              <SelectValue placeholder="状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">所有状态</SelectItem>
-              <SelectItem value="active">正常</SelectItem>
-              <SelectItem value="need-setup">待设置</SelectItem>
-              <SelectItem value="not-logged-in">未登录</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* 移除会员类型过滤，因为member_type字段不存在 */}
         </div>
         
         <div className="flex-1" />
@@ -564,13 +546,10 @@ function UsersPageContent() {
                   <thead className="bg-muted/50">
                     <tr>
                       {visibleColumns.includes('phone') && <th className="px-4 py-3 text-left font-medium">手机号</th>}
-                      {visibleColumns.includes('username') && <th className="px-4 py-3 text-left font-medium">用户名</th>}
                       {visibleColumns.includes('nickname') && <th className="px-4 py-3 text-left font-medium">昵称</th>}
                       {visibleColumns.includes('status') && <th className="px-4 py-3 text-left font-medium">状态</th>}
-                      {visibleColumns.includes('created_at') && <th className="px-4 py-3 text-left font-medium">创建时间</th>}
-                      {visibleColumns.includes('last_login_at') && <th className="px-4 py-3 text-left font-medium">最后登录</th>}
                       {visibleColumns.includes('registered') && <th className="px-4 py-3 text-left font-medium">资料完善</th>}
-                      {visibleColumns.includes('member_type') && <th className="px-4 py-3 text-left font-medium">会员类型</th>}
+                      {visibleColumns.includes('created_at') && <th className="px-4 py-3 text-left font-medium">创建时间</th>}
                       {visibleColumns.includes('refresh_count') && <th className="px-4 py-3 text-left font-medium">刷新次数</th>}
                       {visibleColumns.includes('view_count') && <th className="px-4 py-3 text-left font-medium">查看次数</th>}
                       {visibleColumns.includes('actions') && <th className="px-4 py-3 text-left font-medium">操作</th>}
@@ -585,11 +564,6 @@ function UsersPageContent() {
                             <Skeleton className="h-4 w-[120px]" />
                           </td>
                         )}
-                        {visibleColumns.includes('username') && (
-                          <td className="px-4 py-3">
-                            <Skeleton className="h-4 w-[100px]" />
-                          </td>
-                        )}
                         {visibleColumns.includes('nickname') && (
                           <td className="px-4 py-3">
                             <Skeleton className="h-4 w-[80px]" />
@@ -600,24 +574,14 @@ function UsersPageContent() {
                             <Skeleton className="h-6 w-[60px] rounded-full" />
                           </td>
                         )}
-                        {visibleColumns.includes('created_at') && (
-                          <td className="px-4 py-3">
-                            <Skeleton className="h-4 w-[140px]" />
-                          </td>
-                        )}
-                        {visibleColumns.includes('last_login_at') && (
-                          <td className="px-4 py-3">
-                            <Skeleton className="h-4 w-[140px]" />
-                          </td>
-                        )}
                         {visibleColumns.includes('registered') && (
                           <td className="px-4 py-3">
                             <Skeleton className="h-6 w-[60px] rounded-full" />
                           </td>
                         )}
-                        {visibleColumns.includes('member_type') && (
+                        {visibleColumns.includes('created_at') && (
                           <td className="px-4 py-3">
-                            <Skeleton className="h-6 w-[80px] rounded-full" />
+                            <Skeleton className="h-4 w-[140px]" />
                           </td>
                         )}
                         {visibleColumns.includes('refresh_count') && (
@@ -663,33 +627,27 @@ function UsersPageContent() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-base">{user.phone}</span>
                       <span className={`px-2 py-1 rounded-full text-xs ${
-                        user.member_type === '年费会员' 
+                        user.registered === 1 && user.member_id
                           ? 'bg-blue-100 text-blue-800' 
-                          : user.member_type === '一次性会员'
-                          ? 'bg-purple-100 text-purple-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {user.member_type}
+                        {user.registered === 1 && user.member_id ? '已完善' : '未完善'}
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span>{user.username || '未设置'}</span>
                       <span>{user.nickname || '未设置'}</span>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    user.status === 'active' 
-                      ? 'bg-green-100 text-green-800' 
-                      : user.status === 'need-setup'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {getStatusText(user.status as string)}
-                  </span>
                 </div>
 
                 {/* 卡片内容 */}
                 <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                  <div>
+                    <span className="text-gray-500">状态：</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${getStatusStyle(user.status)}`}>
+                      {getStatusText(user.status)}
+                    </span>
+                  </div>
                   <div>
                     <span className="text-gray-500">资料完善：</span>
                     <span>{getRegisteredText(user.registered)}</span>
@@ -712,18 +670,6 @@ function UsersPageContent() {
                       minute: '2-digit'
                     })}</span>
                   </div>
-                  {user.last_login_at && (
-                    <div className="col-span-2">
-                      <span className="text-gray-500">最后登录：</span>
-                      <span>{new Date(user.last_login_at).toLocaleString('zh-CN', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* 卡片操作按钮 */}
@@ -752,7 +698,7 @@ function UsersPageContent() {
                     className="h-8 px-3 text-xs text-green-600"
                     onClick={() => openRefreshDialog(
                       user.id as number,
-                      user.username || user.nickname || user.phone
+                      user.nickname || user.phone
                     )}
                   >
                     增加刷新次数
@@ -763,7 +709,7 @@ function UsersPageContent() {
                     className="h-8 px-3 text-xs text-blue-600"
                     onClick={() => openViewDialog(
                       user.id as number,
-                      user.username || user.nickname || user.phone
+                      user.nickname || user.phone
                     )}
                   >
                     增加查看次数
@@ -789,13 +735,10 @@ function UsersPageContent() {
             <thead className="bg-muted/50">
               <tr>
                 {visibleColumns.includes('phone') && <th className="px-4 py-3 text-left font-medium">手机号</th>}
-                {visibleColumns.includes('username') && <th className="px-4 py-3 text-left font-medium">用户名</th>}
                 {visibleColumns.includes('nickname') && <th className="px-4 py-3 text-left font-medium">昵称</th>}
                 {visibleColumns.includes('status') && <th className="px-4 py-3 text-left font-medium">状态</th>}
-                {visibleColumns.includes('created_at') && <th className="px-4 py-3 text-left font-medium">创建时间</th>}
-                {visibleColumns.includes('last_login_at') && <th className="px-4 py-3 text-left font-medium">最后登录</th>}
                 {visibleColumns.includes('registered') && <th className="px-4 py-3 text-left font-medium">资料完善</th>}
-                {visibleColumns.includes('member_type') && <th className="px-4 py-3 text-left font-medium">会员类型</th>}
+                {visibleColumns.includes('created_at') && <th className="px-4 py-3 text-left font-medium">创建时间</th>}
                 {visibleColumns.includes('refresh_count') && <th className="px-4 py-3 text-left font-medium">刷新次数</th>}
                 {visibleColumns.includes('view_count') && <th className="px-4 py-3 text-left font-medium">查看次数</th>}
                 {visibleColumns.includes('actions') && <th className="px-4 py-3 text-left font-medium">操作</th>}
@@ -819,42 +762,21 @@ function UsersPageContent() {
                     {visibleColumns.includes('phone') && (
                       <td className="px-4 py-2">{user.phone}</td>
                     )}
-                    {visibleColumns.includes('username') && (
-                      <td className="px-4 py-2">{user.username || '-'}</td>
-                    )}
                     {visibleColumns.includes('nickname') && (
                       <td className="px-4 py-2">{user.nickname || '-'}</td>
                     )}
                     {visibleColumns.includes('status') && (
                       <td className="px-4 py-2">
                         <span className={`px-2 py-1 rounded-full text-xs ${
-                          user.status === 'active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : user.status === 'need-setup'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
+                          user.status === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : user.status === 'temporary'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
                         }`}>
-                          {getStatusText(user.status as string)}
+                          {getStatusText(user.status)}
                         </span>
                       </td>
-                    )}
-                    {visibleColumns.includes('created_at') && (
-                      <td className="px-4 py-2">{new Date(user.created_at).toLocaleString('zh-CN', { 
-                        year: 'numeric', 
-                        month: '2-digit', 
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}</td>
-                    )}
-                    {visibleColumns.includes('last_login_at') && (
-                      <td className="px-4 py-2">{user.last_login_at ? new Date(user.last_login_at).toLocaleString('zh-CN', { 
-                        year: 'numeric', 
-                        month: '2-digit', 
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) : '-'}</td>
                     )}
                     {visibleColumns.includes('registered') && (
                       <td className="px-4 py-2">
@@ -875,18 +797,14 @@ function UsersPageContent() {
                         )}
                       </td>
                     )}
-                    {visibleColumns.includes('member_type') && (
-                      <td className="px-4 py-2">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          user.member_type === '年费会员'
-                            ? 'bg-blue-100 text-blue-800'
-                            : user.member_type === '一次性会员'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {user.member_type}
-                        </span>
-                      </td>
+                    {visibleColumns.includes('created_at') && (
+                      <td className="px-4 py-2">{new Date(user.created_at).toLocaleString('zh-CN', { 
+                        year: 'numeric', 
+                        month: '2-digit', 
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}</td>
                     )}
                     {visibleColumns.includes('refresh_count') && (
                       <td className="px-4 py-2">{user.refresh_count}</td>
@@ -909,7 +827,7 @@ function UsersPageContent() {
                             size="sm"
                             onClick={() => openRefreshDialog(
                               user.id as number,
-                              user.username || user.nickname || user.phone
+                              user.nickname || user.phone
                             )}
                           >
                             <Plus className="h-3 w-3 mr-1" />
@@ -920,7 +838,7 @@ function UsersPageContent() {
                             size="sm"
                             onClick={() => openViewDialog(
                               user.id as number,
-                              user.username || user.nickname || user.phone
+                              user.nickname || user.phone
                             )}
                           >
                             <Plus className="h-3 w-3 mr-1" />

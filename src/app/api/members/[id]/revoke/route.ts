@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function POST(
   request: Request,
@@ -25,7 +25,7 @@ export async function POST(
     console.log('会员ID:', memberId);
 
     // 查找会员
-    const [memberRows] = await pool.execute(
+    const [memberRows] = await executeQuery(
       'SELECT id, status, nickname, member_no FROM members WHERE id = ?',
       [memberId]
     );

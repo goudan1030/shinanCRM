@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 /**
  * 企业微信交互查询功能测试API
@@ -105,7 +105,7 @@ async function getMemberByNumber(memberNumber: string): Promise<any> {
     ];
     
     for (const query of queries) {
-      const [rows] = await pool.execute(query, [memberNumber]);
+      const [rows] = await executeQuery(query, [memberNumber]);
       const members = rows as any[];
       
       if (members.length > 0) {

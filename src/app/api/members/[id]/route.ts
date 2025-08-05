@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const [rows] = await pool.execute(
+    const [rows] = await executeQuery(
       'SELECT * FROM members WHERE id = ?',
       [params.id]
     );
@@ -65,13 +65,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     updateValues.push(params.id);
 
     // 执行更新
-    await pool.execute(
+    await executeQuery(
       `UPDATE members SET ${updateFields.join(', ')} WHERE id = ?`,
       updateValues
     );
 
     // 获取更新后的会员信息
-    const [rows] = await pool.execute(
+    const [rows] = await executeQuery(
       'SELECT * FROM members WHERE id = ?',
       [params.id]
     );
@@ -99,17 +99,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const { action, type, notes } = data;
 
     if (action === 'activate') {
-      await pool.execute(
+      await executeQuery(
         'SELECT activate_member(?, ?)',
         [params.id, notes || null]
       );
     } else if (action === 'revoke') {
-      await pool.execute(
+      await executeQuery(
         'SELECT revoke_member(?, ?)',
         [params.id, notes || null]
       );
     } else if (action === 'upgrade') {
-      await pool.execute(
+      await executeQuery(
         'SELECT upgrade_member(?, ?, NOW(), NULL, ?)',
         [params.id, type, notes || null]
       );
@@ -121,7 +121,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     // 获取更新后的会员信息
-    const [rows] = await pool.execute(
+    const [rows] = await executeQuery(
       'SELECT * FROM members WHERE id = ?',
       [params.id]
     );

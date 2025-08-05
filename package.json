@@ -45,7 +45,12 @@
     "test:wecom-verify:prod": "TEST_BASE_URL=https://admin.xinghun.info node scripts/test-wecom-verify.js",
     "wecom:config:show": "node scripts/update-wecom-config.js show",
     "wecom:config:update:token": "node scripts/update-wecom-config.js token",
-    "wecom:config:update:encoding": "node scripts/update-wecom-config.js encoding"
+    "wecom:config:update:encoding": "node scripts/update-wecom-config.js encoding",
+    "users:update-status": "node scripts/update-user-status.js",
+    "fix:phpmyadmin": "node scripts/fix-phpmyadmin-tempdir.js",
+    "setup:phpmyadmin": "node scripts/setup-phpmyadmin-pmadb.js",
+    "fix:phpmyadmin:complete": "node scripts/fix-phpmyadmin-complete.js",
+    "fix:database-backup": "node scripts/fix-database-backup.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

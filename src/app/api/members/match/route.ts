@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
@@ -38,12 +38,12 @@ export async function POST(request: Request) {
     }
 
     // 检查两个会员是否存在
-    const [members1] = await pool.execute(
+    const [members1] = await executeQuery(
       'SELECT id, member_no, nickname, gender, remaining_matches FROM members WHERE id = ?',
       [memberId1]
     );
 
-    const [members2] = await pool.execute(
+    const [members2] = await executeQuery(
       'SELECT id, member_no, nickname, gender, remaining_matches FROM members WHERE id = ?',
       [memberId2]
     );

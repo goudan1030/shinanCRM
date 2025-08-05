@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getWecomConfig, getWecomAccessToken } from '@/lib/wecom-api';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 /**
  * 企业微信配置调试API
@@ -16,7 +16,7 @@ export async function GET() {
     // 1. 检查数据库连接
     debugInfo.steps.push({ step: '1. 检查数据库连接', status: 'checking' });
     try {
-      await pool.execute('SELECT 1');
+      await executeQuery('SELECT 1');
       debugInfo.steps[0].status = 'success';
       debugInfo.steps[0].message = '数据库连接正常';
     } catch (error) {
@@ -28,7 +28,7 @@ export async function GET() {
     // 2. 检查wecom_config表是否存在
     debugInfo.steps.push({ step: '2. 检查wecom_config表', status: 'checking' });
     try {
-      const [tables] = await pool.execute("SHOW TABLES LIKE 'wecom_config'");
+      const [tables] = await executeQuery("SHOW TABLES LIKE 'wecom_config'");
       const tableExists = (tables as any[]).length > 0;
       
       if (tableExists) {
@@ -48,7 +48,7 @@ export async function GET() {
     // 3. 检查表结构
     debugInfo.steps.push({ step: '3. 检查表结构', status: 'checking' });
     try {
-      const [columns] = await pool.execute("DESCRIBE wecom_config");
+      const [columns] = await executeQuery("DESCRIBE wecom_config");
       const columnNames = (columns as any[]).map(col => col.Field);
       
       const requiredColumns = ['corp_id', 'agent_id', 'secret'];
@@ -82,7 +82,7 @@ export async function GET() {
     // 4. 检查企业微信配置
     debugInfo.steps.push({ step: '4. 检查企业微信配置', status: 'checking' });
     try {
-      const [rows] = await pool.execute('SELECT * FROM wecom_config LIMIT 1');
+      const [rows] = await executeQuery('SELECT * FROM wecom_config LIMIT 1');
       const configs = rows as any[];
       
       if (configs.length === 0) {

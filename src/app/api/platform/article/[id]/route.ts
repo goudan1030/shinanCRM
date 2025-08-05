@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function DELETE(
   request: Request,
@@ -16,7 +16,7 @@ export async function DELETE(
     }
 
     // 删除文章
-    await pool.execute(
+    await executeQuery(
       'DELETE FROM articles WHERE id = ?',
       [id]
     );
@@ -40,7 +40,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const [rows] = await pool.execute(
+    const [rows] = await executeQuery(
       'SELECT * FROM articles WHERE id = ?',
       [params.id]
     );

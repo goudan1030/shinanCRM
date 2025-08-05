@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/database';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,14 +39,14 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取总数
-    const [countResult] = await pool.execute(
+    const [countResult] = await executeQuery(
       `SELECT COUNT(*) as total FROM members ${whereClause}`,
       queryParams
     );
     const total = (countResult as any[])[0].total;
 
     // 获取分页数据
-    const [rows] = await pool.execute(
+    const [rows] = await executeQuery(
       `SELECT 
         id, 
         member_no, 

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getWecomConfig, getWecomAccessToken, sendWecomMessage } from '@/lib/wecom-api';
 import { executeQuery } from '@/lib/database-netlify';
-import { parseWecomXML, validateWecomXML, cleanXML } from '@/lib/wecom-xml-parser';
 
 /**
  * 企业微信消息接收API
@@ -91,32 +90,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '签名验证失败' }, { status: 403 });
     }
 
-    // 清理和验证XML
-    const cleanedXML = cleanXML(body);
-    console.log('清理后的XML:', cleanedXML.substring(0, 200) + '...');
-    
-    if (!validateWecomXML(cleanedXML)) {
-      console.log('XML格式验证失败');
-      return new Response('success'); // 返回success表示接收成功
-    }
-
     // 解析XML消息
-    const messageData = parseWecomXML(cleanedXML);
+    const messageData = parseWeChatMessage(body);
     console.log('解析的消息数据:', messageData);
 
     if (!messageData) {
-      console.log('XML解析失败');
       return new Response('success'); // 返回success表示接收成功
     }
 
     // 处理文本消息
     if (messageData.MsgType === 'text') {
       await handleTextMessage(messageData);
-    } else if (messageData.MsgType === 'event') {
-      console.log('收到事件消息:', messageData.Event);
-      // 可以在这里处理事件消息
-    } else {
-      console.log('未处理的消息类型:', messageData.MsgType);
     }
 
     return new Response('success');
@@ -137,7 +121,7 @@ function verifySignature(token: string, timestamp: string | null, nonce: string 
   }
 
   try {
-    // 按照企业微信官方文档：将token、timestamp、nonce、data四个参数进行字典序排序
+    // 按照企业微信官方文档：将token、timestamp、nonce、echostr四个参数进行字典序排序
     const arr = [token, timestamp, nonce, data].sort();
     const str = arr.join('');
     
@@ -151,8 +135,8 @@ function verifySignature(token: string, timestamp: string | null, nonce: string 
     });
     
     // 使用SHA1加密
-    const hash = createHash('sha1').update(str, 'utf8').digest('hex');
-    const receivedSig = signature;
+    const hash = createHash('sha1').update(str, 'utf8').digest('hex').toLowerCase();
+    const receivedSig = signature.toLowerCase();
     
     console.log('签名对比:', {
       calculated: hash,
@@ -172,9 +156,7 @@ function verifySignature(token: string, timestamp: string | null, nonce: string 
  */
 function verifyWecomURL(token: string, timestamp: string, nonce: string, echostr: string, signature: string): boolean {
   try {
-    // 企业微信官方文档要求的签名算法
-    // 1. 将token、timestamp、nonce、echostr四个参数进行字典序排序
-    // 2. 将四个参数拼接成一个字符串进行sha1加密
+    // 企业微信URL验证的签名算法
     const arr = [token, timestamp, nonce, echostr].sort();
     const str = arr.join('');
     
@@ -187,9 +169,8 @@ function verifyWecomURL(token: string, timestamp: string, nonce: string, echostr
       joinedString: str
     });
     
-    // 3. 进行sha1加密
-    const hash = createHash('sha1').update(str, 'utf8').digest('hex');
-    const receivedSig = signature;
+    const hash = createHash('sha1').update(str, 'utf8').digest('hex').toLowerCase();
+    const receivedSig = signature.toLowerCase();
     
     console.log('URL验证签名对比:', {
       calculated: hash,
@@ -197,7 +178,6 @@ function verifyWecomURL(token: string, timestamp: string, nonce: string, echostr
       match: hash === receivedSig
     });
     
-    // 4. 开发者获得加密后的字符串可与signature对比
     return hash === receivedSig;
   } catch (error) {
     console.error('URL验证过程出错:', error);
@@ -205,7 +185,37 @@ function verifyWecomURL(token: string, timestamp: string, nonce: string, echostr
   }
 }
 
+/**
+ * 解析微信XML消息
+ */
+function parseWeChatMessage(xml: string): any {
+  try {
+    // 简单的XML解析 - 在生产环境中建议使用专业的XML解析库
+    const result: any = {};
+    
+    const patterns = {
+      ToUserName: /<ToUserName><!\[CDATA\[(.*?)\]\]><\/ToUserName>/,
+      FromUserName: /<FromUserName><!\[CDATA\[(.*?)\]\]><\/FromUserName>/,
+      CreateTime: /<CreateTime>(\d+)<\/CreateTime>/,
+      MsgType: /<MsgType><!\[CDATA\[(.*?)\]\]><\/MsgType>/,
+      Content: /<Content><!\[CDATA\[(.*?)\]\]><\/Content>/,
+      MsgId: /<MsgId>(\d+)<\/MsgId>/,
+      AgentID: /<AgentID>(\d+)<\/AgentID>/
+    };
 
+    for (const [key, pattern] of Object.entries(patterns)) {
+      const match = xml.match(pattern);
+      if (match) {
+        result[key] = match[1];
+      }
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
+  } catch (error) {
+    console.error('解析XML消息出错:', error);
+    return null;
+  }
+}
 
 /**
  * 处理文本消息

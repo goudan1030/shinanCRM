@@ -55,7 +55,7 @@ export async function GET(request: Request) {
     baseQuery += ` ORDER BY created_at DESC`;
     
     // 执行查询
-    const [rows] = await pool.execute<RowDataPacket[]>(baseQuery, queryParams);
+    const [rows] = await executeQuery<RowDataPacket[]>(baseQuery, queryParams);
     
     // 生成CSV标题行
     const headers = [

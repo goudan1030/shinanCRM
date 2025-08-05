@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 import { RowDataPacket } from 'mysql2';
 
 export async function GET() {
@@ -19,7 +19,7 @@ export async function GET() {
     console.log('微信张支付API查询范围(UTC修正):', firstDayStr, '至', lastDayStr);
 
     // 查询当月通过WECHAT_ZHANG支付的金额，使用支付日期payment_date
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const [rows] = await executeQuery<RowDataPacket[]>(
       `SELECT SUM(amount) as total FROM income_records 
        WHERE payment_method = 'WECHAT_ZHANG'
        AND payment_date >= ? AND payment_date <= ?`,

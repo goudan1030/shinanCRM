@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '../../../../../lib/mysql';
+import { executeQuery } from '../../../../../lib/database-netlify';
 import { RowDataPacket } from 'mysql2';
 
 export async function GET() {
@@ -19,7 +19,7 @@ export async function GET() {
     console.log('当月收入API查询范围(UTC修正):', firstDayStr, '至', lastDayStr);
 
     // 查询当月收入总额 - 按照支付日期(payment_date)统计
-    const [result] = await pool.execute<RowDataPacket[]>(
+    const [result] = await executeQuery<RowDataPacket[]>(
       'SELECT SUM(amount) as total FROM income_records WHERE payment_date >= ? AND payment_date <= ?',
       [firstDayStr, lastDayStr]
     );

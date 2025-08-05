@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getTokenFromCookieStore, verifyToken } from '@/lib/token';
@@ -71,7 +71,7 @@ export async function POST(
     const memberId = params.id;
     
     // 先查询会员信息
-    const [members] = await pool.execute(
+    const [members] = await executeQuery(
       'SELECT member_no, nickname, type, remaining_matches FROM members WHERE id = ?',
       [memberId]
     );
@@ -88,7 +88,7 @@ export async function POST(
     // 如果当前类型与目标类型相同，但需要调整匹配次数
     if (member.type === type && typeof remainingMatches === 'number') {
       // 更新会员匹配次数
-      await pool.execute(
+      await executeQuery(
         'UPDATE members SET remaining_matches = ?, updated_at = NOW() WHERE id = ?',
         [remainingMatches, memberId]
       );
@@ -120,7 +120,7 @@ export async function POST(
     }
 
     // 更新会员类型和匹配次数
-    await pool.execute(
+    await executeQuery(
       'UPDATE members SET type = ?, remaining_matches = ?, updated_at = NOW() WHERE id = ?',
       [type, newRemainingMatches, memberId]
     );
@@ -128,7 +128,7 @@ export async function POST(
     // 记录升级日志（如果提供了notes）
     if (notes) {
       try {
-        await pool.execute(
+        await executeQuery(
           'INSERT INTO member_operation_logs (member_id, operation_type, old_values, new_values, created_at, operator_id) VALUES (?, ?, ?, ?, NOW(), ?)',
           [
             memberId,

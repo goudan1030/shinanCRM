@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function PUT(
   request: Request,
@@ -17,7 +17,7 @@ export async function PUT(
     }
 
     // 更新数据库
-    await pool.execute(
+    await executeQuery(
       'UPDATE articles SET is_hidden = ? WHERE id = ?',
       [is_hidden, params.id]
     );

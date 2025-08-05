@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function GET(request: Request) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     console.log('当前系统时间:', now.toISOString());
 
     // 获取会员增长趋势 - 只查询最近30天的数据
-    const [memberTrend] = await pool.execute(
+    const [memberTrend] = await executeQuery(
       `SELECT 
         DATE_FORMAT(created_at, '%m月%d日') as date, 
         DATE_FORMAT(created_at, '%Y-%m-%d') as date_raw,
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       '没有数据');
 
     // 获取收入趋势 - 只查询最近30天的数据
-    const [incomeTrend] = await pool.execute(
+    const [incomeTrend] = await executeQuery(
       `SELECT 
         DATE_FORMAT(payment_date, '%m月%d日') as date,
         DATE_FORMAT(payment_date, '%Y-%m-%d') as date_raw,

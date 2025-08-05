@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function PUT(
   request: Request,
@@ -19,14 +19,14 @@ export async function PUT(
     // 如果是设置置顶，需要先获取当前最大的排序号
     let sort_order = 0;
     if (is_top === 1) {
-      const [rows] = await pool.execute(
+      const [rows] = await executeQuery(
         'SELECT MAX(sort_order) as max_sort FROM articles WHERE is_top = 1'
       );
       sort_order = rows[0].max_sort ? rows[0].max_sort + 10 : 10;
     }
 
     // 更新数据库
-    await pool.execute(
+    await executeQuery(
       'UPDATE articles SET is_top = ?, sort_order = ? WHERE id = ?',
       [is_top, sort_order, params.id]
     );

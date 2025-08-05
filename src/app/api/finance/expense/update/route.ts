@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     // 更新支出记录
-    const [result] = await pool.execute(
+    const [result] = await executeQuery(
       'UPDATE expense_records SET expense_date = ?, amount = ?, notes = ? WHERE id = ?',
       [
         data.expense_date,

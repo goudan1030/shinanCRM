@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 import { RowDataPacket } from 'mysql2';
 
 // 获取单个群聊详情
@@ -7,7 +7,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   try {
     const id = params.id;
     
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const [rows] = await executeQuery<RowDataPacket[]>(
       'SELECT * FROM chat_groups WHERE id = ?',
       [id]
     );
@@ -36,7 +36,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const body = await request.json();
     
     // 验证群聊是否存在
-    const [checkRows] = await pool.execute<RowDataPacket[]>(
+    const [checkRows] = await executeQuery<RowDataPacket[]>(
       'SELECT id FROM chat_groups WHERE id = ?',
       [id]
     );
@@ -95,13 +95,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     values.push(id);
     
     // 执行更新
-    await pool.execute(
+    await executeQuery(
       `UPDATE chat_groups SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`,
       values
     );
     
     // 获取更新后的记录
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const [rows] = await executeQuery<RowDataPacket[]>(
       'SELECT * FROM chat_groups WHERE id = ?',
       [id]
     );
@@ -139,7 +139,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
     
     // 执行删除
-    await pool.execute(
+    await executeQuery(
       'DELETE FROM chat_groups WHERE id = ?',
       [id]
     );

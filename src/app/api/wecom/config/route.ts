@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 // 获取企业微信配置
 export async function GET() {
   try {
-    const [rows] = await pool.execute(
+    const [rows] = await executeQuery(
       'SELECT * FROM wecom_config LIMIT 1'
     );
 
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     // 使用 REPLACE INTO 确保只有一条记录，包含新的通知配置字段
-    await pool.execute(
+    await executeQuery(
       `REPLACE INTO wecom_config (
         id, corp_id, agent_id, secret, 
         member_notification_enabled, notification_recipients, 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     // 插入支出记录
-    const [result] = await pool.execute(
+    const [result] = await executeQuery(
       'INSERT INTO expense_records (expense_date, amount, notes, operator_id) VALUES (?, ?, ?, ?)',
       [
         data.expense_date,

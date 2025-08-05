@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 import { RowDataPacket } from 'mysql2';
 
 // 获取所有群聊
 export async function GET() {
   try {
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const [rows] = await executeQuery<RowDataPacket[]>(
       'SELECT * FROM chat_groups ORDER BY display_order ASC'
     );
 
@@ -41,14 +41,14 @@ export async function POST(request: Request) {
     // 如果没有指定display_order，获取最大的display_order并加1
     let display_order = body.display_order;
     if (!display_order) {
-      const [rows] = await pool.execute<RowDataPacket[]>(
+      const [rows] = await executeQuery<RowDataPacket[]>(
         'SELECT MAX(display_order) as max_order FROM chat_groups'
       );
       display_order = (rows[0]?.max_order || 0) + 1;
     }
 
     // 插入数据
-    const [result] = await pool.execute(
+    const [result] = await executeQuery(
       `INSERT INTO chat_groups 
        (name, qrcode_image, display_order, is_active, description, member_count) 
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const insertId = result.insertId;
     
     // 获取刚插入的记录
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const [rows] = await executeQuery<RowDataPacket[]>(
       'SELECT * FROM chat_groups WHERE id = ?',
       [insertId]
     );

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function GET(request: Request) {
   try {
@@ -54,10 +54,10 @@ export async function GET(request: Request) {
     params.push(pageSize, offset);
 
     // 执行主查询
-    const [records] = await pool.execute(query, params);
+    const [records] = await executeQuery(query, params);
 
     // 获取总记录数
-    const [countResult] = await pool.execute('SELECT FOUND_ROWS() as total');
+    const [countResult] = await executeQuery('SELECT FOUND_ROWS() as total');
     const total = countResult[0].total;
 
     return NextResponse.json({

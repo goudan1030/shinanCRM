@@ -5,7 +5,7 @@
  * 支持获取access_token、发送应用消息等
  */
 
-import pool from './mysql';
+import { executeQuery } from './database-netlify';
 
 /**
  * 企业微信配置接口
@@ -70,7 +70,7 @@ interface WecomMessage {
  */
 export async function getWecomConfig(): Promise<WecomConfig | null> {
   try {
-    const [rows] = await pool.execute('SELECT * FROM wecom_config LIMIT 1');
+    const [rows] = await executeQuery('SELECT * FROM wecom_config LIMIT 1');
     const configs = rows as WecomConfig[];
     
     if (configs.length === 0) {

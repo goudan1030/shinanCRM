@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 import * as cheerio from 'cheerio';
 import fetch from 'node-fetch';
 
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     // 保存到数据库
-    await pool.execute(
+    await executeQuery(
       `INSERT INTO articles (
         title, cover_url, content, summary, 
         link_url, is_hidden, is_top, sort_order

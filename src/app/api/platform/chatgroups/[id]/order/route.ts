@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/mysql';
+import { executeQuery } from '@/lib/database-netlify';
 import { RowDataPacket } from 'mysql2';
 
 // 调整群聊显示顺序
@@ -16,7 +16,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
     
     // 获取当前群聊信息
-    const [currentRows] = await pool.execute<RowDataPacket[]>(
+    const [currentRows] = await executeQuery<RowDataPacket[]>(
       'SELECT * FROM chat_groups WHERE id = ?',
       [id]
     );
@@ -36,7 +36,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       ? 'display_order < ? ORDER BY display_order DESC' 
       : 'display_order > ? ORDER BY display_order ASC';
     
-    const [adjacentRows] = await pool.execute<RowDataPacket[]>(
+    const [adjacentRows] = await executeQuery<RowDataPacket[]>(
       `SELECT * FROM chat_groups WHERE ${orderCondition} LIMIT 1`,
       [currentOrder]
     );
@@ -53,12 +53,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const adjacentOrder = adjacentGroup.display_order;
     
     // 交换两个群聊的顺序
-    await pool.execute(
+    await executeQuery(
       'UPDATE chat_groups SET display_order = ? WHERE id = ?',
       [adjacentOrder, id]
     );
     
-    await pool.execute(
+    await executeQuery(
       'UPDATE chat_groups SET display_order = ? WHERE id = ?',
       [currentOrder, adjacentGroup.id]
     );
