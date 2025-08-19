@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, ChevronDown, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, ChevronDown, ChevronRight, AppWindow } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { useState } from 'react';
@@ -67,6 +67,18 @@ const navigation: NavigationItem[] = [
     ]
   },
   {
+    name: 'APP管理',
+    href: '/app/config',
+    icon: AppWindow,
+    matchPaths: ['/app', '/app/config', '/app/version', '/app/recommend', '/app/refresh'],
+    children: [
+      { name: '基础配置', href: '/app/config' },
+      { name: '版本管理', href: '/app/version' },
+      { name: '推荐管理', href: '/app/recommend' },
+      { name: '刷新管理', href: '/app/refresh' }
+    ]
+  },
+  {
     name: '小程序管理',
     href: '/miniapp/config',
     icon: Smartphone,
@@ -101,6 +113,7 @@ const navigation: NavigationItem[] = [
 const menuRedirectMap = {
   '/finance': '/finance/income', // 收支管理 -> 收入管理
   '/platform': '/platform/banner', // 平台管理 -> Banner管理
+  '/app': '/app/config', // APP管理 -> 基础配置
   '/miniapp': '/miniapp/config', // 小程序管理 -> 基础配置
   '/wecom': '/wecom/config', // 企业微信 -> 基础配置
   '/settings': '/settings/profile', // 系统设置 -> 个人资料
