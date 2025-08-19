@@ -1,21 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/token';
+import { verifyToken, getTokenFromRequest } from '@/lib/token';
 import { executeQuery } from '@/lib/database-netlify';
 import { logger } from '@/lib/logger';
 import { sendSystemNoticePush } from '@/lib/push-service';
 
 export async function POST(request: NextRequest) {
   try {
-    // 验证管理员权限
-    const authResult = await verifyToken(request);
-    if (!authResult.success) {
+    // 获取Token
+    const token = getTokenFromRequest(request);
+    if (!token) {
       return NextResponse.json(
         { success: false, message: '未授权访问' },
         { status: 401 }
       );
     }
 
-    const user = authResult.user;
+    // 验证Token
+    const user = verifyToken(token);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Token无效' },
+        { status: 401 }
+      );
+    }
     if (user.role < 3) { // 需要管理员权限
       return NextResponse.json(
         { success: false, message: '权限不足，需要管理员权限' },
