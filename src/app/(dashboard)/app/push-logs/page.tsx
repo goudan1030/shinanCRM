@@ -213,8 +213,8 @@ export default function PushLogsPage() {
                   
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <div className="flex items-center space-x-4">
-                      <span>发送人：{log.created_by_name}</span>
-                      <span>目标：{getTargetUsersText(log.target_users)}</span>
+                      <span key="sender">发送人：{log.created_by_name}</span>
+                      <span key="target">目标：{getTargetUsersText(log.target_users)}</span>
                     </div>
                   </div>
                 </div>
