@@ -128,7 +128,7 @@ export default function PushLogsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
+            <div key="type-filter" className="space-y-2">
               <Label htmlFor="type">推送类型</Label>
               <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
                 <SelectTrigger>
@@ -142,7 +142,7 @@ export default function PushLogsPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div key="start-date-filter" className="space-y-2">
               <Label htmlFor="start_date">开始日期</Label>
               <Input
                 id="start_date"
@@ -152,7 +152,7 @@ export default function PushLogsPage() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div key="end-date-filter" className="space-y-2">
               <Label htmlFor="end_date">结束日期</Label>
               <Input
                 id="end_date"
@@ -162,7 +162,7 @@ export default function PushLogsPage() {
               />
             </div>
 
-            <div className="flex items-end space-x-2">
+            <div key="action-buttons" className="flex items-end space-x-2">
               <Button key="filter" onClick={handleFilter} disabled={loading}>
                 <Search className="h-4 w-4 mr-2" />
                 筛选
@@ -184,11 +184,11 @@ export default function PushLogsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex justify-center py-8">
+            <div key="loading" className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : logs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div key="empty" className="text-center py-8 text-gray-500">
               暂无推送记录
             </div>
           ) : (
