@@ -39,7 +39,7 @@ export default function PushLogsPage() {
   });
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
-    type: '',
+    type: 'all',
     start_date: '',
     end_date: ''
   });
@@ -51,10 +51,14 @@ export default function PushLogsPage() {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: pagination.limit.toString(),
-        ...(filters.type && { type: filters.type }),
         ...(filters.start_date && { start_date: filters.start_date }),
         ...(filters.end_date && { end_date: filters.end_date })
       });
+
+      // 只有当类型不是"all"时才添加到参数中
+      if (filters.type && filters.type !== 'all') {
+        params.append('type', filters.type);
+      }
 
       console.log('Fetching logs with params:', Object.fromEntries(params));
 
@@ -92,7 +96,7 @@ export default function PushLogsPage() {
 
   const handleClearFilters = () => {
     setFilters({
-      type: '',
+      type: 'all',
       start_date: '',
       end_date: ''
     });
@@ -131,7 +135,7 @@ export default function PushLogsPage() {
                   <SelectValue placeholder="选择类型" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">全部类型</SelectItem>
+                  <SelectItem value="all">全部类型</SelectItem>
                   <SelectItem value="announcement">公告推送</SelectItem>
                   <SelectItem value="system_notice">系统通知</SelectItem>
                 </SelectContent>
