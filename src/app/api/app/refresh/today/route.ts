@@ -3,9 +3,6 @@ import { executeQuery } from '@/lib/database-netlify';
 
 export async function POST(request: NextRequest) {
   try {
-    // 随机选择100位用户并更新他们的refresh_time
-    const currentTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    
     // 首先获取所有非删除的会员ID
     const [allMembers] = await executeQuery(
       'SELECT id FROM members WHERE deleted = 0 ORDER BY RAND() LIMIT 100'
@@ -20,19 +17,41 @@ export async function POST(request: NextRequest) {
 
     const memberIds = allMembers.map((member: any) => member.id);
     
-    // 批量更新这些会员的refresh_time
-    const placeholders = memberIds.map(() => '?').join(',');
-    const updateQuery = `UPDATE members SET refresh_time = ?, updated_at = NOW() WHERE id IN (${placeholders})`;
+    // 为每个用户生成4小时内随机的刷新时间
+    const now = new Date();
+    const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000); // 4小时前
     
-    await executeQuery(updateQuery, [currentTime, ...memberIds]);
+    // 批量更新每个会员的refresh_time为随机时间
+    let updatedCount = 0;
+    
+    for (const memberId of memberIds) {
+      // 生成4小时内的随机时间
+      const randomTime = new Date(
+        fourHoursAgo.getTime() + Math.random() * (now.getTime() - fourHoursAgo.getTime())
+      );
+      
+      // 格式化为MySQL datetime格式
+      const randomTimeString = randomTime.toISOString().slice(0, 19).replace('T', ' ');
+      
+      // 更新单个用户的刷新时间
+      await executeQuery(
+        'UPDATE members SET refresh_time = ?, updated_at = NOW() WHERE id = ?',
+        [randomTimeString, memberId]
+      );
+      
+      updatedCount++;
+    }
 
     return NextResponse.json({
       success: true,
-      count: memberIds.length,
-      message: `成功刷新 ${memberIds.length} 位会员的刷新时间`,
+      count: updatedCount,
+      message: `成功刷新 ${updatedCount} 位会员的刷新时间（4小时内随机分布）`,
       data: {
-        refreshTime: currentTime,
-        memberCount: memberIds.length
+        refreshTimeRange: {
+          start: fourHoursAgo.toISOString().slice(0, 19).replace('T', ' '),
+          end: now.toISOString().slice(0, 19).replace('T', ' ')
+        },
+        memberCount: updatedCount
       }
     });
 

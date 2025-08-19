@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { useState, useEffect } from 'react';
-import { RefreshCw, User, Phone, MapPin, Calendar, Eye, Clock, Users } from 'lucide-react';
+import { RefreshCw, User, Phone, MapPin, Calendar, Eye, Clock, Users, Info } from 'lucide-react';
 
 interface RefreshedMember {
   id: string;
@@ -31,6 +31,7 @@ export default function AppRefreshPage() {
   const [refreshedMembers, setRefreshedMembers] = useState<RefreshedMember[]>([]);
   const [totalRefreshed, setTotalRefreshed] = useState(0);
   const [lastRefreshTime, setLastRefreshTime] = useState<string | null>(null);
+  const [refreshTimeRange, setRefreshTimeRange] = useState<{start: string, end: string} | null>(null);
 
   // 获取今日刷新的会员列表
   const fetchRefreshedMembers = async () => {
@@ -76,8 +77,14 @@ export default function AppRefreshPage() {
       if (data.success) {
         toast({
           title: '刷新成功',
-          description: `已成功刷新 ${data.count} 位会员的刷新时间`
+          description: data.message || `已成功刷新 ${data.count} 位会员的刷新时间（4小时内随机分布）`
         });
+        
+        // 保存时间范围信息
+        if (data.data?.refreshTimeRange) {
+          setRefreshTimeRange(data.data.refreshTimeRange);
+        }
+        
         // 刷新列表
         fetchRefreshedMembers();
       } else {
@@ -153,6 +160,27 @@ export default function AppRefreshPage() {
     }
   };
 
+  // 格式化时间范围
+  const formatTimeRange = (start: string, end: string) => {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    
+    return {
+      start: startDate.toLocaleString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      end: endDate.toLocaleString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+  };
+
   // 检查是否是今天刷新的
   const isTodayRefresh = (refreshTime: string) => {
     const refreshDate = new Date(refreshTime);
@@ -171,7 +199,7 @@ export default function AppRefreshPage() {
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">APP刷新管理</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            管理移动端应用的会员刷新策略
+            管理移动端应用的会员刷新策略，每次刷新将随机选择100名用户并分配4小时内随机的刷新时间
           </p>
         </div>
         <Button 
@@ -185,8 +213,26 @@ export default function AppRefreshPage() {
         </Button>
       </div>
 
+      {/* 刷新说明卡片 */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex items-start space-x-3">
+            <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="space-y-2">
+              <h3 className="font-semibold text-blue-900">刷新策略说明</h3>
+              <div className="text-sm text-blue-800 space-y-1">
+                <p>• 每次点击"今日刷新"将随机选择100名活跃会员</p>
+                <p>• 每个会员的刷新时间将在过去4小时内随机分配</p>
+                <p>• 这样可以模拟真实的用户活跃时间分布</p>
+                <p>• 避免所有用户同时刷新造成的服务器压力</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 刷新统计卡片 */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4 sm:pt-6">
             <div className="flex items-center space-x-2">
@@ -226,6 +272,23 @@ export default function AppRefreshPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-purple-600" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">时间范围</p>
+                <p className="text-xs font-bold">
+                  {refreshTimeRange ? 
+                    `${formatTimeRange(refreshTimeRange.start, refreshTimeRange.end).start} - ${formatTimeRange(refreshTimeRange.start, refreshTimeRange.end).end}` : 
+                    '4小时内随机'
+                  }
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 刷新会员列表 */}
@@ -233,7 +296,7 @@ export default function AppRefreshPage() {
         <CardHeader className="pb-3 sm:pb-6">
           <CardTitle className="text-lg sm:text-xl">今日刷新列表</CardTitle>
           <CardDescription className="text-sm">
-            显示今日已刷新的会员列表
+            显示今日已刷新的会员列表，每个会员的刷新时间在4小时内随机分布
           </CardDescription>
         </CardHeader>
         <CardContent className="px-3 sm:px-6">
