@@ -70,11 +70,15 @@ const navigation: NavigationItem[] = [
     name: 'APP管理',
     href: '/app/config',
     icon: AppWindow,
-    matchPaths: ['/app', '/app/config', '/app/version', '/app/recommend', '/app/refresh'],
+    matchPaths: ['/app', '/app/config', '/app/version', '/app/recommend', '/app/announcement', '/app/notification', '/app/push-logs', '/app/push-config', '/app/refresh'],
     children: [
       { name: '基础配置', href: '/app/config' },
       { name: '版本管理', href: '/app/version' },
       { name: '推荐管理', href: '/app/recommend' },
+      { name: '公告推送', href: '/app/announcement' },
+      { name: '通知推送', href: '/app/notification' },
+      { name: '推送日志', href: '/app/push-logs' },
+      { name: '推送配置', href: '/app/push-config' },
       { name: '刷新管理', href: '/app/refresh' }
     ]
   },

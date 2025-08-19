@@ -50,7 +50,9 @@
     "fix:phpmyadmin": "node scripts/fix-phpmyadmin-tempdir.js",
     "setup:phpmyadmin": "node scripts/setup-phpmyadmin-pmadb.js",
     "fix:phpmyadmin:complete": "node scripts/fix-phpmyadmin-complete.js",
-    "fix:database-backup": "node scripts/fix-database-backup.js"
+    "fix:database-backup": "node scripts/fix-database-backup.js",
+    "setup:push-tables": "node scripts/setup-push-tables.js",
+    "test:push-api": "node scripts/test-push-api.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

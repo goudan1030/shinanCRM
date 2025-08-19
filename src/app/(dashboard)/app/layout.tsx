@@ -49,6 +49,38 @@ export default function AppLayout({
               <span className="text-[13px]">推荐管理</span>
             </Link>
             <Link
+              href="/app/announcement"
+              className={`flex items-center rounded-md py-2 px-3 ${
+                pathname === '/app/announcement' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+              }`}
+            >
+              <span className="text-[13px]">公告推送</span>
+            </Link>
+            <Link
+              href="/app/notification"
+              className={`flex items-center rounded-md py-2 px-3 ${
+                pathname === '/app/notification' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+              }`}
+            >
+              <span className="text-[13px]">通知推送</span>
+            </Link>
+            <Link
+              href="/app/push-logs"
+              className={`flex items-center rounded-md py-2 px-3 ${
+                pathname === '/app/push-logs' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+              }`}
+            >
+              <span className="text-[13px]">推送日志</span>
+            </Link>
+            <Link
+              href="/app/push-config"
+              className={`flex items-center rounded-md py-2 px-3 ${
+                pathname === '/app/push-config' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+              }`}
+            >
+              <span className="text-[13px]">推送配置</span>
+            </Link>
+            <Link
               href="/app/refresh"
               className={`flex items-center rounded-md py-2 px-3 ${
                 pathname === '/app/refresh' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
