@@ -163,11 +163,11 @@ export default function PushLogsPage() {
             </div>
 
             <div className="flex items-end space-x-2">
-              <Button onClick={handleFilter} disabled={loading}>
+              <Button key="filter" onClick={handleFilter} disabled={loading}>
                 <Search className="h-4 w-4 mr-2" />
                 筛选
               </Button>
-              <Button variant="outline" onClick={handleClearFilters} disabled={loading}>
+              <Button key="clear" variant="outline" onClick={handleClearFilters} disabled={loading}>
                 清空
               </Button>
             </div>
@@ -230,6 +230,7 @@ export default function PushLogsPage() {
               </div>
               <div className="flex space-x-2">
                 <Button
+                  key="prev"
                   variant="outline"
                   size="sm"
                   onClick={() => fetchLogs(pagination.page - 1)}
@@ -238,6 +239,7 @@ export default function PushLogsPage() {
                   上一页
                 </Button>
                 <Button
+                  key="next"
                   variant="outline"
                   size="sm"
                   onClick={() => fetchLogs(pagination.page + 1)}
