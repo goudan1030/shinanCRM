@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { History, Search, Filter, Calendar } from 'lucide-react';
+import { History, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface PushLog {
@@ -55,12 +55,9 @@ export default function PushLogsPage() {
         ...(filters.end_date && { end_date: filters.end_date })
       });
 
-      // 只有当类型不是"all"时才添加到参数中
       if (filters.type && filters.type !== 'all') {
         params.append('type', filters.type);
       }
-
-      console.log('Fetching logs with params:', Object.fromEntries(params));
 
       const response = await fetch(`/api/messages/push/logs?${params}`);
       const result = await response.json();
@@ -112,6 +109,33 @@ export default function PushLogsPage() {
     return `${targetUsers.length} 个指定用户`;
   };
 
+  const renderLogItem = (log: PushLog) => (
+    <div key={log.id} className="border rounded-lg p-4 space-y-3">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center space-x-2">
+          <Badge variant={log.type === 'announcement' ? 'default' : 'secondary'}>
+            {log.type_text}
+          </Badge>
+          <h3 className="font-medium">{log.title}</h3>
+        </div>
+        <div className="text-sm text-gray-500">
+          {formatDate(log.created_at)}
+        </div>
+      </div>
+      
+      <div className="text-gray-600 text-sm">
+        {log.content}
+      </div>
+      
+      <div className="flex items-center justify-between text-sm text-gray-500">
+        <div className="flex items-center space-x-4">
+          <span>发送人：{log.created_by_name}</span>
+          <span>目标：{getTargetUsersText(log.target_users)}</span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center space-x-2">
@@ -128,7 +152,7 @@ export default function PushLogsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div key="type-filter" className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="type">推送类型</Label>
               <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
                 <SelectTrigger>
@@ -142,7 +166,7 @@ export default function PushLogsPage() {
               </Select>
             </div>
 
-            <div key="start-date-filter" className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="start_date">开始日期</Label>
               <Input
                 id="start_date"
@@ -152,7 +176,7 @@ export default function PushLogsPage() {
               />
             </div>
 
-            <div key="end-date-filter" className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="end_date">结束日期</Label>
               <Input
                 id="end_date"
@@ -162,12 +186,12 @@ export default function PushLogsPage() {
               />
             </div>
 
-            <div key="action-buttons" className="flex items-end space-x-2">
-              <Button key="filter" onClick={handleFilter} disabled={loading}>
+            <div className="flex items-end space-x-2">
+              <Button onClick={handleFilter} disabled={loading}>
                 <Search className="h-4 w-4 mr-2" />
                 筛选
               </Button>
-              <Button key="clear" variant="outline" onClick={handleClearFilters} disabled={loading}>
+              <Button variant="outline" onClick={handleClearFilters} disabled={loading}>
                 清空
               </Button>
             </div>
@@ -184,45 +208,19 @@ export default function PushLogsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div key="loading" className="flex justify-center py-8">
+            <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : logs.length === 0 ? (
-            <div key="empty" className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500">
               暂无推送记录
             </div>
           ) : (
             <div className="space-y-4">
-              {logs.map((log) => (
-                <div key={log.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={log.type === 'announcement' ? 'default' : 'secondary'}>
-                        {log.type_text}
-                      </Badge>
-                      <h3 className="font-medium">{log.title}</h3>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {formatDate(log.created_at)}
-                    </div>
-                  </div>
-                  
-                  <div className="text-gray-600 text-sm">
-                    {log.content}
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center space-x-4">
-                      <span key="sender">发送人：{log.created_by_name}</span>
-                      <span key="target">目标：{getTargetUsersText(log.target_users)}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {logs.map(renderLogItem)}
             </div>
           )}
 
-          {/* 分页 */}
           {pagination.total_pages > 1 && (
             <div className="flex items-center justify-between mt-6">
               <div className="text-sm text-gray-500">
@@ -230,7 +228,6 @@ export default function PushLogsPage() {
               </div>
               <div className="flex space-x-2">
                 <Button
-                  key="prev"
                   variant="outline"
                   size="sm"
                   onClick={() => fetchLogs(pagination.page - 1)}
@@ -239,7 +236,6 @@ export default function PushLogsPage() {
                   上一页
                 </Button>
                 <Button
-                  key="next"
                   variant="outline"
                   size="sm"
                   onClick={() => fetchLogs(pagination.page + 1)}
