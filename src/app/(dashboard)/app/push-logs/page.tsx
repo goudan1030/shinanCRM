@@ -113,8 +113,16 @@ export default function PushLogsPage() {
   };
 
   const getTargetUsersText = (targetUsers: number[] | null) => {
-    if (!targetUsers) return '所有用户';
-    return `${targetUsers.length} 个指定用户`;
+    if (!targetUsers || targetUsers.length === 0) {
+      return '所有用户';
+    }
+    
+    // 检查targetUsers是否是有效的数组
+    if (Array.isArray(targetUsers) && targetUsers.length > 0) {
+      return `${targetUsers.length} 个指定用户`;
+    }
+    
+    return '所有用户';
   };
 
   const renderLogItem = (log: PushLog) => (

@@ -94,25 +94,37 @@ export async function GET(request: NextRequest) {
     const logs = logsResult as any[];
 
     // 格式化数据
-    const formattedLogs = logs.map((log: any) => ({
-      id: log.id || 0,
-      type: log.type || 'system_notice',
-      type_text: log.type === 'announcement' ? '公告推送' : '系统通知',
-      title: log.title || '无标题',
-      content: log.content || '无内容',
-      target_users: log.target_users && log.target_users !== 'null' && log.target_users !== '' 
-        ? (() => {
-            try {
-              return JSON.parse(log.target_users);
-            } catch (e) {
-              return null;
-            }
-          })()
-        : null,
-      created_by: log.created_by || 0,
-      created_by_name: log.created_by_name || '系统',
-      created_at: log.created_at || new Date().toISOString()
-    }));
+    const formattedLogs = logs.map((log: any) => {
+      // 解析target_users
+      let targetUsers = null;
+      if (log.target_users && log.target_users !== 'null' && log.target_users !== '') {
+        try {
+          const parsed = JSON.parse(log.target_users);
+          // 确保解析后是数组
+          if (Array.isArray(parsed)) {
+            targetUsers = parsed;
+          } else {
+            console.log('target_users不是数组:', parsed);
+            targetUsers = null;
+          }
+        } catch (e) {
+          console.log('解析target_users失败:', log.target_users, e);
+          targetUsers = null;
+        }
+      }
+
+      return {
+        id: log.id || 0,
+        type: log.type || 'system_notice',
+        type_text: log.type === 'announcement' ? '公告推送' : '系统通知',
+        title: log.title || '无标题',
+        content: log.content || '无内容',
+        target_users: targetUsers,
+        created_by: log.created_by || 0,
+        created_by_name: log.created_by_name || '系统',
+        created_at: log.created_at || new Date().toISOString()
+      };
+    });
 
     const result = {
       success: true,
