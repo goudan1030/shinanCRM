@@ -161,14 +161,47 @@ class iOSPushService {
    */
   private async getDeviceTokens(userIds: number[]): Promise<string[]> {
     try {
-      const query = `
-        SELECT device_token 
-        FROM device_tokens 
-        WHERE user_id IN (?) AND platform = 'ios' AND is_active = 1
-      `;
+      // 修复：通过members.id找到对应的users.id，再查询设备令牌
+      // 注意：当只有一个用户时，使用 = 查询；多个用户时，使用 IN 查询
+      let query: string;
+      let params: any[];
       
-      const result = await executeQuery(query, [userIds]);
-      return result.map((row: any) => row.device_token);
+      if (userIds.length === 1) {
+        query = `
+          SELECT dt.device_token 
+          FROM device_tokens dt
+          INNER JOIN users u ON dt.user_id = u.id
+          INNER JOIN members m ON u.id = m.user_id
+          WHERE m.id = ? AND dt.platform = 'ios' AND dt.is_active = 1
+        `;
+        params = [userIds[0]];
+      } else {
+        query = `
+          SELECT dt.device_token 
+          FROM device_tokens dt
+          INNER JOIN users u ON dt.user_id = u.id
+          INNER JOIN members m ON u.id = m.user_id
+          WHERE m.id IN (${userIds.map(() => '?').join(',')}) AND dt.platform = 'ios' AND dt.is_active = 1
+        `;
+        params = userIds;
+      }
+      
+      console.log(`查询设备令牌，members.id: ${userIds.join(',')}`);
+      console.log(`SQL查询: ${query.replace(/\s+/g, ' ').trim()}`);
+      console.log(`参数:`, params);
+      
+      const [result, fields] = await executeQuery(query, params);
+      console.log(`设备令牌查询结果:`, result);
+      
+      // 正确处理executeQuery的返回格式：[dataRows, fields]
+      if (Array.isArray(result) && result.length > 0) {
+        const deviceTokens = result.map((row: any) => row.device_token);
+        console.log(`找到 ${deviceTokens.length} 个设备令牌:`, deviceTokens);
+        return deviceTokens;
+      }
+      
+      console.log('没有找到设备令牌');
+      return [];
     } catch (error) {
       logger.error('获取设备令牌失败', { error: error instanceof Error ? error.message : String(error) });
       return [];
@@ -186,8 +219,18 @@ class iOSPushService {
         WHERE platform = 'ios' AND is_active = 1
       `;
       
-      const result = await executeQuery(query);
-      return result.map((row: any) => row.device_token);
+      const [result, fields] = await executeQuery(query);
+      console.log(`所有设备令牌查询结果:`, result);
+      
+      // 正确处理executeQuery的返回格式：[dataRows, fields]
+      if (Array.isArray(result) && result.length > 0) {
+        const deviceTokens = result.map((row: any) => row.device_token);
+        console.log(`找到 ${deviceTokens.length} 个设备令牌`);
+        return deviceTokens;
+      }
+      
+      console.log('没有找到设备令牌');
+      return [];
     } catch (error) {
       logger.error('获取所有设备令牌失败', { error: error instanceof Error ? error.message : String(error) });
       return [];
