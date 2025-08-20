@@ -26,7 +26,7 @@ export async function POST(
 
     // 查找会员
     const [memberRows] = await executeQuery(
-      'SELECT id, status, nickname, member_no FROM members WHERE id = ?',
+      'SELECT id, status, nickname, member_no, type FROM members WHERE id = ?',
       [memberId]
     );
 
@@ -49,26 +49,33 @@ export async function POST(
       );
     }
 
-    // 开始事务
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
+    // 更新会员状态
+    await executeQuery(
+      'UPDATE members SET status = "REVOKED", updated_at = NOW() WHERE id = ?',
+      [memberId]
+    );
 
-    try {
-      // 更新会员状态
-      await connection.execute(
-        'UPDATE members SET status = "REVOKED", updated_at = NOW() WHERE id = ?',
-        [memberId]
-      );
+    // 记录撤销日志
+    await executeQuery(
+      'INSERT INTO member_type_logs (member_id, old_type, new_type, notes, created_at) VALUES (?, ?, ?, ?, NOW())',
+      [
+        memberId,
+        member.type || 'NORMAL',
+        'REVOKED',
+        data.reason || data.notes || '管理员撤销'
+      ]
+    );
 
-      await connection.commit();
+    return NextResponse.json({ 
+      message: '会员撤销成功',
+      member: {
+        id: member.id,
+        member_no: member.member_no,
+        nickname: member.nickname,
+        status: 'REVOKED'
+      }
+    });
 
-      return NextResponse.json({ message: '会员撤销成功' });
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
-    }
   } catch (error) {
     console.error('会员撤销失败:', error);
     return NextResponse.json(

@@ -126,12 +126,12 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const id = params.id;
     
     // 验证群聊是否存在
-    const [checkRows] = await pool.execute<RowDataPacket[]>(
+    const [checkRows] = await executeQuery(
       'SELECT id FROM chat_groups WHERE id = ?',
       [id]
     );
 
-    if (checkRows.length === 0) {
+    if ((checkRows as any[]).length === 0) {
       return NextResponse.json(
         { success: false, error: '群聊不存在' },
         { status: 404 }

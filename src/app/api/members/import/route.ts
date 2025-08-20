@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
     for (const member of members) {
       try {
         // 验证必需字段
-        if (!member.name || !member.phone) {
-          errors.push(`会员 ${member.name || '未知'} 缺少必需信息`);
+        if (!member.nickname || !member.phone) {
+          errors.push(`会员 ${member.nickname || '未知'} 缺少必需信息`);
           errorCount++;
           continue;
         }
@@ -45,25 +45,25 @@ export async function POST(request: NextRequest) {
         // 插入会员数据
         await executeQuery(
           `INSERT INTO members (
-            member_no, name, gender, age, phone, city, 
-            member_type, status, created_at, updated_at
+            member_no, nickname, gender, birth_year, phone, city, 
+            type, status, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
           [
             memberNo,
-            member.name,
+            member.nickname,
             member.gender || 'unknown',
-            member.age || null,
+            member.birth_year || null,
             member.phone,
             member.city || '',
-            member.member_type || 'normal',
-            member.status || 'active'
+            member.type || 'NORMAL',
+            member.status || 'ACTIVE'
           ]
         );
 
         successCount++;
       } catch (error) {
         console.error(`导入会员失败:`, error);
-        errors.push(`会员 ${member.name} 导入失败`);
+        errors.push(`会员 ${member.nickname} 导入失败`);
         errorCount++;
       }
     }

@@ -42,6 +42,8 @@ const publicRoutes = [
   '/api/auth/session',
   '/api/debug/db-test',  // 数据库调试API
   '/api/middleware-debug',  // middleware调试API
+  // 推送相关API - 不需要认证
+  '/api/messages/push/status', // 推送状态查询API
   // 企业微信相关API - 不需要认证
   '/api/wecom/message', // 企业微信消息接收URL
   '/api/wecom/verify',  // 企业微信验证URL

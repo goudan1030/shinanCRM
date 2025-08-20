@@ -999,6 +999,12 @@ function MembersPageContent() {
       // 复制到剪贴板
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         try {
+          // 检查文档是否处于焦点状态
+          if (!document.hasFocus()) {
+            // 如果文档没有焦点，直接使用备用方案
+            throw new Error('Document is not focused');
+          }
+          
           // 添加延时和更详细的错误处理
           await Promise.race([
             navigator.clipboard.writeText(info.join('\n')),
@@ -1027,7 +1033,11 @@ function MembersPageContent() {
             textArea.style.position = 'fixed';
             textArea.style.left = '-999999px';
             textArea.style.top = '-999999px';
+            textArea.style.opacity = '0';
+            textArea.style.pointerEvents = 'none';
             document.body.appendChild(textArea);
+            
+            // 尝试聚焦到textarea
             textArea.focus();
             textArea.select();
             
@@ -1050,9 +1060,15 @@ function MembersPageContent() {
           } catch (fallbackError) {
             console.error('备用复制方案失败:', fallbackError);
             
-            const errorMessage = clipboardError.message.includes('timeout') 
-              ? '复制超时，请重试' 
-              : '复制失败，可能是权限问题或内容过长';
+            // 根据错误类型提供不同的错误信息
+            let errorMessage = '复制失败，请手动选择文本复制';
+            if (clipboardError.message.includes('timeout')) {
+              errorMessage = '复制超时，请重试';
+            } else if (clipboardError.message.includes('Document is not focused')) {
+              errorMessage = '页面失去焦点，已使用备用方案复制';
+            } else if (clipboardError.message.includes('NotAllowedError')) {
+              errorMessage = '复制权限被拒绝，已使用备用方案复制';
+            }
             
             if (!showMobileToast(errorMessage, 'error')) {
               toast({
@@ -1248,14 +1264,14 @@ function MembersPageContent() {
     }
   }, [toast, showMobileToast]);
 
-  // 生成二维码名片
+  // 生成会员海报
   const generateQRCodeCard = useCallback(async (member: Member) => {
     setQrCodeGenerating(true);
     
     try {
       toast({
         title: "生成中",
-        description: "正在生成二维码名片..."
+        description: "正在生成会员海报..."
       });
 
       // 构建会员链接
@@ -1341,11 +1357,11 @@ function MembersPageContent() {
       
       toast({
         title: "生成成功",
-        description: "二维码名片已生成，可以预览和下载"
+        description: "会员海报已生成，可以预览和下载"
       });
 
     } catch (error) {
-      console.error('生成二维码名片失败:', error);
+              console.error('生成会员海报失败:', error);
       toast({
         variant: 'destructive',
         title: "生成失败",
@@ -1361,7 +1377,7 @@ function MembersPageContent() {
     if (!qrCodePreviewUrl || !selectedQrCodeMember) return;
 
     const link = document.createElement('a');
-    link.download = `${selectedQrCodeMember.member_no}_二维码名片.png`;
+            link.download = `${selectedQrCodeMember.member_no}_会员海报.png`;
     link.href = qrCodePreviewUrl;
     document.body.appendChild(link);
     link.click();
@@ -1369,7 +1385,7 @@ function MembersPageContent() {
 
     toast({
       title: "下载成功",
-      description: "二维码名片已保存到本地"
+              description: "会员海报已保存到本地"
     });
   }, [qrCodePreviewUrl, selectedQrCodeMember, toast]);
 
@@ -1411,11 +1427,11 @@ function MembersPageContent() {
 
   return (
     <div className="space-y-4">
-      {/* 二维码生成对话框 */}
+      {/* 海报生成对话框 */}
       <Dialog open={qrCodeDialogOpen} onOpenChange={handleQRCodeDialogClose}>
         <DialogContent className="w-[90%] max-w-sm mx-auto">
           <DialogHeader>
-            <DialogTitle>二维码名片预览</DialogTitle>
+            <DialogTitle>会员海报预览</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
@@ -1423,7 +1439,7 @@ function MembersPageContent() {
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                  <p className="text-sm text-muted-foreground">正在生成二维码名片...</p>
+                  <p className="text-sm text-muted-foreground">正在生成会员海报...</p>
                 </div>
               </div>
             ) : qrCodePreviewUrl ? (
@@ -1431,7 +1447,7 @@ function MembersPageContent() {
                 <div className="border rounded-lg overflow-hidden">
                   <img 
                     src={qrCodePreviewUrl} 
-                    alt="二维码名片预览" 
+                    alt="会员海报预览" 
                     className="w-full h-auto"
                   />
                 </div>
@@ -1445,7 +1461,7 @@ function MembersPageContent() {
               </div>
             ) : (
               <div className="flex items-center justify-center h-64">
-                <p className="text-sm text-muted-foreground">准备生成二维码名片...</p>
+                <p className="text-sm text-muted-foreground">准备生成会员海报...</p>
               </div>
             )}
           </div>
@@ -2199,7 +2215,7 @@ function MembersPageContent() {
                       className="h-8 px-3 text-xs"
                       onClick={() => handleQRCodeClick(member)}
                     >
-                      二维码
+                      海报
                     </Button>
                     <Button
                       variant="outline"
@@ -2460,7 +2476,7 @@ function MembersPageContent() {
                                 onClick={() => handleQRCodeClick(member)}
                               >
                                 <QrCode className="w-3 h-3 mr-1" />
-                                二维码
+                                海报
                               </Button>
                               <div className="h-4 border-r border-gray-300"></div>
                               <Button

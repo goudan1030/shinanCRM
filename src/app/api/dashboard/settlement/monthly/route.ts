@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '../../../../../lib/mysql';
-import { RowDataPacket } from 'mysql2';
+import { executeQuery } from '@/lib/database-netlify';
 
 export async function GET() {
   try {
@@ -21,13 +20,13 @@ export async function GET() {
     // 检查是否有settlement_records表
     try {
       // 查询settlement_records表中当月的结算记录
-      const [results] = await pool.query<RowDataPacket[]>(`
+      const [results] = await executeQuery(`
         SELECT SUM(amount) as total_amount 
         FROM settlement_records 
         WHERE settlement_date BETWEEN ? AND ?
       `, [firstDayStr, lastDayStr]);
       
-      const settledAmount = results[0]?.total_amount || 0;
+      const settledAmount = (results as any[])[0]?.total_amount || 0;
       console.log('当月已结算金额:', settledAmount);
       
       return NextResponse.json({ amount: settledAmount });
@@ -40,7 +39,7 @@ export async function GET() {
   } catch (error) {
     console.error('获取当月已结算金额失败:', error);
     return NextResponse.json(
-      { error: '获取当月已结算金额失败', details: error.message },
+      { error: '获取当月已结算金额失败', details: error instanceof Error ? error.message : '未知错误' },
       { status: 500 }
     );
   }

@@ -1,31 +1,23 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 
-// 会员匹配
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    // 验证是否已登录
-    if (!session?.user) {
+    const { memberId1, memberId2, notes } = await request.json();
+    
+    // 获取当前用户ID
+    const userId = request.headers.get('x-user-id');
+    
+    if (!userId) {
       return NextResponse.json(
-        { error: '未授权' },
+        { error: '未获取到操作人信息' },
         { status: 401 }
       );
     }
 
-    const userId = (session.user as any).id;
-    const { memberId1, memberId2, notes } = await request.json() as {
-      memberId1: string,
-      memberId2: string,
-      notes?: string
-    };
-
-    // 验证参数
     if (!memberId1 || !memberId2) {
       return NextResponse.json(
-        { error: '缺少必要参数' },
+        { error: '请选择两个会员进行匹配' },
         { status: 400 }
       );
     }
@@ -80,47 +72,47 @@ export async function POST(request: Request) {
       );
     }
 
-    // 开始事务
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
+    // 创建匹配记录
+    const [matchResult] = await executeQuery(
+      `INSERT INTO member_matches (
+        member_id1, member_id2, match_time, status, notes, created_at, created_by
+      ) VALUES (?, ?, NOW(), 'ACTIVE', ?, NOW(), ?)`,
+      [memberId1, memberId2, notes || null, userId]
+    );
 
-    try {
-      // 创建匹配记录
-      const [matchResult] = await connection.execute(
-        `INSERT INTO member_matches (
-          member_id1, member_id2, match_time, status, notes, created_at, created_by
-        ) VALUES (?, ?, NOW(), 'ACTIVE', ?, NOW(), ?)`,
-        [memberId1, memberId2, notes || null, userId]
-      );
+    const matchId = (matchResult as any).insertId;
 
-      const matchId = (matchResult as any).insertId;
+    // 减少两个会员的匹配次数
+    await executeQuery(
+      'UPDATE members SET remaining_matches = remaining_matches - 1, updated_at = NOW() WHERE id = ?',
+      [memberId1]
+    );
 
-      // 减少两个会员的匹配次数
-      await connection.execute(
-        'UPDATE members SET remaining_matches = remaining_matches - 1, updated_at = NOW() WHERE id = ?',
-        [memberId1]
-      );
+    await executeQuery(
+      'UPDATE members SET remaining_matches = remaining_matches - 1, updated_at = NOW() WHERE id = ?',
+      [memberId2]
+    );
 
-      await connection.execute(
-        'UPDATE members SET remaining_matches = remaining_matches - 1, updated_at = NOW() WHERE id = ?',
-        [memberId2]
-      );
+    return NextResponse.json({
+      success: true,
+      message: '匹配成功',
+      matchId: matchId,
+      match: {
+        member1: {
+          id: member1.id,
+          member_no: member1.member_no,
+          nickname: member1.nickname,
+          remaining_matches: member1.remaining_matches - 1
+        },
+        member2: {
+          id: member2.id,
+          member_no: member2.member_no,
+          nickname: member2.nickname,
+          remaining_matches: member2.remaining_matches - 1
+        }
+      }
+    });
 
-      // 提交事务
-      await connection.commit();
-
-      return NextResponse.json({
-        success: true,
-        message: '匹配成功',
-        matchId: matchId
-      });
-    } catch (error) {
-      // 回滚事务
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
-    }
   } catch (error) {
     console.error('会员匹配失败:', error);
     return NextResponse.json(

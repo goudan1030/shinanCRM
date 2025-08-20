@@ -101,7 +101,15 @@ export default function PushLogsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('zh-CN');
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      return date.toLocaleString('zh-CN');
+    } catch (error) {
+      return 'Invalid Date';
+    }
   };
 
   const getTargetUsersText = (targetUsers: number[] | null) => {
@@ -110,13 +118,13 @@ export default function PushLogsPage() {
   };
 
   const renderLogItem = (log: PushLog) => (
-    <div key={log.id} className="border rounded-lg p-4 space-y-3">
+    <div className="border rounded-lg p-4 space-y-3">
       <div className="flex items-start justify-between">
         <div className="flex items-center space-x-2">
           <Badge variant={log.type === 'announcement' ? 'default' : 'secondary'}>
-            {log.type_text}
+            {log.type_text || '系统通知'}
           </Badge>
-          <h3 className="font-medium">{log.title}</h3>
+          <h3 className="font-medium">{log.title || '无标题'}</h3>
         </div>
         <div className="text-sm text-gray-500">
           {formatDate(log.created_at)}
@@ -124,12 +132,12 @@ export default function PushLogsPage() {
       </div>
       
       <div className="text-gray-600 text-sm">
-        {log.content}
+        {log.content || '无内容'}
       </div>
       
       <div className="flex items-center justify-between text-sm text-gray-500">
         <div className="flex items-center space-x-4">
-          <span>发送人：{log.created_by_name}</span>
+          <span>发送人：{log.created_by_name || '系统'}</span>
           <span>目标：{getTargetUsersText(log.target_users)}</span>
         </div>
       </div>
@@ -217,7 +225,32 @@ export default function PushLogsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {logs.map(renderLogItem)}
+              {logs.map((log) => (
+                <div key={log.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant={log.type === 'announcement' ? 'default' : 'secondary'}>
+                        {log.type_text || '系统通知'}
+                      </Badge>
+                      <h3 className="font-medium">{log.title || '无标题'}</h3>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {formatDate(log.created_at)}
+                    </div>
+                  </div>
+                  
+                  <div className="text-gray-600 text-sm">
+                    {log.content || '无内容'}
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <div className="flex items-center space-x-4">
+                      <span>发送人：{log.created_by_name || '系统'}</span>
+                      <span>目标：{getTargetUsersText(log.target_users)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
