@@ -435,17 +435,29 @@ class iOSPushService {
       return false;
     }
     
-    // 检查私钥格式是否正确（APNs需要EC密钥，支持PKCS8和SEC1格式）
-    const isEcKey = this.config.privateKey.includes('-----BEGIN EC PRIVATE KEY-----') || 
-                   (this.config.privateKey.includes('-----BEGIN PRIVATE KEY-----') && 
-                    this.config.privateKey.includes('MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQg'));
+    // 简化私钥格式检查：只要包含BEGIN和END标记即可
+    const hasBegin = this.config.privateKey.includes('-----BEGIN');
+    const hasEnd = this.config.privateKey.includes('-----END');
     
-    if (!isEcKey) {
-      logger.warn('APNs私钥格式不正确，需要EC密钥格式', {
-        currentFormat: this.config.privateKey.includes('-----BEGIN PRIVATE KEY-----') ? 'PKCS8' : 'Unknown'
+    if (!hasBegin || !hasEnd) {
+      logger.warn('APNs私钥格式不正确，缺少BEGIN或END标记', {
+        hasBegin,
+        hasEnd,
+        privateKeyLength: this.config.privateKey.length
       });
       return false;
     }
+    
+    // 记录私钥格式信息用于调试
+    const isEcKey = this.config.privateKey.includes('-----BEGIN EC PRIVATE KEY-----');
+    const isPkcs8Key = this.config.privateKey.includes('-----BEGIN PRIVATE KEY-----');
+    
+    logger.info('APNs私钥格式检查', {
+      isEcKey,
+      isPkcs8Key,
+      privateKeyLength: this.config.privateKey.length,
+      environment: this.config.environment
+    });
     
     return true;
   }
