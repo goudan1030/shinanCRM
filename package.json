@@ -71,6 +71,7 @@
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/qrcode": "^1.5.5",
+    "apn": "^2.2.0",
     "axios": "^1.7.9",
     "bcrypt": "^6.0.0",
     "cheerio": "^1.0.0",
