@@ -536,7 +536,8 @@ export default function EditMemberPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="HIGH_SCHOOL">高中</SelectItem>
-                        <SelectItem value="JUNIOR_COLLEGE">大专</SelectItem>
+                        <SelectItem value="JUNIOR_COLLEGE">专科</SelectItem>
+                        <SelectItem value="COLLEGE">大专</SelectItem>
                         <SelectItem value="BACHELOR">本科</SelectItem>
                         <SelectItem value="MASTER">硕士</SelectItem>
                         <SelectItem value="PHD">博士</SelectItem>
