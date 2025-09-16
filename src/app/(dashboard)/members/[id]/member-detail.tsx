@@ -61,7 +61,11 @@ interface MemberDetailProps {
 
 const getChildrenPlanText = (childrenPlan: string) => {
   switch (childrenPlan) {
-    case 'NONE': return '不要小孩';
+    case 'BOTH': return '一起要';
+    case 'SEPARATE': return '各自要';
+    case 'NEGOTIATE': return '互相协商';
+    case 'NONE': return '不要';
+    case 'NONE_OLD': return '不要小孩';
     case 'WANT': return '要小孩';
     case 'ALREADY': return '已有小孩';
     case 'ACCEPTED': return '接受对方有小孩';
@@ -72,6 +76,9 @@ const getChildrenPlanText = (childrenPlan: string) => {
 
 const getMarriageCertText = (marriageCert: string) => {
   switch (marriageCert) {
+    case 'WANT': return '要';
+    case 'DONT_WANT': return '不要';
+    case 'NEGOTIATE': return '互相协商';
     case 'MUST': return '必须领证';
     case 'OPEN': return '开放讨论';
     case 'NEED_TIME': return '需要时间考虑';
@@ -114,6 +121,10 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
 
   const getMarriageHistoryText = (marriageHistory: string) => {
     const marriageHistoryMap: Record<string, string> = {
+      'YES': '有婚史',
+      'NO': '无婚史',
+      'HAS_HISTORY': '有婚史',
+      'NO_HISTORY': '无婚史',
       'NEVER': '未婚',
       'DIVORCED': '离异',
       'WIDOWED': '丧偶'
