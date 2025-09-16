@@ -143,6 +143,9 @@ export default function EditMemberPage() {
           partner_requirement: data.partner_requirement || ''
         };
         
+        console.log('从API获取的原始数据:', data);
+        console.log('处理后的学历字段:', loadedData.education);
+        
         setFormData(loadedData);
         setDataLoaded(true);
         setFormInitialized(true);

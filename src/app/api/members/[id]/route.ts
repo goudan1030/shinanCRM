@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const [rows] = await executeQuery(
       'SELECT * FROM members WHERE id = ?',
-      [params.id]
+      [id]
     );
 
     if (!rows[0]) {
@@ -25,8 +26,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const data = await request.json();
 
     // 构建更新字段
@@ -62,7 +64,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     updateFields.push('updated_at = NOW()');
 
     // 添加ID到更新值数组
-    updateValues.push(params.id);
+    updateValues.push(id);
 
     // 执行更新
     await executeQuery(
@@ -73,7 +75,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // 获取更新后的会员信息
     const [rows] = await executeQuery(
       'SELECT * FROM members WHERE id = ?',
-      [params.id]
+      [id]
     );
 
     if (!rows[0]) {
@@ -93,25 +95,26 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const data = await request.json();
     const { action, type, notes } = data;
 
     if (action === 'activate') {
       await executeQuery(
         'SELECT activate_member(?, ?)',
-        [params.id, notes || null]
+        [id, notes || null]
       );
     } else if (action === 'revoke') {
       await executeQuery(
         'SELECT revoke_member(?, ?)',
-        [params.id, notes || null]
+        [id, notes || null]
       );
     } else if (action === 'upgrade') {
       await executeQuery(
         'SELECT upgrade_member(?, ?, NOW(), NULL, ?)',
-        [params.id, type, notes || null]
+        [id, type, notes || null]
       );
     } else {
       return NextResponse.json(
@@ -123,7 +126,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     // 获取更新后的会员信息
     const [rows] = await executeQuery(
       'SELECT * FROM members WHERE id = ?',
-      [params.id]
+      [id]
     );
 
     return NextResponse.json(rows[0]);
