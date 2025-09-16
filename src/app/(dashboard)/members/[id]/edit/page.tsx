@@ -77,41 +77,6 @@ export default function EditMemberPage() {
 
   const fetchMemberData = async () => {
     try {
-      const localStorageKey = `editMemberFormData_${params.id}`;
-      const savedFormData = localStorage.getItem(localStorageKey);
-      
-      if (savedFormData) {
-        try {
-          const parsedData = JSON.parse(savedFormData);
-          
-          const validatedData = {
-            ...formData,
-            ...parsedData,
-            gender: parsedData.gender || '',
-            education: parsedData.education || '',
-            house_car: parsedData.house_car || '',
-            children_plan: parsedData.children_plan || '',
-            marriage_cert: parsedData.marriage_cert || '',
-            marriage_history: parsedData.marriage_history || '',
-            sexual_orientation: parsedData.sexual_orientation || ''
-          };
-          
-          console.log('从localStorage恢复的原始数据:', parsedData);
-          console.log('处理后的学历字段:', validatedData.education);
-          
-          setFormData(prevData => ({
-            ...prevData,
-            ...validatedData
-          }));
-          setDataLoaded(true);
-          setFormInitialized(true);
-          console.log("已从localStorage恢复编辑表单数据，包含下拉框值：", validatedData);
-          return;
-        } catch (error) {
-          console.error('解析保存的表单数据失败:', error);
-        }
-      }
-
       const response = await fetch(`/api/members/${params.id}`);
       const data = await response.json();
 
@@ -135,7 +100,8 @@ export default function EditMemberPage() {
           birth_year: data.birth_year?.toString() || '',
           height: data.height?.toString() || '',
           weight: data.weight?.toString() || '',
-          education: data.education || '',
+          education: data.education === 'COLLEGE' ? 'JUNIOR_COLLEGE' : 
+                     data.education === 'DOCTOR' ? 'PHD' : (data.education || ''),
           occupation: data.occupation || '',
           house_car: data.house_car || '',
           marriage_history: data.marriage_history || '',
@@ -171,17 +137,6 @@ export default function EditMemberPage() {
     }
   }, [params.id]);
 
-  useEffect(() => {
-    if (formInitialized && dataLoaded && params.id) {
-      try {
-        const localStorageKey = `editMemberFormData_${params.id}`;
-        localStorage.setItem(localStorageKey, JSON.stringify(formData));
-        console.log("保存编辑表单数据到localStorage，包含下拉框值：", formData);
-      } catch (error) {
-        console.error('保存表单数据到localStorage失败:', error);
-      }
-    }
-  }, [formData, dataLoaded, params.id, formInitialized]);
 
   useEffect(() => {
     if (!isLoading && !session?.user?.id) {
@@ -244,8 +199,6 @@ export default function EditMemberPage() {
         throw new Error(result.error || '更新失败');
       }
 
-      const localStorageKey = `editMemberFormData_${params.id}`;
-      localStorage.removeItem(localStorageKey);
 
       toast({
         title: '更新成功',
@@ -281,17 +234,6 @@ export default function EditMemberPage() {
     
     if (['gender', 'education', 'house_car', 'marriage_history', 'sexual_orientation', 'children_plan', 'marriage_cert'].includes(field)) {
       console.log(`编辑页面下拉框 ${field} 值更新为:`, value);
-      
-      // 立即保存到localStorage，确保下拉框值不会丢失
-      if (formInitialized && dataLoaded && params.id) {
-        const updatedFormData = { ...formData, [field]: value };
-        try {
-          const localStorageKey = `editMemberFormData_${params.id}`;
-          localStorage.setItem(localStorageKey, JSON.stringify(updatedFormData));
-        } catch (error) {
-          console.error('保存下拉框值到localStorage失败:', error);
-        }
-      }
     }
     
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -338,8 +280,6 @@ export default function EditMemberPage() {
 
   const handleClearForm = () => {
     if (params.id) {
-      const localStorageKey = `editMemberFormData_${params.id}`;
-      localStorage.removeItem(localStorageKey);
       fetchMemberData();
       
       toast({
@@ -349,18 +289,6 @@ export default function EditMemberPage() {
     }
   };
 
-  const handleRefreshData = () => {
-    if (params.id) {
-      const localStorageKey = `editMemberFormData_${params.id}`;
-      localStorage.removeItem(localStorageKey);
-      fetchMemberData();
-      
-      toast({
-        title: '数据已刷新',
-        description: '已从服务器重新获取最新数据'
-      });
-    }
-  };
 
   return (
     <div className="overflow-auto">
@@ -388,22 +316,13 @@ export default function EditMemberPage() {
             </Button>
             <h2 className="text-lg font-semibold">编辑会员</h2>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefreshData}
-            >
-              刷新数据
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearForm}
-            >
-              重置表单
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearForm}
+          >
+            重置表单
+          </Button>
         </div>
         <Card className="border-none shadow-none p-6">
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -536,8 +455,7 @@ export default function EditMemberPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="HIGH_SCHOOL">高中</SelectItem>
-                        <SelectItem value="JUNIOR_COLLEGE">专科</SelectItem>
-                        <SelectItem value="COLLEGE">大专</SelectItem>
+                        <SelectItem value="JUNIOR_COLLEGE">大专</SelectItem>
                         <SelectItem value="BACHELOR">本科</SelectItem>
                         <SelectItem value="MASTER">硕士</SelectItem>
                         <SelectItem value="PHD">博士</SelectItem>
