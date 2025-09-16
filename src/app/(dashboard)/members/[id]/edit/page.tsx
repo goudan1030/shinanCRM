@@ -174,7 +174,7 @@ export default function EditMemberPage() {
         birth_year: formData.birth_year ? parseInt(formData.birth_year) : null,
         height: formData.height ? parseInt(formData.height) : null,
         weight: formData.weight ? parseInt(formData.weight) : null,
-        education: formData.education,
+        education: formData.education === 'PHD' ? 'DOCTOR' : formData.education,
         occupation: formData.occupation,
         house_car: formData.house_car,
         marriage_history: formData.marriage_history,
