@@ -96,6 +96,9 @@ export default function EditMemberPage() {
             sexual_orientation: parsedData.sexual_orientation || ''
           };
           
+          console.log('从localStorage恢复的原始数据:', parsedData);
+          console.log('处理后的学历字段:', validatedData.education);
+          
           setFormData(prevData => ({
             ...prevData,
             ...validatedData
@@ -346,6 +349,19 @@ export default function EditMemberPage() {
     }
   };
 
+  const handleRefreshData = () => {
+    if (params.id) {
+      const localStorageKey = `editMemberFormData_${params.id}`;
+      localStorage.removeItem(localStorageKey);
+      fetchMemberData();
+      
+      toast({
+        title: '数据已刷新',
+        description: '已从服务器重新获取最新数据'
+      });
+    }
+  };
+
   return (
     <div className="overflow-auto">
       <div className="max-w-[1200px] mx-auto p-6">
@@ -372,13 +388,22 @@ export default function EditMemberPage() {
             </Button>
             <h2 className="text-lg font-semibold">编辑会员</h2>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearForm}
-          >
-            重置表单
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshData}
+            >
+              刷新数据
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearForm}
+            >
+              重置表单
+            </Button>
+          </div>
         </div>
         <Card className="border-none shadow-none p-6">
           <form onSubmit={handleSubmit} className="space-y-8">
