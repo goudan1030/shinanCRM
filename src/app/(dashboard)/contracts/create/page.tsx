@@ -121,9 +121,8 @@ export default function CreateContractPage() {
         'company_tax_id': companyInfo.taxId,
         'service_end_date': '', // 服务到期时间，需要用户填写
         'discount_amount': '0', // 优惠金额，默认为0
-        'customer_name': '', // 客户姓名，需要用户填写
-        'customer_phone': '', // 联系电话，需要用户填写
-        'customer_id_card': '' // 身份证号，需要用户填写
+        'service_fee': '', // 服务费用，需要用户填写
+        'service_type': '' // 服务类型，需要用户填写
       };
       
       // 添加模板中的其他变量
@@ -274,7 +273,7 @@ export default function CreateContractPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
@@ -484,44 +483,46 @@ export default function CreateContractPage() {
                       </div>
                     </div>
 
-                    {/* 客户信息 - 需要填写 */}
+                    {/* 客户信息 - 用户端填写 */}
                     <div className="border-t pt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">客户信息</h4>
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">客户信息（用户端填写）</h4>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-blue-700">
+                          💡 客户信息将由客户在签署合同时自行填写，无需在此处填写
+                        </p>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="customer_name" className="text-sm font-medium">
-                            客户姓名 *
+                          <Label htmlFor="customer_name" className="text-sm font-medium text-gray-500">
+                            客户姓名（用户端填写）
                           </Label>
                           <Input
                             id="customer_name"
-                            value={customVariables.customer_name || ''}
-                            onChange={(e) => handleVariableChange('customer_name', e.target.value)}
-                            placeholder="请输入客户姓名"
-                            required
+                            value="客户在签署时填写"
+                            readOnly
+                            className="bg-gray-50 text-gray-500"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="customer_phone" className="text-sm font-medium">
-                            联系电话 *
+                          <Label htmlFor="customer_phone" className="text-sm font-medium text-gray-500">
+                            联系电话（用户端填写）
                           </Label>
                           <Input
                             id="customer_phone"
-                            value={customVariables.customer_phone || ''}
-                            onChange={(e) => handleVariableChange('customer_phone', e.target.value)}
-                            placeholder="请输入联系电话"
-                            required
+                            value="客户在签署时填写"
+                            readOnly
+                            className="bg-gray-50 text-gray-500"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="customer_id_card" className="text-sm font-medium">
-                            身份证号 *
+                          <Label htmlFor="customer_id_card" className="text-sm font-medium text-gray-500">
+                            身份证号（用户端填写）
                           </Label>
                           <Input
                             id="customer_id_card"
-                            value={customVariables.customer_id_card || ''}
-                            onChange={(e) => handleVariableChange('customer_id_card', e.target.value)}
-                            placeholder="请输入身份证号"
-                            required
+                            value="客户在签署时填写"
+                            readOnly
+                            className="bg-gray-50 text-gray-500"
                           />
                         </div>
                       </div>
@@ -588,7 +589,6 @@ export default function CreateContractPage() {
                     {Object.entries(selectedTemplate.variables_schema).map(([key, description]) => {
                       // 跳过已经处理的字段
                       const handledFields = ['contract_number', 'signing_date', 'company_name', 'company_tax_id', 
-                                          'customer_name', 'customer_phone', 'customer_id_card', 
                                           'service_fee', 'discount_amount', 'service_end_date', 'service_type'];
                       if (handledFields.includes(key)) return null;
                       
@@ -617,13 +617,14 @@ export default function CreateContractPage() {
       </div>
 
         {/* 操作按钮 */}
-        <div className="mt-8 flex justify-end gap-4 pb-8">
+        <div className="mt-8 flex justify-end gap-4 pb-12 bg-white p-6 rounded-lg shadow-sm border">
           <Button variant="outline" asChild>
             <Link href="/contracts/list">取消</Link>
           </Button>
           <Button 
             onClick={handleCreateContract}
             disabled={loading || !selectedMember || !contractType || !selectedTemplate}
+            className="min-w-[120px]"
           >
             {loading ? '创建中...' : '创建合同'}
           </Button>
