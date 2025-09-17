@@ -9,6 +9,17 @@ export async function GET(
 ) {
   try {
     const contractId = parseInt(params.id);
+    
+    // 获取URL参数，判断是预览还是下载
+    const { searchParams } = new URL(request.url);
+    const mode = searchParams.get('mode') || 'download'; // download | preview
+    const userAgent = request.headers.get('user-agent') || '';
+    
+    // 检测是否在微信环境
+    const isWeChat = userAgent.includes('MicroMessenger');
+    const isIOS = userAgent.includes('iPhone') || userAgent.includes('iPad');
+    
+    console.log('PDF请求信息:', { mode, isWeChat, isIOS, userAgent: userAgent.substring(0, 100) });
 
     if (isNaN(contractId)) {
       return NextResponse.json(
@@ -68,14 +79,36 @@ export async function GET(
 
     await browser.close();
 
-    // 返回PDF文件
-    return new NextResponse(pdf, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="contract-${contract.contract_number}.pdf"`,
-        'Cache-Control': 'no-cache'
+    // 根据模式和环境设置不同的响应头
+    const filename = `contract-${contract.contract_number}.pdf`;
+    let headers: Record<string, string> = {
+      'Content-Type': 'application/pdf',
+      'Cache-Control': 'no-cache',
+      'Content-Length': pdf.length.toString()
+    };
+
+    if (mode === 'preview' || isWeChat) {
+      // 预览模式或微信环境：在浏览器中直接显示PDF
+      headers['Content-Disposition'] = `inline; filename="${filename}"`;
+      
+      // 为微信环境添加特殊头部
+      if (isWeChat) {
+        headers['X-Content-Type-Options'] = 'nosniff';
+        headers['X-Frame-Options'] = 'SAMEORIGIN';
       }
-    });
+    } else {
+      // 下载模式：触发文件下载
+      headers['Content-Disposition'] = `attachment; filename="${filename}"`;
+      
+      // iOS Safari 特殊处理
+      if (isIOS) {
+        headers['Content-Disposition'] = `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+      }
+    }
+
+    console.log('PDF响应头:', headers);
+
+    return new NextResponse(pdf, { headers });
   } catch (error) {
     console.error('生成PDF失败:', error);
     return NextResponse.json(

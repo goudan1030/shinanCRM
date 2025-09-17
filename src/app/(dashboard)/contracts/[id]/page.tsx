@@ -125,6 +125,78 @@ export default function ContractDetailPage() {
     }
   };
 
+  // 检测环境
+  const detectEnvironment = () => {
+    const userAgent = navigator.userAgent;
+    const isWeChat = userAgent.includes('MicroMessenger');
+    const isIOS = /iPhone|iPad|iPod/.test(userAgent);
+    const isAndroid = /Android/.test(userAgent);
+    const isMobile = isIOS || isAndroid;
+    
+    return { isWeChat, isIOS, isAndroid, isMobile };
+  };
+
+  // 下载PDF - 智能处理不同环境
+  const handleDownloadPDF = () => {
+    if (!contract) return;
+    
+    const { isWeChat, isIOS, isMobile } = detectEnvironment();
+    
+    console.log('PDF下载环境检测:', { isWeChat, isIOS, isMobile });
+
+    if (isWeChat) {
+      // 微信环境：提供预览页面选项
+      const choice = confirm(
+        '请选择PDF查看方式：\n\n' +
+        '点击"确定"：在专门的预览页面中查看PDF\n' +
+        '点击"取消"：直接打开PDF文件\n\n' +
+        '建议选择预览页面，功能更完善'
+      );
+      
+      if (choice) {
+        // 打开专门的预览页面
+        window.open(`/contracts/${contract.id}/preview`, '_blank');
+      } else {
+        // 直接打开PDF
+        window.open(`/api/contracts/${contract.id}/pdf?mode=preview`, '_blank');
+      }
+    } else if (isIOS) {
+      // iOS环境：提供文件保存选项
+      const confirmed = confirm(
+        'iOS设备PDF下载说明：\n\n' +
+        '1. 点击"确定"下载PDF文件\n' +
+        '2. 在弹出的分享菜单中选择"存储到文件"\n' +
+        '3. 选择保存位置（如iCloud Drive）\n' +
+        '4. 点击"存储"完成保存\n\n' +
+        '点击"确定"开始下载'
+      );
+      
+      if (confirmed) {
+        // iOS直接下载，系统会显示分享菜单
+        const link = document.createElement('a');
+        link.href = `/api/contracts/${contract.id}/pdf?mode=download`;
+        link.download = `contract-${contract.contract_number}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } else {
+      // 桌面浏览器或其他移动浏览器：直接下载
+      const link = document.createElement('a');
+      link.href = `/api/contracts/${contract.id}/pdf?mode=download`;
+      link.download = `contract-${contract.contract_number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // 显示下载提示
+      toast({
+        title: '开始下载',
+        description: `正在下载合同 ${contract.contract_number} 的PDF文件`,
+      });
+    }
+  };
+
   // 更新合同模板
   const handleUpdateTemplates = async () => {
     try {
@@ -536,7 +608,10 @@ export default function ContractDetailPage() {
               </Button>
 
               {contract.status === 'SIGNED' && (
-                <Button className="w-full">
+                <Button 
+                  className="w-full"
+                  onClick={handleDownloadPDF}
+                >
                   <Download className="h-4 w-4 mr-2" />
                   下载已签署PDF
                 </Button>
