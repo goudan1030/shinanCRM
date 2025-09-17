@@ -273,8 +273,8 @@ export default function CreateContractPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="p-6 max-w-7xl mx-auto flex-1">
+    <div className="min-h-screen bg-gray-50">
+      <div className="p-6 max-w-7xl mx-auto pb-20">
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
             <Button variant="outline" size="sm" asChild>
@@ -288,9 +288,9 @@ export default function CreateContractPage() {
           <p className="text-gray-600">选择会员和合同模板，创建新的合同</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 选择会员 */}
-        <Card className="h-fit">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -383,7 +383,7 @@ export default function CreateContractPage() {
         </Card>
 
         {/* 选择合同类型和模板 */}
-        <Card className="h-fit max-h-[80vh] overflow-hidden flex flex-col">
+        <Card className="max-h-[80vh] flex flex-col">
           <CardHeader className="flex-shrink-0">
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -614,11 +614,10 @@ export default function CreateContractPage() {
             </div>
           </CardContent>
         </Card>
-        </div>
       </div>
 
       {/* 操作按钮 - 固定在底部 */}
-      <div className="bg-white border-t shadow-lg p-6">
+      <div className="sticky bottom-0 bg-white border-t shadow-lg p-6 mt-8">
         <div className="max-w-7xl mx-auto flex justify-end gap-4">
           <Button variant="outline" asChild>
             <Link href="/contracts/list">取消</Link>
