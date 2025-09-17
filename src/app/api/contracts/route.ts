@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      whereConditions.push('(c.contract_number LIKE ? OR m.name LIKE ? OR m.member_no LIKE ?)');
+      whereConditions.push('(c.contract_number LIKE ? OR m.nickname LIKE ? OR m.member_no LIKE ?)');
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm, searchTerm);
     }
@@ -47,9 +47,9 @@ export async function GET(request: NextRequest) {
       SELECT 
         c.*,
         m.member_no,
-        m.name as member_name,
+        m.nickname as member_name,
         m.phone as member_phone,
-        m.id_card as member_id_card,
+        m.wechat as member_wechat,
         ct.name as template_name
       FROM contracts c
       LEFT JOIN members m ON c.member_id = m.id

@@ -21,7 +21,8 @@ const protectedRoutes: Record<string, string | string[]> = {
   '/platform': 'manager',
   '/miniapp': 'manager',
   '/wecom': 'manager',
-  '/users': 'admin'
+  '/users': 'admin',
+  '/contracts': 'user'
 };
 
 // 定义API路由权限
@@ -31,7 +32,8 @@ const apiRoutePermissions: Record<string, string | string[]> = {
   '/api/platform': 'manager',
   '/api/miniapp': 'manager',
   '/api/wecom': 'manager',
-  '/api/members': 'user'
+  '/api/members': 'user',
+  '/api/contracts': 'user'
 };
 
   // 定义公开路由
