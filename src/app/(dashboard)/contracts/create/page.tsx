@@ -41,6 +41,8 @@ export default function CreateContractPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
   const [contractType, setContractType] = useState<string>('');
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
+  const [showMemberResults, setShowMemberResults] = useState(false);
+  const [memberSearchLoading, setMemberSearchLoading] = useState(false);
 
   // 获取会员列表
   const fetchMembers = async () => {
@@ -78,12 +80,7 @@ export default function CreateContractPage() {
     fetchTemplates();
   }, []);
 
-  // 过滤会员
-  const filteredMembers = members.filter(member =>
-    member.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.member_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.phone?.includes(searchTerm)
-  );
+  // 注意：现在使用实时搜索，不再需要客户端过滤
 
   // 根据合同类型过滤模板
   const filteredTemplates = templates.filter(template =>
@@ -124,6 +121,50 @@ export default function CreateContractPage() {
       ...prev,
       [key]: value
     }));
+  };
+
+  // 处理会员搜索
+  const handleMemberSearch = async (value: string) => {
+    setSearchTerm(value);
+    if (value.trim().length > 0) {
+      setMemberSearchLoading(true);
+      try {
+        const response = await fetch(`/api/members?search=${encodeURIComponent(value)}&limit=20`);
+        const data = await response.json();
+        if (response.ok) {
+          setMembers(data.members || []);
+          setShowMemberResults(true);
+        } else {
+          console.error('搜索会员失败:', data.error);
+        }
+      } catch (error) {
+        console.error('搜索会员失败:', error);
+      } finally {
+        setMemberSearchLoading(false);
+      }
+    } else {
+      setShowMemberResults(false);
+      // 清空搜索时重新加载所有会员
+      fetchMembers();
+    }
+  };
+
+  // 选择会员
+  const handleSelectMember = (member: Member) => {
+    setSelectedMember(member);
+    setSearchTerm(member.nickname || member.member_no || '');
+    setShowMemberResults(false);
+    toast({
+      title: '会员选择成功',
+      description: `已选择会员: ${member.nickname || '未设置昵称'} (${member.member_no})`,
+    });
+  };
+
+  // 清除会员选择
+  const handleClearMember = () => {
+    setSelectedMember(null);
+    setSearchTerm('');
+    setShowMemberResults(false);
   };
 
   // 生成合同
@@ -234,36 +275,74 @@ export default function CreateContractPage() {
                     id="member-search"
                     placeholder="搜索会员姓名、编号或手机号..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => handleMemberSearch(e.target.value)}
                     className="pl-10"
                   />
+                  {memberSearchLoading && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {filteredMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                      selectedMember?.id === member.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setSelectedMember(member)}
-                  >
-                    <div className="font-medium">{member.nickname || '未设置昵称'}</div>
-                    <div className="text-sm text-gray-500">
-                      编号: {member.member_no} | 手机: {member.phone}
+              {/* 搜索结果 */}
+              {showMemberResults && (
+                <div className="max-h-64 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
+                  {members.length > 0 ? (
+                    members.map((member) => (
+                      <div
+                        key={member.id}
+                        className="p-3 border rounded-lg cursor-pointer transition-colors hover:border-blue-300 hover:bg-blue-50"
+                        onClick={() => handleSelectMember(member)}
+                      >
+                        <div className="font-medium">{member.nickname || '未设置昵称'}</div>
+                        <div className="text-sm text-gray-500">
+                          编号: {member.member_no} | 手机: {member.phone || '未设置'}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-gray-500">
+                      {memberSearchLoading ? '搜索中...' : '未找到匹配的会员'}
                     </div>
-                  </div>
-                ))}
-              </div>
+                  )}
+                </div>
+              )}
 
+              {/* 已选择的会员 */}
               {selectedMember && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="font-medium text-green-800">已选择会员</div>
-                  <div className="text-sm text-green-600">
-                    {selectedMember.nickname || '未设置昵称'} ({selectedMember.member_no})
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-medium text-green-800 flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        已选择会员
+                      </div>
+                      <div className="text-sm text-green-600 mt-1">
+                        {selectedMember.nickname || '未设置昵称'} ({selectedMember.member_no})
+                      </div>
+                      <div className="text-xs text-green-500 mt-1">
+                        手机: {selectedMember.phone || '未设置'}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearMember}
+                      className="text-red-600 hover:text-red-700 hover:border-red-300"
+                    >
+                      重新选择
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 提示信息 */}
+              {!selectedMember && !showMemberResults && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm text-blue-700">
+                    💡 在搜索框中输入会员姓名、编号或手机号进行搜索
                   </div>
                 </div>
               )}
