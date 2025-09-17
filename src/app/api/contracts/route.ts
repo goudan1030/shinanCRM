@@ -2,6 +2,48 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
 import { ContractListResponse, GenerateContractRequest, GenerateContractResponse } from '@/types/contract';
 
+// 更新印章样式为叠加效果
+function updateSealOverlayStyle(content: string): string {
+  // 更新CSS样式
+  const oldSealStyle = `.seal-container { text-align: center; flex: 1; }
+        .company-seal { width: 120px; height: 120px; margin: 10px auto; display: block; }`;
+  
+  const newSealStyle = `.seal-container { 
+            text-align: left; 
+            flex: 1; 
+            position: relative;
+            line-height: 1.8;
+        }
+        .company-seal { 
+            position: absolute;
+            width: 100px; 
+            height: 100px; 
+            top: -10px;
+            right: 20px;
+            z-index: 2;
+            opacity: 0.9;
+        }`;
+
+  // 替换CSS样式
+  content = content.replace(oldSealStyle, newSealStyle);
+
+  // 更新HTML结构，在甲方信息中添加公司名称
+  const oldSealHTML = `<div class="seal-container">
+            <p><strong>甲方（盖章）：</strong></p>
+            <img src="/zhang.png" alt="公司印章" class="company-seal">
+            <p>日期：`;
+  
+  const newSealHTML = `<div class="seal-container">
+            <p><strong>甲方（盖章）：</strong></p>
+            <p>杭州石楠文化科技有限公司</p>
+            <img src="/zhang.png" alt="公司印章" class="company-seal">
+            <p>日期：`;
+
+  content = content.replace(oldSealHTML, newSealHTML);
+
+  return content;
+}
+
 // 获取合同列表
 export async function GET(request: NextRequest) {
   try {
@@ -186,10 +228,10 @@ export async function POST(request: NextRequest) {
       companyAddress: '浙江省杭州市拱墅区',
       
       // 乙方信息（客户信息）
-      customerName: member.real_name || member.nickname || '待用户填写',
-      customerIdCard: member.id_card || '待用户填写',
-      customerPhone: member.phone || '待填写',
-      customerAddress: '待用户填写',
+      customerName: '待客户填写',  // 签署时由用户填写真实姓名
+      customerIdCard: '待客户填写',  // 签署时由用户填写身份证号
+      customerPhone: '待客户填写',   // 签署时由用户填写手机号
+      customerAddress: '',  // 乙方不需要地址信息
       
       // 服务信息 - 支持自定义变量覆盖
       serviceType: variables.serviceType || (contractType === 'MEMBERSHIP' ? '会员服务' : 
@@ -223,6 +265,9 @@ export async function POST(request: NextRequest) {
         console.log(`⚠️ 未找到占位符: ${placeholder}`);
       }
     });
+
+    // 更新印章样式为叠加效果
+    contractContent = updateSealOverlayStyle(contractContent);
     
     // 检查是否还有未替换的变量
     const remainingVariables = contractContent.match(/{{[^}]+}}/g);

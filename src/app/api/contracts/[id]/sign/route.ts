@@ -138,18 +138,17 @@ export async function POST(
       
       // 更新乙方信息占位符
       if (signerInfo) {
-        // 替换姓名占位符
-        updatedContent = updatedContent.replace(/姓名：\s*明天/g, `姓名：${signerInfo.realName}`);
-        updatedContent = updatedContent.replace(/待客户填写/g, signerInfo.realName);
+        // 替换姓名 - 使用正确的HTML格式匹配
+        updatedContent = updatedContent.replace(/<p><strong>姓名：<\/strong>.*?<\/p>/g, `<p><strong>姓名：</strong>${signerInfo.realName}</p>`);
         
-        // 替换身份证号占位符
-        updatedContent = updatedContent.replace(/身份证号：\s*待客户填写/g, `身份证号：${signerInfo.idCard}`);
+        // 替换身份证号 - 使用正确的HTML格式匹配
+        updatedContent = updatedContent.replace(/<p><strong>身份证号：<\/strong>.*?<\/p>/g, `<p><strong>身份证号：</strong>${signerInfo.idCard}</p>`);
         
-        // 替换手机号占位符 
-        updatedContent = updatedContent.replace(/联系电话：\s*13157118301/g, `联系电话：${signerInfo.phone}`);
+        // 替换手机号 - 使用正确的HTML格式匹配
+        updatedContent = updatedContent.replace(/<p><strong>联系电话：<\/strong>.*?<\/p>/g, `<p><strong>联系电话：</strong>${signerInfo.phone}</p>`);
         
-        // 替换联系地址占位符
-        updatedContent = updatedContent.replace(/联系地址：\s*待客户填写/g, `联系地址：${signerInfo.realName}提供`);
+        // 移除联系地址 - 乙方不需要地址信息
+        updatedContent = updatedContent.replace(/<p><strong>联系地址：<\/strong>.*?<\/p>/g, '');
       }
       
       // 将签名图片插入到合同的乙方签署区域

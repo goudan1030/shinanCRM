@@ -1,6 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
 
+// 更新印章样式为叠加效果
+function updateSealOverlayStyle(content: string): string {
+  // 更新CSS样式
+  const oldSealStyle = `.seal-container { text-align: center; flex: 1; }
+        .company-seal { width: 120px; height: 120px; margin: 10px auto; display: block; }`;
+  
+  const newSealStyle = `.seal-container { 
+            text-align: left; 
+            flex: 1; 
+            position: relative;
+            line-height: 1.8;
+        }
+        .company-seal { 
+            position: absolute;
+            width: 100px; 
+            height: 100px; 
+            top: -10px;
+            right: 20px;
+            z-index: 2;
+            opacity: 0.9;
+        }`;
+
+  // 替换CSS样式
+  content = content.replace(oldSealStyle, newSealStyle);
+
+  // 更新HTML结构，在甲方信息中添加公司名称
+  const oldSealHTML = `<div class="seal-container">
+            <p><strong>甲方（盖章）：</strong></p>
+            <img src="/zhang.png" alt="公司印章" class="company-seal">
+            <p>日期：`;
+  
+  const newSealHTML = `<div class="seal-container">
+            <p><strong>甲方（盖章）：</strong></p>
+            <p>杭州石楠文化科技有限公司</p>
+            <img src="/zhang.png" alt="公司印章" class="company-seal">
+            <p>日期：`;
+
+  content = content.replace(oldSealHTML, newSealHTML);
+
+  return content;
+}
+
 // 重新生成合同内容 - 紧急修复API
 export async function POST(
   _request: NextRequest,
@@ -66,10 +108,10 @@ export async function POST(
       companyAddress: '浙江省杭州市拱墅区',
       
       // 乙方信息（客户信息）
-      customerName: member.real_name || member.nickname || '待客户填写',
-      customerIdCard: member.id_card || '待客户填写',
-      customerPhone: member.phone || '待客户填写',
-      customerAddress: '待客户填写',
+      customerName: '待客户填写',  // 签署时由用户填写真实姓名
+      customerIdCard: '待客户填写',  // 签署时由用户填写身份证号
+      customerPhone: '待客户填写',   // 签署时由用户填写手机号
+      customerAddress: '',  // 乙方不需要地址信息
       
       // 服务信息
       serviceType: contract.contract_type === 'MEMBERSHIP' ? '会员服务' : 
@@ -95,6 +137,9 @@ export async function POST(
         newContent = newContent.split(placeholder).join(valueStr);
       }
     });
+
+    // 更新印章样式为叠加效果
+    newContent = updateSealOverlayStyle(newContent);
 
     // 更新数据库中的合同内容和变量
     await executeQuery(
