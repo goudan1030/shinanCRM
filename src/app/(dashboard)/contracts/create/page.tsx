@@ -280,7 +280,7 @@ export default function CreateContractPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="p-6 max-w-7xl mx-auto pb-20">
+      <div className="p-6 max-w-7xl mx-auto pb-32">
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
             <Button variant="outline" size="sm" asChild>
@@ -642,7 +642,7 @@ export default function CreateContractPage() {
       </div>
 
       {/* 操作按钮 - 固定在底部 */}
-      <div className="sticky bottom-0 bg-white border-t shadow-lg p-6 mt-8">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-6 z-50">
         <div className="max-w-7xl mx-auto flex justify-end gap-4">
           <Button variant="outline" asChild>
             <Link href="/contracts/list">取消</Link>
@@ -656,6 +656,7 @@ export default function CreateContractPage() {
           </Button>
         </div>
       </div>
+      </div>
     </div>
   );
-    </div>
+}
