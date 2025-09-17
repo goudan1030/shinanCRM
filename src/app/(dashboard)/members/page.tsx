@@ -384,11 +384,11 @@ function MembersPageContent() {
       case 'HOUSE_ONLY':
         return '有房无车';
       case 'CAR_ONLY':
-        return '无房有车';
+        return '有车无房';
       case 'BOTH':
         return '有房有车';
       default:
-        return '未知';
+        return houseCar || '未填写';
     }
   };
 
@@ -465,28 +465,8 @@ function MembersPageContent() {
   };
 
   const getSexualOrientationText = (sexualOrientation: string) => {
-    if (!sexualOrientation) return '未填写';
-    
-    switch (sexualOrientation) {
-      case 'STRAIGHT_MALE':
-        return '直男';
-      case 'STRAIGHT_FEMALE':
-        return '直女';
-      case 'LES':
-        return 'LES';
-      case 'GAY':
-        return 'GAY';
-      case 'ASEXUAL':
-        return '无性恋';
-      case 'STRAIGHT':
-        return '异性恋';
-      case 'HOMOSEXUAL':
-        return '同性恋';
-      case 'BISEXUAL':
-        return '双性恋';
-      default:
-        return sexualOrientation; // 直接显示原始值，保持向后兼容
-    }
+    // 直接显示数据库中的值，不需要映射
+    return sexualOrientation || '未填写';
   };
 
   // 处理目标区域显示

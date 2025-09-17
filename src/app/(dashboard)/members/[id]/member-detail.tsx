@@ -101,7 +101,7 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
       'JUNIOR_COLLEGE': '大专',
       'BACHELOR': '本科',
       'MASTER': '硕士',
-      'DOCTOR': '博士及以上',
+      'DOCTOR': '博士',
       'OVERSEAS': '海外留学'
     };
     return educationMap[education] || education;
@@ -110,9 +110,9 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
   const getHouseCarText = (houseCar: string) => {
     const houseCarMap: Record<string, string> = {
       'BOTH': '有房有车',
-      'HOUSE': '有房无车',
-      'CAR': '有车无房',
-      'NONE': '无房无车',
+      'HOUSE_ONLY': '有房无车',
+      'CAR_ONLY': '有车无房',
+      'NEITHER': '无房无车',
       'FUTURE_PLAN': '有购房计划',
       'RENTING': '租房'
     };
@@ -133,13 +133,8 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
   };
 
   const getSexualOrientationText = (sexualOrientation: string) => {
-    const orientationMap: Record<string, string> = {
-      'STRAIGHT': '异性恋',
-      'GAY': '同性恋',
-      'BISEXUAL': '双性恋',
-      'OTHER': '其他'
-    };
-    return orientationMap[sexualOrientation] || sexualOrientation;
+    // 直接显示数据库中的值，不需要映射
+    return sexualOrientation || '未填写';
   };
   
   const fetchMember = useCallback(async () => {

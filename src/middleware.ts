@@ -68,6 +68,7 @@ const publicRoutes = [
   '/api/wecom/logs', // 日志查看API
   '/api/wecom/callback/data', // 第三方应用数据回调
   '/api/wecom/callback/command', // 第三方应用指令回调
+  '/api/wecom/universal-verify', // 企业微信通用验证API
 ];
 
 // 中间件实现
