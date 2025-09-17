@@ -119,11 +119,17 @@ export default function CreateContractPage() {
         'contract_number': generateContractNumber(),
         'company_name': companyInfo.name,
         'company_tax_id': companyInfo.taxId,
-        'service_end_date': '', // 服务到期时间，需要用户填写
         'discount_amount': '0', // 优惠金额，默认为0
         'service_fee': '', // 服务费用，需要用户填写
         'service_type': '' // 服务类型，需要用户填写
       };
+      
+      // 根据合同类型添加特定字段
+      if (template.type === 'ONE_TIME') {
+        variables['service_count'] = ''; // 服务次数，需要用户填写
+      } else {
+        variables['service_end_date'] = ''; // 服务到期时间，需要用户填写
+      }
       
       // 添加模板中的其他变量
       Object.keys(template.variables_schema).forEach(key => {
@@ -557,19 +563,38 @@ export default function CreateContractPage() {
                             type="number"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="service_end_date" className="text-sm font-medium">
-                            服务到期时间 *
-                          </Label>
-                          <Input
-                            id="service_end_date"
-                            value={customVariables.service_end_date || ''}
-                            onChange={(e) => handleVariableChange('service_end_date', e.target.value)}
-                            placeholder="请选择服务到期时间"
-                            type="date"
-                            required
-                          />
-                        </div>
+                        
+                        {/* 根据合同类型显示不同字段 */}
+                        {contractType === 'ONE_TIME' ? (
+                          <div>
+                            <Label htmlFor="service_count" className="text-sm font-medium">
+                              服务次数 *
+                            </Label>
+                            <Input
+                              id="service_count"
+                              value={customVariables.service_count || ''}
+                              onChange={(e) => handleVariableChange('service_count', e.target.value)}
+                              placeholder="请输入服务次数"
+                              type="number"
+                              required
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <Label htmlFor="service_end_date" className="text-sm font-medium">
+                              服务到期时间 *
+                            </Label>
+                            <Input
+                              id="service_end_date"
+                              value={customVariables.service_end_date || ''}
+                              onChange={(e) => handleVariableChange('service_end_date', e.target.value)}
+                              placeholder="请选择服务到期时间"
+                              type="date"
+                              required
+                            />
+                          </div>
+                        )}
+                        
                         <div>
                           <Label htmlFor="service_type" className="text-sm font-medium">
                             服务类型 *
@@ -589,7 +614,7 @@ export default function CreateContractPage() {
                     {Object.entries(selectedTemplate.variables_schema).map(([key, description]) => {
                       // 跳过已经处理的字段
                       const handledFields = ['contract_number', 'signing_date', 'company_name', 'company_tax_id', 
-                                          'service_fee', 'discount_amount', 'service_end_date', 'service_type'];
+                                          'service_fee', 'discount_amount', 'service_end_date', 'service_type', 'service_count'];
                       if (handledFields.includes(key)) return null;
                       
                       return (
@@ -615,7 +640,7 @@ export default function CreateContractPage() {
           </CardContent>
         </Card>
       </div>
-      </div>
+
       {/* 操作按钮 - 固定在底部 */}
       <div className="sticky bottom-0 bg-white border-t shadow-lg p-6 mt-8">
         <div className="max-w-7xl mx-auto flex justify-end gap-4">
