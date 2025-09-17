@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合同数据调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .contract { border: 1px solid #ccc; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .status { padding: 4px 8px; border-radius: 4px; color: white; font-size: 12px; }
+        .pending { background-color: #f59e0b; }
+        .signed { background-color: #10b981; }
+        .draft { background-color: #6b7280; }
+        .button { padding: 8px 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .sign-btn { background-color: #3b82f6; color: white; }
+        .view-btn { background-color: #6b7280; color: white; }
+        .download-btn { background-color: #10b981; color: white; }
+    </style>
+</head>
+<body>
+    <h1>合同数据调试页面</h1>
+    <div id="contracts"></div>
+    
+    <script>
+        async function loadContracts() {
+            try {
+                const response = await fetch('/api/contracts?page=1&limit=10&status=all&contractType=all&search=');
+                const data = await response.json();
+                
+                console.log('API响应:', data);
+                
+                const container = document.getElementById('contracts');
+                
+                if (data.error) {
+                    container.innerHTML = `<p style="color: red;">错误: ${data.error}</p>`;
+                    return;
+                }
+                
+                if (!data.contracts || data.contracts.length === 0) {
+                    container.innerHTML = '<p>没有合同数据</p>';
+                    return;
+                }
+                
+                let html = '<h2>合同列表 (' + data.contracts.length + ' 条)</h2>';
+                
+                data.contracts.forEach(contract => {
+                    const statusClass = contract.status.toLowerCase();
+                    const statusText = {
+                        'DRAFT': '草稿',
+                        'PENDING': '待签署',
+                        'SIGNED': '已签署',
+                        'EXPIRED': '已过期',
+                        'CANCELLED': '已取消'
+                    }[contract.status] || contract.status;
+                    
+                    html += `
+                        <div class="contract">
+                            <h3>合同编号: ${contract.contract_number}</h3>
+                            <p><strong>状态:</strong> <span class="status ${statusClass}">${statusText}</span></p>
+                            <p><strong>会员:</strong> ${contract.member?.name || '未知'} (${contract.member?.member_no || '无编号'})</p>
+                            <p><strong>类型:</strong> ${contract.contract_type}</p>
+                            <p><strong>创建时间:</strong> ${new Date(contract.created_at).toLocaleString('zh-CN')}</p>
+                            <p><strong>签署时间:</strong> ${contract.signed_at ? new Date(contract.signed_at).toLocaleString('zh-CN') : '未签署'}</p>
+                            
+                            <div>
+                                <button class="button view-btn" onclick="viewContract(${contract.id})">查看</button>
+                                ${contract.status === 'PENDING' ? `<button class="button sign-btn" onclick="signContract(${contract.id})">签署</button>` : ''}
+                                ${contract.status === 'SIGNED' ? `<button class="button download-btn" onclick="downloadContract(${contract.id})">下载</button>` : ''}
+                                ${contract.status === 'DRAFT' ? `<button class="button" onclick="deleteContract(${contract.id})" style="background-color: #ef4444; color: white;">删除</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('加载合同失败:', error);
+                document.getElementById('contracts').innerHTML = `<p style="color: red;">加载失败: ${error.message}</p>`;
+            }
+        }
+        
+        function viewContract(id) {
+            window.open(`/contracts/${id}`, '_blank');
+        }
+        
+        function signContract(id) {
+            window.open(`/contracts/sign?id=${id}`, '_blank');
+        }
+        
+        function downloadContract(id) {
+            window.open(`/api/contracts/${id}/pdf`, '_blank');
+        }
+        
+        function deleteContract(id) {
+            if (confirm('确定要删除这个合同吗？')) {
+                fetch(`/api/contracts/${id}`, { method: 'DELETE' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('删除成功');
+                            loadContracts();
+                        } else {
+                            alert('删除失败: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        alert('删除失败: ' + error.message);
+                    });
+            }
+        }
+        
+        // 页面加载时获取合同数据
+        loadContracts();
+    </script>
+</body>
+</html>

@@ -44,17 +44,18 @@ const navigation: NavigationItem[] = [
   { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
   { name: '会员管理', href: '/members', icon: Users },
   { name: '用户管理', href: '/users', icon: User },
-  {
-    name: '合同管理',
-    href: '/contracts',
-    icon: FileText,
-    matchPaths: ['/contracts', '/contracts/templates', '/contracts/list', '/contracts/sign'],
-    children: [
-      { name: '合同列表', href: '/contracts/list' },
-      { name: '合同模板', href: '/contracts/templates' },
-      { name: '签署管理', href: '/contracts/sign' }
-    ]
-  },
+        {
+          name: '合同管理',
+          href: '/contracts',
+          icon: FileText,
+          matchPaths: ['/contracts', '/contracts/templates', '/contracts/list', '/contracts/sign', '/contracts/test'],
+          children: [
+            { name: '合同列表', href: '/contracts/list' },
+            { name: '合同模板', href: '/contracts/templates' },
+            { name: '签署管理', href: '/contracts/sign' },
+            { name: '测试页面', href: '/contracts/test' }
+          ]
+        },
   {
     name: '收支管理',
     href: '/finance/income',
