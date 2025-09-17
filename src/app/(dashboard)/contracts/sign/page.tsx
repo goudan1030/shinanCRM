@@ -22,7 +22,10 @@ export default function ContractSignPage() {
 
   // 获取合同详情
   const fetchContract = async () => {
-    if (!contractId) return;
+    if (!contractId) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -137,6 +140,30 @@ export default function ContractSignPage() {
         <div className="flex justify-center items-center h-64">
           <div className="text-gray-500">加载中...</div>
         </div>
+      </div>
+    );
+  }
+
+  if (!contractId) {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">签署管理</h1>
+          <p className="text-gray-600">管理合同签署流程</p>
+        </div>
+        
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <FileText className="h-12 w-12 mb-4" />
+            <h3 className="text-lg font-medium mb-2">请选择要签署的合同</h3>
+            <p className="text-sm text-center mb-4">
+              您需要从合同列表中选择一个合同进行签署，或者通过签署链接直接访问。
+            </p>
+            <Button asChild>
+              <a href="/contracts/list">查看合同列表</a>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

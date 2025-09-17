@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { Contract, ContractListResponse, CONTRACT_STATUS_MAP, CONTRACT_TYPE_MAP } from '@/types/contract';
-import { Search, Plus, Eye, Download, Trash2, FileText } from 'lucide-react';
+import { Search, Plus, Eye, Download, Trash2, FileText, PenTool } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ContractListPage() {
@@ -313,6 +313,18 @@ export default function ContractListPage() {
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
+                          
+                          {contract.status === 'PENDING' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              asChild
+                            >
+                              <Link href={`/contracts/sign?id=${contract.id}`}>
+                                <PenTool className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          )}
                           
                           {contract.status === 'SIGNED' && (
                             <Button
