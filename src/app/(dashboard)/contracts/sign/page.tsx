@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Contract } from '@/types/contract';
 import { FileText, Download, CheckCircle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 
-export default function ContractSignPage() {
+function ContractSignContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const contractId = searchParams.get('id');
@@ -296,5 +296,19 @@ export default function ContractSignPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ContractSignPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-gray-500">加载中...</div>
+        </div>
+      </div>
+    }>
+      <ContractSignContent />
+    </Suspense>
   );
 }
