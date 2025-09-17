@@ -19,12 +19,12 @@ export async function GET(request: NextRequest) {
     let whereConditions = [];
     let queryParams: any[] = [];
 
-    if (status) {
+    if (status && status !== 'all') {
       whereConditions.push('c.status = ?');
       queryParams.push(status);
     }
 
-    if (contractType) {
+    if (contractType && contractType !== 'all') {
       whereConditions.push('c.contract_type = ?');
       queryParams.push(contractType);
     }

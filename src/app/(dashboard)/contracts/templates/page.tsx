@@ -22,7 +22,7 @@ export default function ContractTemplatesPage() {
   const [editingTemplate, setEditingTemplate] = useState<ContractTemplate | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    type: '',
+    type: 'MEMBERSHIP',
     template_content: '',
     variables_schema: '{}',
     is_active: true

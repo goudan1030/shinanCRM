@@ -23,8 +23,8 @@ export default function ContractListPage() {
     totalPages: 0
   });
   const [filters, setFilters] = useState({
-    status: '',
-    contractType: '',
+    status: 'all',
+    contractType: 'all',
     search: ''
   });
 
@@ -210,7 +210,7 @@ export default function ContractListPage() {
                 <SelectValue placeholder="合同状态" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">全部状态</SelectItem>
+                <SelectItem value="all">全部状态</SelectItem>
                 <SelectItem value="DRAFT">草稿</SelectItem>
                 <SelectItem value="PENDING">待签署</SelectItem>
                 <SelectItem value="SIGNED">已签署</SelectItem>
@@ -224,7 +224,7 @@ export default function ContractListPage() {
                 <SelectValue placeholder="合同类型" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">全部类型</SelectItem>
+                <SelectItem value="all">全部类型</SelectItem>
                 <SelectItem value="MEMBERSHIP">会员服务</SelectItem>
                 <SelectItem value="ONE_TIME">一次性服务</SelectItem>
                 <SelectItem value="ANNUAL">年费服务</SelectItem>
