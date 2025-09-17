@@ -273,8 +273,8 @@ export default function CreateContractPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="p-6 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="p-6 max-w-7xl mx-auto flex-1">
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
             <Button variant="outline" size="sm" asChild>
@@ -288,9 +288,9 @@ export default function CreateContractPage() {
           <p className="text-gray-600">选择会员和合同模板，创建新的合同</p>
         </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 选择会员 */}
-        <Card>
+        <Card className="h-fit">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -383,14 +383,14 @@ export default function CreateContractPage() {
         </Card>
 
         {/* 选择合同类型和模板 */}
-        <Card>
-          <CardHeader>
+        <Card className="h-fit max-h-[80vh] overflow-hidden flex flex-col">
+          <CardHeader className="flex-shrink-0">
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               选择合同类型和模板
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-y-auto">
             <div className="space-y-4">
               <div>
                 <Label htmlFor="contract-type">合同类型</Label>
@@ -614,10 +614,12 @@ export default function CreateContractPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
 
-        {/* 操作按钮 */}
-        <div className="mt-8 flex justify-end gap-4 pb-12 bg-white p-6 rounded-lg shadow-sm border">
+      {/* 操作按钮 - 固定在底部 */}
+      <div className="bg-white border-t shadow-lg p-6">
+        <div className="max-w-7xl mx-auto flex justify-end gap-4">
           <Button variant="outline" asChild>
             <Link href="/contracts/list">取消</Link>
           </Button>
