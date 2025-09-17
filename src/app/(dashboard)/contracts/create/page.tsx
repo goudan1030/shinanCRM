@@ -43,6 +43,12 @@ export default function CreateContractPage() {
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
   const [showMemberResults, setShowMemberResults] = useState(false);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
+  
+  // 公司固定信息
+  const companyInfo = {
+    name: '杭州石楠文化科技有限公司',
+    taxId: '91330105MA2KCLP6X2'
+  };
 
   // 获取会员列表
   const fetchMembers = async () => {
@@ -104,15 +110,41 @@ export default function CreateContractPage() {
   const handleTemplateSelect = (templateId: string) => {
     const template = templates.find(t => t.id.toString() === templateId);
     setSelectedTemplate(template || null);
-    
+
     if (template) {
-      // 初始化自定义变量
-      const variables: Record<string, string> = {};
+      // 初始化自定义变量，包含自动生成的字段
+      const variables: Record<string, string> = {
+        // 自动生成字段
+        'signing_date': new Date().toLocaleDateString('zh-CN'),
+        'contract_number': generateContractNumber(),
+        'company_name': companyInfo.name,
+        'company_tax_id': companyInfo.taxId,
+        'service_end_date': '', // 服务到期时间，需要用户填写
+        'discount_amount': '0', // 优惠金额，默认为0
+        'customer_name': '', // 客户姓名，需要用户填写
+        'customer_phone': '', // 联系电话，需要用户填写
+        'customer_id_card': '' // 身份证号，需要用户填写
+      };
+      
+      // 添加模板中的其他变量
       Object.keys(template.variables_schema).forEach(key => {
-        variables[key] = '';
+        if (!variables[key]) {
+          variables[key] = '';
+        }
       });
+      
       setCustomVariables(variables);
     }
+  };
+
+  // 生成合同编号
+  const generateContractNumber = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `HT${year}${month}${day}${random}`;
   };
 
   // 处理自定义变量变化
@@ -242,19 +274,20 @@ export default function CreateContractPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div className="flex items-center gap-4 mb-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/contracts/list">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              返回合同列表
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-semibold text-gray-900">发起合同</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <div className="flex items-center gap-4 mb-4">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/contracts/list">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                返回合同列表
+              </Link>
+            </Button>
+            <h1 className="text-2xl font-semibold text-gray-900">发起合同</h1>
+          </div>
+          <p className="text-gray-600">选择会员和合同模板，创建新的合同</p>
         </div>
-        <p className="text-gray-600">选择会员和合同模板，创建新的合同</p>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 选择会员 */}
@@ -394,24 +427,187 @@ export default function CreateContractPage() {
                 </div>
               )}
 
-              {/* 自定义变量 */}
-              {selectedTemplate && Object.keys(customVariables).length > 0 && (
+              {/* 合同信息 */}
+              {selectedTemplate && (
                 <div>
-                  <Label>自定义变量</Label>
-                  <div className="space-y-2 mt-2">
-                    {Object.entries(selectedTemplate.variables_schema).map(([key, description]) => (
-                      <div key={key}>
-                        <Label htmlFor={`var-${key}`} className="text-sm">
-                          {description}
+                  <Label>合同信息</Label>
+                  <div className="space-y-4 mt-2">
+                    {/* 自动生成字段 - 只读显示 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="contract_number" className="text-sm font-medium">
+                          合同编号
                         </Label>
                         <Input
-                          id={`var-${key}`}
-                          value={customVariables[key] || ''}
-                          onChange={(e) => handleVariableChange(key, e.target.value)}
-                          placeholder={`请输入${description}`}
+                          id="contract_number"
+                          value={customVariables.contract_number || ''}
+                          readOnly
+                          className="bg-gray-50"
                         />
                       </div>
-                    ))}
+                      <div>
+                        <Label htmlFor="signing_date" className="text-sm font-medium">
+                          签署日期
+                        </Label>
+                        <Input
+                          id="signing_date"
+                          value={customVariables.signing_date || ''}
+                          readOnly
+                          className="bg-gray-50"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 公司信息 - 只读显示 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="company_name" className="text-sm font-medium">
+                          甲方公司名称
+                        </Label>
+                        <Input
+                          id="company_name"
+                          value={customVariables.company_name || ''}
+                          readOnly
+                          className="bg-gray-50"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="company_tax_id" className="text-sm font-medium">
+                          统一社会信用代码
+                        </Label>
+                        <Input
+                          id="company_tax_id"
+                          value={customVariables.company_tax_id || ''}
+                          readOnly
+                          className="bg-gray-50"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 客户信息 - 需要填写 */}
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">客户信息</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="customer_name" className="text-sm font-medium">
+                            客户姓名 *
+                          </Label>
+                          <Input
+                            id="customer_name"
+                            value={customVariables.customer_name || ''}
+                            onChange={(e) => handleVariableChange('customer_name', e.target.value)}
+                            placeholder="请输入客户姓名"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer_phone" className="text-sm font-medium">
+                            联系电话 *
+                          </Label>
+                          <Input
+                            id="customer_phone"
+                            value={customVariables.customer_phone || ''}
+                            onChange={(e) => handleVariableChange('customer_phone', e.target.value)}
+                            placeholder="请输入联系电话"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="customer_id_card" className="text-sm font-medium">
+                            身份证号 *
+                          </Label>
+                          <Input
+                            id="customer_id_card"
+                            value={customVariables.customer_id_card || ''}
+                            onChange={(e) => handleVariableChange('customer_id_card', e.target.value)}
+                            placeholder="请输入身份证号"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 服务信息 */}
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">服务信息</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="service_fee" className="text-sm font-medium">
+                            服务费用 *
+                          </Label>
+                          <Input
+                            id="service_fee"
+                            value={customVariables.service_fee || ''}
+                            onChange={(e) => handleVariableChange('service_fee', e.target.value)}
+                            placeholder="请输入服务费用"
+                            type="number"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="discount_amount" className="text-sm font-medium">
+                            优惠金额
+                          </Label>
+                          <Input
+                            id="discount_amount"
+                            value={customVariables.discount_amount || '0'}
+                            onChange={(e) => handleVariableChange('discount_amount', e.target.value)}
+                            placeholder="请输入优惠金额"
+                            type="number"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="service_end_date" className="text-sm font-medium">
+                            服务到期时间 *
+                          </Label>
+                          <Input
+                            id="service_end_date"
+                            value={customVariables.service_end_date || ''}
+                            onChange={(e) => handleVariableChange('service_end_date', e.target.value)}
+                            placeholder="请选择服务到期时间"
+                            type="date"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="service_type" className="text-sm font-medium">
+                            服务类型 *
+                          </Label>
+                          <Input
+                            id="service_type"
+                            value={customVariables.service_type || ''}
+                            onChange={(e) => handleVariableChange('service_type', e.target.value)}
+                            placeholder="请输入服务类型"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 其他模板变量 */}
+                    {Object.entries(selectedTemplate.variables_schema).map(([key, description]) => {
+                      // 跳过已经处理的字段
+                      const handledFields = ['contract_number', 'signing_date', 'company_name', 'company_tax_id', 
+                                          'customer_name', 'customer_phone', 'customer_id_card', 
+                                          'service_fee', 'discount_amount', 'service_end_date', 'service_type'];
+                      if (handledFields.includes(key)) return null;
+                      
+                      return (
+                        <div key={key} className="border-t pt-4">
+                          <div>
+                            <Label htmlFor={`var-${key}`} className="text-sm font-medium">
+                              {description}
+                            </Label>
+                            <Input
+                              id={`var-${key}`}
+                              value={customVariables[key] || ''}
+                              onChange={(e) => handleVariableChange(key, e.target.value)}
+                              placeholder={`请输入${description}`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -420,17 +616,18 @@ export default function CreateContractPage() {
         </Card>
       </div>
 
-      {/* 操作按钮 */}
-      <div className="mt-6 flex justify-end gap-4">
-        <Button variant="outline" asChild>
-          <Link href="/contracts/list">取消</Link>
-        </Button>
-        <Button 
-          onClick={handleCreateContract}
-          disabled={loading || !selectedMember || !contractType || !selectedTemplate}
-        >
-          {loading ? '创建中...' : '创建合同'}
-        </Button>
+        {/* 操作按钮 */}
+        <div className="mt-8 flex justify-end gap-4 pb-8">
+          <Button variant="outline" asChild>
+            <Link href="/contracts/list">取消</Link>
+          </Button>
+          <Button 
+            onClick={handleCreateContract}
+            disabled={loading || !selectedMember || !contractType || !selectedTemplate}
+          >
+            {loading ? '创建中...' : '创建合同'}
+          </Button>
+        </div>
       </div>
     </div>
   );
