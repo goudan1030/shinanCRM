@@ -20,7 +20,7 @@ export const ThreeColumnLayout = memo(function ThreeColumnLayout({
   useThreeColumns = false,
 }: ThreeColumnLayoutProps) {
   return (
-    <div className={cn('min-h-screen', className)}>
+    <>
       {/* 侧边栏容器 - 在移动端隐藏 */}
       <div className="hidden md:block fixed inset-y-0 left-0 z-[1000]">
         {sidebarContent}
@@ -33,19 +33,19 @@ export const ThreeColumnLayout = memo(function ThreeColumnLayout({
         </div>
       )}
 
-      {/* 主内容区域 - 修复PC端宽度计算问题 */}
+      {/* 主内容区域 - 简化布局，直接可滚动 */}
       <div className={cn(
-        "relative", 
         // 移动端：全宽
         "w-full",
         // 桌面端：使用calc计算正确宽度，避免超出屏幕
         "md:w-[calc(100%-60px)] md:ml-[60px]",
         // 三栏布局时的宽度计算
         useThreeColumns && middleContent ? "lg:w-[calc(100%-297px)] lg:ml-[297px]" : "",
-        "transition-all duration-100 ease-in-out"
+        "transition-all duration-100 ease-in-out",
+        className
       )}>
         {children}
       </div>
-    </div>
+    </>
   );
 });

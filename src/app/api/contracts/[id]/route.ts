@@ -5,10 +5,11 @@ import { Contract } from '@/types/contract';
 // 获取单个合同详情
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contractId = parseInt(params.id);
+    const { id } = await params;
+    const contractId = parseInt(id);
 
     if (isNaN(contractId)) {
       return NextResponse.json(
@@ -21,7 +22,8 @@ export async function GET(
       `SELECT 
         c.*,
         m.member_no,
-        m.name as member_name,
+        m.nickname as member_name,
+        m.real_name as member_real_name,
         m.phone as member_phone,
         m.id_card as member_id_card,
         ct.name as template_name
@@ -54,10 +56,11 @@ export async function GET(
 // 更新合同状态
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contractId = parseInt(params.id);
+    const { id } = await params;
+    const contractId = parseInt(id);
     const body = await request.json();
     const { status, pdfUrl } = body;
 
@@ -126,10 +129,11 @@ export async function PUT(
 // 删除合同
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contractId = parseInt(params.id);
+    const { id } = await params;
+    const contractId = parseInt(id);
 
     if (isNaN(contractId)) {
       return NextResponse.json(

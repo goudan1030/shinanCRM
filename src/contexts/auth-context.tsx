@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 // 检查路径是否为公开路径（不需要认证）
 function isPublicPath(path: string): boolean {
-  const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+  const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/contracts/sign'];
   return publicPaths.some(p => path === p || path.startsWith(p));
 }
 

@@ -36,8 +36,21 @@ export default function ContractTemplatesPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setTemplates(data);
+        // 确保返回的数据是数组格式
+        if (Array.isArray(data)) {
+          setTemplates(data);
+        } else {
+          console.error('API返回的数据不是数组格式:', data);
+          setTemplates([]);
+          toast({
+            title: '数据格式错误',
+            description: 'API返回的数据格式不正确',
+            variant: 'destructive'
+          });
+        }
       } else {
+        // API返回错误时，确保templates为空数组
+        setTemplates([]);
         toast({
           title: '获取模板列表失败',
           description: data.error || '请稍后重试',
@@ -46,6 +59,8 @@ export default function ContractTemplatesPage() {
       }
     } catch (error) {
       console.error('获取模板列表失败:', error);
+      // 发生异常时，确保templates为空数组
+      setTemplates([]);
       toast({
         title: '获取模板列表失败',
         description: '网络错误，请稍后重试',
@@ -105,7 +120,7 @@ export default function ContractTemplatesPage() {
   const resetForm = () => {
     setFormData({
       name: '',
-      type: '',
+      type: 'MEMBERSHIP',
       template_content: '',
       variables_schema: '{}',
       is_active: true

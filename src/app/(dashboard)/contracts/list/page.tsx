@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { Contract, ContractListResponse, CONTRACT_STATUS_MAP, CONTRACT_TYPE_MAP } from '@/types/contract';
-import { Search, Plus, Eye, Download, Trash2, FileText, PenTool } from 'lucide-react';
+import { Search, Plus, Eye, Download, Trash2, FileText, PenTool, Copy, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ContractListPage() {
@@ -323,15 +323,33 @@ export default function ContractListPage() {
                           </Button>
                           
                           {contract.status === 'PENDING' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              asChild
-                            >
-                              <Link href={`/contracts/sign?id=${contract.id}`}>
-                                <PenTool className="h-4 w-4" />
-                              </Link>
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const signUrl = `${window.location.origin}/contracts/sign?id=${contract.id}`;
+                                  navigator.clipboard.writeText(signUrl);
+                                  toast({
+                                    title: '链接已复制',
+                                    description: '签署链接已复制到剪贴板，可发送给客户',
+                                  });
+                                }}
+                                title="复制签署链接"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                asChild
+                                title="预览签署页面"
+                              >
+                                <Link href={`/contracts/sign?id=${contract.id}`}>
+                                  <ExternalLink className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            </>
                           )}
                           
                           {contract.status === 'SIGNED' && (

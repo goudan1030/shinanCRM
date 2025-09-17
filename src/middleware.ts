@@ -44,6 +44,8 @@ const publicRoutes = [
   '/api/auth/session',
   '/api/debug/db-test',  // 数据库调试API
   '/api/middleware-debug',  // middleware调试API
+  // 合同签署相关 - 客户公开访问
+  '/contracts/sign', // 合同签署页面
   // 推送相关API - 不需要认证
   '/api/messages/push/status', // 推送状态查询API
   // 企业微信相关API - 不需要认证
@@ -87,6 +89,13 @@ export async function middleware(request: NextRequest) {
 
   // 公开路由直接访问
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
+
+  // 特殊处理：合同签署相关的API路由（动态路由）
+  if (pathname.match(/^\/api\/contracts\/\d+\/sign$/) || 
+      pathname.match(/^\/api\/contracts\/\d+\/pdf$/) ||
+      pathname.match(/^\/api\/contracts\/\d+\/sign-view$/)) {
     return NextResponse.next();
   }
 

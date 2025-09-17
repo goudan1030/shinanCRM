@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { CONTRACT_TYPE_MAP } from '@/types/contract';
 import { Search, User, FileText, ArrowLeft } from 'lucide-react';
@@ -489,48 +488,19 @@ export default function CreateContractPage() {
                       </div>
                     </div>
 
-                    {/* 客户信息 - 用户端填写 */}
+                    {/* 客户信息说明 - 简化显示 */}
                     <div className="border-t pt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">客户信息（用户端填写）</h4>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                        <p className="text-sm text-blue-700">
-                          💡 客户信息将由客户在签署合同时自行填写，无需在此处填写
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">乙方信息</h4>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-blue-600" />
+                          <p className="text-sm text-blue-700 font-medium">
+                            客户信息将在签署合同时由客户自行填写
+                          </p>
+                        </div>
+                        <p className="text-xs text-blue-600 mt-2">
+                          包括：客户姓名、联系电话、身份证号等个人信息
                         </p>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="customer_name" className="text-sm font-medium text-gray-500">
-                            客户姓名（用户端填写）
-                          </Label>
-                          <Input
-                            id="customer_name"
-                            value="客户在签署时填写"
-                            readOnly
-                            className="bg-gray-50 text-gray-500"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="customer_phone" className="text-sm font-medium text-gray-500">
-                            联系电话（用户端填写）
-                          </Label>
-                          <Input
-                            id="customer_phone"
-                            value="客户在签署时填写"
-                            readOnly
-                            className="bg-gray-50 text-gray-500"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="customer_id_card" className="text-sm font-medium text-gray-500">
-                            身份证号（用户端填写）
-                          </Label>
-                          <Input
-                            id="customer_id_card"
-                            value="客户在签署时填写"
-                            readOnly
-                            className="bg-gray-50 text-gray-500"
-                          />
-                        </div>
                       </div>
                     </div>
 
@@ -612,9 +582,20 @@ export default function CreateContractPage() {
 
                     {/* 其他模板变量 */}
                     {Object.entries(selectedTemplate.variables_schema).map(([key, description]) => {
-                      // 跳过已经处理的字段
-                      const handledFields = ['contract_number', 'signing_date', 'company_name', 'company_tax_id', 
-                                          'service_fee', 'discount_amount', 'service_end_date', 'service_type', 'service_count'];
+                      // 跳过已经处理的字段 - 包含所有可能重复的字段
+                      const handledFields = [
+                        // 合同基本信息（已在上方显示）
+                        'contract_number', 'signing_date', 'contractNumber', 'signDate',
+                        'company_name', 'company_tax_id', 'companyName',
+                        // 服务信息（已在服务信息部分显示）
+                        'service_fee', 'discount_amount', 'service_end_date', 'service_type', 'service_count',
+                        'serviceFee', 'serviceDuration', 'serviceType',
+                        // 客户信息字段 - 这些在签署时由用户填写，不在管理后台显示
+                        'customer_name', 'customer_phone', 'customer_id_card', 'customer_address',
+                        'customerName', 'customerPhone', 'customerIdCard', 'customerAddress',
+                        // 合同标题等其他已处理字段
+                        'contractTitle'
+                      ];
                       if (handledFields.includes(key)) return null;
                       
                       return (

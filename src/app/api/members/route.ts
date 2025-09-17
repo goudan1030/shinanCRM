@@ -18,9 +18,20 @@ export async function GET(request: NextRequest) {
     const queryParams: any[] = [];
 
     if (searchKeyword) {
-      whereClause += ' AND (member_no LIKE ? OR nickname LIKE ? OR phone LIKE ? OR wechat LIKE ?)';
-      const keyword = `%${searchKeyword}%`;
-      queryParams.push(keyword, keyword, keyword, keyword);
+      // 判断是否为会员编号格式（M开头+数字）
+      const isMemberNo = /^M\d+$/i.test(searchKeyword.trim());
+      
+      if (isMemberNo) {
+        // 会员编号使用精确匹配
+        whereClause += ' AND (member_no = ? OR nickname LIKE ? OR phone LIKE ? OR wechat LIKE ?)';
+        const fuzzyKeyword = `%${searchKeyword}%`;
+        queryParams.push(searchKeyword.trim(), fuzzyKeyword, fuzzyKeyword, fuzzyKeyword);
+      } else {
+        // 其他搜索使用模糊匹配
+        whereClause += ' AND (member_no LIKE ? OR nickname LIKE ? OR phone LIKE ? OR wechat LIKE ?)';
+        const keyword = `%${searchKeyword}%`;
+        queryParams.push(keyword, keyword, keyword, keyword);
+      }
     }
 
     if (memberType) {

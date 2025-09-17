@@ -65,11 +65,11 @@ export default function DashboardLayout({
       document.addEventListener('keydown', handleEscKey);
       
       return () => {
-        document.body.style.overflow = '';
+        document.body.style.overflow = 'auto';
         document.removeEventListener('keydown', handleEscKey);
       };
     } else {
-      document.body.style.overflow = '';
+      document.body.style.overflow = 'auto';
     }
   }, [mobileMenuOpen]);
 

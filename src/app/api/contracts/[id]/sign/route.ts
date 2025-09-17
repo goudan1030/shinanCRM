@@ -11,7 +11,7 @@ export async function POST(
   try {
     const contractId = parseInt(params.id);
     const body: SignContractRequest = await request.json();
-    const { signatureData, signerType } = body;
+    const { signatureData, signerType, signerInfo } = body;
 
     if (isNaN(contractId)) {
       return NextResponse.json(
@@ -23,6 +23,14 @@ export async function POST(
     if (!signatureData || !signerType) {
       return NextResponse.json(
         { error: '缺少必需参数' },
+        { status: 400 }
+      );
+    }
+
+    // 如果是客户签署，验证签署者信息
+    if (signerType === 'CUSTOMER' && (!signerInfo || !signerInfo.realName || !signerInfo.idCard || !signerInfo.phone)) {
+      return NextResponse.json(
+        { error: '客户签署需要提供完整的签署者信息' },
         { status: 400 }
       );
     }
@@ -76,16 +84,67 @@ export async function POST(
     await executeQuery(
       `INSERT INTO contract_signatures (
         contract_id, signer_type, signature_data, signature_hash, 
-        ip_address, user_agent
-      ) VALUES (?, ?, ?, ?, ?, ?)`,
-      [contractId, signerType, signatureData, signatureHash, ipAddress, userAgent]
+        ip_address, user_agent, signer_real_name, signer_id_card, signer_phone
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        contractId, 
+        signerType, 
+        signatureData, 
+        signatureHash, 
+        ipAddress, 
+        userAgent,
+        signerInfo?.realName || null,
+        signerInfo?.idCard || null,
+        signerInfo?.phone || null
+      ]
     );
 
-    // 更新合同状态为已签署
-    await executeQuery(
-      'UPDATE contracts SET status = ?, signed_at = NOW(), updated_at = NOW() WHERE id = ?',
-      ['SIGNED', contractId]
+    // 更新合同状态为已签署，同时更新合同内容中的签署日期
+    const signedDate = new Date().toLocaleDateString('zh-CN');
+    
+    // 获取当前合同内容并更新签署日期
+    const [contractUpdateRows] = await executeQuery(
+      'SELECT content, variables FROM contracts WHERE id = ?',
+      [contractId]
     );
+    
+    if (contractUpdateRows && (contractUpdateRows as any[]).length > 0) {
+      const currentContract = (contractUpdateRows as any[])[0];
+      let updatedContent = currentContract.content;
+      let variables = JSON.parse(currentContract.variables || '{}');
+      
+      // 更新变量中的签署日期
+      variables.signDate = signedDate;
+      
+      // 更新合同内容中的签署日期占位符和签名
+      updatedContent = updatedContent.replace(/日期：_____________/g, `日期：${signedDate}`);
+      updatedContent = updatedContent.replace(/{{signDate}}/g, signedDate);
+      
+      // 将签名图片插入到合同的乙方签署区域
+      const signatureImageTag = `<img src="${signatureData}" alt="乙方签名" style="max-width: 150px; max-height: 80px; margin: 10px 0;">`;
+      updatedContent = updatedContent.replace(
+        /<div class="signature-line"><\/div>/g, 
+        signatureImageTag
+      );
+      
+      // 兼容其他可能的签名区域格式
+      updatedContent = updatedContent.replace(
+        /乙方（签名）：\s*<div class="signature-line"><\/div>/g,
+        `乙方（签名）：\n${signatureImageTag}`
+      );
+      
+      // 更新数据库
+      await executeQuery(
+        'UPDATE contracts SET status = ?, signed_at = NOW(), updated_at = NOW(), content = ?, variables = ? WHERE id = ?',
+        ['SIGNED', updatedContent, JSON.stringify(variables), contractId]
+      );
+    } else {
+      // 如果无法获取合同内容，至少更新状态
+      await executeQuery(
+        'UPDATE contracts SET status = ?, signed_at = NOW(), updated_at = NOW() WHERE id = ?',
+        ['SIGNED', contractId]
+      );
+    }
 
     // 生成PDF（这里先返回成功，PDF生成可以异步处理）
     const pdfUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/contracts/${contractId}/pdf`;

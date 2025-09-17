@@ -47,6 +47,9 @@ export interface ContractSignature {
   signed_at: string;
   ip_address: string | null;
   user_agent: string | null;
+  signer_real_name: string | null;
+  signer_id_card: string | null;
+  signer_phone: string | null;
 }
 
 export interface GenerateContractRequest {
@@ -66,6 +69,11 @@ export interface GenerateContractResponse {
 export interface SignContractRequest {
   signatureData: string;
   signerType: 'CUSTOMER' | 'COMPANY';
+  signerInfo?: {
+    realName: string;
+    idCard: string;
+    phone: string;
+  };
 }
 
 export interface SignContractResponse {
