@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, ChevronDown, ChevronRight, AppWindow } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Wallet, ArrowDownCircle, ArrowUpCircle, Calculator, LogOut, Smartphone, Building2, User, UserCircle, Megaphone, ChevronDown, ChevronRight, AppWindow, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { useState } from 'react';
@@ -44,6 +44,17 @@ const navigation: NavigationItem[] = [
   { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
   { name: '会员管理', href: '/members', icon: Users },
   { name: '用户管理', href: '/users', icon: User },
+  {
+    name: '合同管理',
+    href: '/contracts',
+    icon: FileText,
+    matchPaths: ['/contracts', '/contracts/templates', '/contracts/list', '/contracts/sign'],
+    children: [
+      { name: '合同列表', href: '/contracts/list' },
+      { name: '合同模板', href: '/contracts/templates' },
+      { name: '签署管理', href: '/contracts/sign' }
+    ]
+  },
   {
     name: '收支管理',
     href: '/finance/income',
@@ -115,6 +126,7 @@ const navigation: NavigationItem[] = [
 ];
 
 const menuRedirectMap = {
+  '/contracts': '/contracts/list', // 合同管理 -> 合同列表
   '/finance': '/finance/income', // 收支管理 -> 收入管理
   '/platform': '/platform/banner', // 平台管理 -> Banner管理
   '/app': '/app/config', // APP管理 -> 基础配置
