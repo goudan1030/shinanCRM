@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database';
+import { executeQuery } from '@/lib/database-netlify';
 import { SignContractRequest, SignContractResponse } from '@/types/contract';
 import crypto from 'crypto';
 

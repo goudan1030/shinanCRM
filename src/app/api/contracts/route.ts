@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database';
+import { executeQuery } from '@/lib/database-netlify';
 import { ContractListParams, ContractListResponse, GenerateContractRequest, GenerateContractResponse } from '@/types/contract';
 import { v4 as uuidv4 } from 'uuid';
 

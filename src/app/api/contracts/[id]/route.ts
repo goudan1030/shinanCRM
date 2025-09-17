@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database';
+import { executeQuery } from '@/lib/database-netlify';
 import { Contract } from '@/types/contract';
 
 // 获取单个合同详情
