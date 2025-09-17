@@ -73,8 +73,23 @@ export async function GET(request: NextRequest) {
     const [countResult] = await executeQuery(countQuery, countParams);
     const total = (countResult as any[])[0]?.total || 0;
 
+    // 格式化合同数据，将平铺的会员字段转换为嵌套结构
+    const formattedContracts = (contracts as any[]).map(contract => ({
+      ...contract,
+      member: contract.member_no ? {
+        id: contract.member_id,
+        member_no: contract.member_no,
+        name: contract.member_name,
+        phone: contract.member_phone,
+        wechat: contract.member_wechat
+      } : null,
+      template: contract.template_name ? {
+        name: contract.template_name
+      } : null
+    }));
+
     const response: ContractListResponse = {
-      contracts: contracts as any[],
+      contracts: formattedContracts,
       total,
       page,
       limit,

@@ -47,7 +47,13 @@ export async function GET(
     });
 
     const page = await browser.newPage();
-    await page.setContent(contract.content, { waitUntil: 'networkidle0' });
+    
+    // 处理合同内容中的图片路径，转换为绝对URL
+    let pdfContent = contract.content;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    pdfContent = pdfContent.replace(/src="\/zhang\.png"/g, `src="${baseUrl}/zhang.png"`);
+    
+    await page.setContent(pdfContent, { waitUntil: 'networkidle0' });
 
     const pdf = await page.pdf({
       format: 'A4',

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { Contract, ContractListResponse, CONTRACT_STATUS_MAP, CONTRACT_TYPE_MAP } from '@/types/contract';
-import { Search, Plus, Eye, Download, Trash2, FileText, PenTool, Copy, ExternalLink } from 'lucide-react';
+import { Search, Plus, Eye, Download, Trash2, FileText, Copy, ExternalLink, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ContractListPage() {
@@ -51,7 +51,7 @@ export default function ContractListPage() {
       } else {
         toast({
           title: '获取合同列表失败',
-          description: data.error || '请稍后重试',
+          description: (data as any).error || '请稍后重试',
           variant: 'destructive'
         });
       }
@@ -88,43 +88,6 @@ export default function ContractListPage() {
     setPagination(prev => ({ ...prev, page }));
   };
 
-  // 生成新合同
-  const handleGenerateContract = async (memberId: number, contractType: string) => {
-    try {
-      const response = await fetch('/api/contracts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          memberId,
-          contractType,
-          variables: {}
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: '合同生成成功',
-          description: `合同编号：${data.contractNumber}`,
-        });
-        fetchContracts();
-      } else {
-        toast({
-          title: '生成合同失败',
-          description: data.error || '请稍后重试',
-          variant: 'destructive'
-        });
-      }
-    } catch (error) {
-      console.error('生成合同失败:', error);
-      toast({
-        title: '生成合同失败',
-        description: '网络错误，请稍后重试',
-        variant: 'destructive'
-      });
-    }
-  };
 
   // 下载PDF
   const handleDownloadPDF = (contractId: number, contractNumber: string) => {
@@ -137,8 +100,9 @@ export default function ContractListPage() {
   };
 
   // 删除合同
-  const handleDeleteContract = async (contractId: number) => {
-    if (!confirm('确定要删除这个合同吗？')) return;
+  const handleDeleteContract = async (contractId: number, contractNumber?: string) => {
+    const confirmMessage = `确定要删除合同 ${contractNumber || contractId} 吗？\n\n此操作将同时删除：\n- 合同记录\n- 相关的签署信息\n- 所有关联数据\n\n此操作不可撤销！`;
+    if (!confirm(confirmMessage)) return;
 
     try {
       const response = await fetch(`/api/contracts/${contractId}`, {
@@ -163,6 +127,41 @@ export default function ContractListPage() {
       console.error('删除合同失败:', error);
       toast({
         title: '删除失败',
+        description: '网络错误，请稍后重试',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // 撤销签署
+  const handleRevokeSignature = async (contractId: number, contractNumber?: string) => {
+    const confirmMessage = `确定要撤销合同 ${contractNumber || contractId} 的签署吗？\n\n此操作将：\n- 将合同状态改为"待签署"\n- 清除签署时间和签名数据\n- 删除签署记录\n- 恢复合同内容为未签署状态\n\n撤销后需要重新签署！`;
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/revoke`, {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: '撤销成功',
+          description: data.message || '签署已撤销',
+        });
+        fetchContracts();
+      } else {
+        toast({
+          title: '撤销失败',
+          description: data.error || '请稍后重试',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('撤销签署失败:', error);
+      toast({
+        title: '撤销失败',
         description: '网络错误，请稍后重试',
         variant: 'destructive'
       });
@@ -353,24 +352,36 @@ export default function ContractListPage() {
                           )}
                           
                           {contract.status === 'SIGNED' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDownloadPDF(contract.id, contract.contract_number)}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadPDF(contract.id, contract.contract_number)}
+                                title="下载PDF"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRevokeSignature(contract.id, contract.contract_number)}
+                                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                title="撤销签署"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                            </>
                           )}
                           
-                          {contract.status === 'DRAFT' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteContract(contract.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteContract(contract.id, contract.contract_number)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="删除合同"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

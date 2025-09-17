@@ -572,8 +572,8 @@ function ContractSignContent() {
               lineHeight: '1.5'
             }}>
               <div>姓名：{signerInfo.realName}</div>
-              <div>身份证：{signerInfo.idCard.replace(/(.{6})(.{8})(.{4})/, '$1****$3')}</div>
-              <div>手机：{signerInfo.phone.replace(/(.{3})(.{4})(.{4})/, '$1****$3')}</div>
+              <div>身份证：{signerInfo.idCard}</div>
+              <div>手机：{signerInfo.phone}</div>
             </div>
           </div>
 

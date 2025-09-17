@@ -142,9 +142,9 @@ export async function DELETE(
       );
     }
 
-    // 检查合同状态，只有草稿状态的合同才能删除
+    // 检查合同是否存在
     const [rows] = await executeQuery(
-      'SELECT status FROM contracts WHERE id = ?',
+      'SELECT id, status FROM contracts WHERE id = ?',
       [contractId]
     );
 
@@ -155,16 +155,19 @@ export async function DELETE(
       );
     }
 
-    const contract = rows[0];
-    if (contract.status !== 'DRAFT') {
-      return NextResponse.json(
-        { error: '只有草稿状态的合同才能删除' },
-        { status: 400 }
-      );
+    // 开始事务删除合同及相关数据
+    try {
+      // 1. 删除合同签署记录
+      await executeQuery('DELETE FROM contract_signatures WHERE contract_id = ?', [contractId]);
+      
+      // 2. 删除合同记录
+      await executeQuery('DELETE FROM contracts WHERE id = ?', [contractId]);
+      
+      console.log(`成功删除合同 ${contractId} 及其相关签署信息`);
+    } catch (deleteError) {
+      console.error('删除合同相关数据失败:', deleteError);
+      throw deleteError;
     }
-
-    // 删除合同
-    await executeQuery('DELETE FROM contracts WHERE id = ?', [contractId]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

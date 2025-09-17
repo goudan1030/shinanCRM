@@ -111,14 +111,46 @@ export async function POST(
     if (contractUpdateRows && (contractUpdateRows as any[]).length > 0) {
       const currentContract = (contractUpdateRows as any[])[0];
       let updatedContent = currentContract.content;
-      let variables = JSON.parse(currentContract.variables || '{}');
+      
+      // 安全处理variables字段，可能是字符串或对象
+      let variables: any = {};
+      try {
+        if (typeof currentContract.variables === 'string') {
+          variables = JSON.parse(currentContract.variables || '{}');
+        } else if (typeof currentContract.variables === 'object' && currentContract.variables !== null) {
+          variables = currentContract.variables;
+        } else {
+          variables = {};
+        }
+      } catch (error) {
+        console.error('解析variables失败，使用默认值:', error);
+        variables = {};
+      }
       
       // 更新变量中的签署日期
       variables.signDate = signedDate;
       
-      // 更新合同内容中的签署日期占位符和签名
+      // 更新合同内容中的签署日期占位符
       updatedContent = updatedContent.replace(/日期：_____________/g, `日期：${signedDate}`);
       updatedContent = updatedContent.replace(/{{signDate}}/g, signedDate);
+      // 更新合同头部的签署日期
+      updatedContent = updatedContent.replace(/签署日期：\s*<\/p>/g, `签署日期：${signedDate}</p>`);
+      
+      // 更新乙方信息占位符
+      if (signerInfo) {
+        // 替换姓名占位符
+        updatedContent = updatedContent.replace(/姓名：\s*明天/g, `姓名：${signerInfo.realName}`);
+        updatedContent = updatedContent.replace(/待客户填写/g, signerInfo.realName);
+        
+        // 替换身份证号占位符
+        updatedContent = updatedContent.replace(/身份证号：\s*待客户填写/g, `身份证号：${signerInfo.idCard}`);
+        
+        // 替换手机号占位符 
+        updatedContent = updatedContent.replace(/联系电话：\s*13157118301/g, `联系电话：${signerInfo.phone}`);
+        
+        // 替换联系地址占位符
+        updatedContent = updatedContent.replace(/联系地址：\s*待客户填写/g, `联系地址：${signerInfo.realName}提供`);
+      }
       
       // 将签名图片插入到合同的乙方签署区域
       const signatureImageTag = `<img src="${signatureData}" alt="乙方签名" style="max-width: 150px; max-height: 80px; margin: 10px 0;">`;
