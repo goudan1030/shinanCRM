@@ -47,10 +47,10 @@ export default function CreateContractPage() {
   // 获取会员列表
   const fetchMembers = async () => {
     try {
-      const response = await fetch('/api/members?limit=100');
+      const response = await fetch('/api/members?pageSize=100');
       const data = await response.json();
       if (response.ok) {
-        setMembers(data.members || []);
+        setMembers(data.data || []);
       }
     } catch (error) {
       console.error('获取会员列表失败:', error);
@@ -129,10 +129,10 @@ export default function CreateContractPage() {
     if (value.trim().length > 0) {
       setMemberSearchLoading(true);
       try {
-        const response = await fetch(`/api/members?search=${encodeURIComponent(value)}&limit=20`);
+        const response = await fetch(`/api/members?searchKeyword=${encodeURIComponent(value)}&pageSize=20`);
         const data = await response.json();
         if (response.ok) {
-          setMembers(data.members || []);
+          setMembers(data.data || []);
           setShowMemberResults(true);
         } else {
           console.error('搜索会员失败:', data.error);
