@@ -615,7 +615,7 @@ export default function CreateContractPage() {
           </CardContent>
         </Card>
       </div>
-
+      </div>
       {/* 操作按钮 - 固定在底部 */}
       <div className="sticky bottom-0 bg-white border-t shadow-lg p-6 mt-8">
         <div className="max-w-7xl mx-auto flex justify-end gap-4">
