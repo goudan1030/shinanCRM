@@ -58,13 +58,18 @@ export default function CreateContractPage() {
   // 获取合同模板
   const fetchTemplates = async () => {
     try {
+      console.log('🔍 正在获取合同模板...');
       const response = await fetch('/api/contracts/templates');
       const data = await response.json();
+      console.log('📋 模板API响应:', data);
       if (response.ok) {
         setTemplates(data.templates || []);
+        console.log('✅ 模板加载成功:', data.templates?.length || 0, '个');
+      } else {
+        console.error('❌ 模板API错误:', data.error);
       }
     } catch (error) {
-      console.error('获取合同模板失败:', error);
+      console.error('❌ 获取合同模板失败:', error);
     }
   };
 
@@ -84,6 +89,12 @@ export default function CreateContractPage() {
   const filteredTemplates = templates.filter(template =>
     !contractType || template.type === contractType
   );
+
+  // 调试信息
+  console.log('🔍 模板调试信息:');
+  console.log('  - 所有模板:', templates.map(t => ({ id: t.id, name: t.name, type: t.type })));
+  console.log('  - 当前合同类型:', contractType);
+  console.log('  - 过滤后的模板:', filteredTemplates.map(t => ({ id: t.id, name: t.name, type: t.type })));
 
   // 处理合同类型变化
   const handleContractTypeChange = (type: string) => {
