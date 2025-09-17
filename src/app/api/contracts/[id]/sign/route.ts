@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
 import { SignContractRequest, SignContractResponse } from '@/types/contract';
+import { sendContractSignNotification } from '@/lib/wecom-api';
 import crypto from 'crypto';
 
 // 签署合同
@@ -175,6 +176,48 @@ export async function POST(
         'UPDATE contracts SET status = ?, signed_at = NOW(), updated_at = NOW() WHERE id = ?',
         ['SIGNED', contractId]
       );
+    }
+
+    // 发送企业微信通知
+    try {
+      // 获取签署后的合同详细信息（包含会员信息）
+      const [notificationRows] = await executeQuery(
+        `SELECT 
+          c.id, c.contract_number, c.contract_type, c.signed_at,
+          m.member_no, m.nickname as member_name
+         FROM contracts c
+         LEFT JOIN members m ON c.member_id = m.id
+         WHERE c.id = ?`,
+        [contractId]
+      );
+
+      if (notificationRows && (notificationRows as any[]).length > 0) {
+        const contractInfo = (notificationRows as any[])[0];
+        
+        console.log('📧 准备发送合同签署通知:', {
+          contractId,
+          contractNumber: contractInfo.contract_number,
+          signerName: signerInfo?.realName
+        });
+
+        // 异步发送企业微信通知（不阻塞响应）
+        sendContractSignNotification(contractInfo, signerInfo)
+          .then((success) => {
+            if (success) {
+              console.log('✅ 合同签署通知发送成功');
+            } else {
+              console.log('⚠️ 合同签署通知发送失败');
+            }
+          })
+          .catch((error) => {
+            console.error('❌ 合同签署通知发送出错:', error);
+          });
+      } else {
+        console.log('⚠️ 未找到合同信息，跳过通知发送');
+      }
+    } catch (notificationError) {
+      console.error('❌ 准备合同签署通知时出错:', notificationError);
+      // 通知发送失败不影响签署结果
     }
 
     // 生成PDF（这里先返回成功，PDF生成可以异步处理）

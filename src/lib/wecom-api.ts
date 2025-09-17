@@ -501,6 +501,210 @@ ${timeStr}
 }
 
 /**
+ * 格式化合同签署通知为文本消息
+ */
+export function formatContractSignNotificationText(contractData: any, signerInfo: any): string {
+  const {
+    contract_number,
+    contract_type,
+    signed_at,
+    member_no,
+    member_name
+  } = contractData;
+
+  // 格式化合同类型
+  const contractTypeMap: {[key: string]: string} = {
+    'MEMBERSHIP': '会员服务合同',
+    'ONE_TIME': '一次性服务合同',
+    'ANNUAL': '年费服务合同'
+  };
+  const contractTypeText = contract_type ? contractTypeMap[contract_type] || contract_type : '服务合同';
+  
+  // 格式化签署时间
+  const signedTime = new Date(signed_at).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'Asia/Shanghai'
+  });
+
+  return `✅ 合同签署成功通知
+
+📋 合同信息：
+• 合同编号：${contract_number}
+• 合同类型：${contractTypeText}
+• 签署时间：${signedTime}
+
+👤 签署人信息：
+• 会员编号：${member_no || '未分配'}
+• 会员姓名：${member_name || '未知'}
+• 真实姓名：${signerInfo.realName}
+• 身份证号：${signerInfo.idCard}
+• 联系电话：${signerInfo.phone}
+
+🎉 合同已成功签署，请及时处理后续服务工作。`;
+}
+
+/**
+ * 格式化合同签署通知为卡片消息
+ */
+export function formatContractSignNotificationCard(contractData: any, signerInfo: any): { title: string; description: string; url: string; btntxt?: string } {
+  const {
+    contract_number,
+    contract_type,
+    signed_at,
+    member_no,
+    member_name,
+    id
+  } = contractData;
+
+  const contractTypeMap: {[key: string]: string} = {
+    'MEMBERSHIP': '会员服务合同',
+    'ONE_TIME': '一次性服务合同',
+    'ANNUAL': '年费服务合同'
+  };
+  const contractTypeText = contract_type ? contractTypeMap[contract_type] || contract_type : '服务合同';
+  
+  const signedTime = new Date(signed_at).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Shanghai'
+  });
+
+  return {
+    title: "✅ 合同签署成功通知",
+    description: `合同编号：${contract_number}
+合同类型：${contractTypeText}
+会员编号：${member_no || '未分配'} | 会员姓名：${member_name || '未知'}
+签署人：${signerInfo.realName} | 身份证：${signerInfo.idCard}
+联系电话：${signerInfo.phone}
+签署时间：${signedTime}`,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.xinghun.info'}/contracts/${id}`,
+    btntxt: "查看合同"
+  };
+}
+
+/**
+ * 格式化合同签署通知为Markdown消息
+ */
+export function formatContractSignNotificationMarkdown(contractData: any, signerInfo: any): string {
+  const {
+    contract_number,
+    contract_type,
+    signed_at,
+    member_no,
+    member_name
+  } = contractData;
+
+  const contractTypeMap: {[key: string]: string} = {
+    'MEMBERSHIP': '会员服务合同',
+    'ONE_TIME': '一次性服务合同',
+    'ANNUAL': '年费服务合同'
+  };
+  const contractTypeText = contract_type ? contractTypeMap[contract_type] || contract_type : '服务合同';
+  
+  const signedTime = new Date(signed_at).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Shanghai'
+  });
+
+  return `# ✅ 合同签署成功通知
+
+## 📋 合同信息
+- **合同编号**：${contract_number}
+- **合同类型**：${contractTypeText}
+- **签署时间**：${signedTime}
+
+## 👤 会员信息
+- **会员编号**：${member_no || '未分配'}
+- **会员姓名**：${member_name || '未知'}
+
+## ✍️ 签署人信息
+- **真实姓名**：${signerInfo.realName}
+- **身份证号**：${signerInfo.idCard}
+- **联系电话**：${signerInfo.phone}
+
+## 🎉 状态
+合同已成功签署，请及时处理后续服务工作。`;
+}
+
+/**
+ * 发送合同签署通知
+ */
+export async function sendContractSignNotification(contractData: any, signerInfo: any): Promise<boolean> {
+  try {
+    console.log('开始发送合同签署通知...');
+    
+    // 获取企业微信配置
+    const config = await getWecomConfig();
+    if (!config) {
+      console.log('企业微信配置不存在，跳过通知发送');
+      return false;
+    }
+    
+    // 获取Access Token
+    const accessToken = await getWecomAccessToken(config);
+    if (!accessToken) {
+      console.log('无法获取企业微信Access Token，跳过通知发送');
+      return false;
+    }
+    
+    // 准备消息内容，根据配置选择消息类型和接收者
+    const messageType = config.message_type || 'textcard';
+    const recipients = config.notification_recipients || '@all';
+    
+    const message: WecomMessage = {
+      touser: recipients,
+      msgtype: messageType,
+      agentid: config.agent_id
+    };
+    
+    // 根据消息类型设置消息内容
+    switch (messageType) {
+      case 'textcard':
+        message.textcard = formatContractSignNotificationCard(contractData, signerInfo);
+        break;
+      case 'text':
+        message.text = {
+          content: formatContractSignNotificationText(contractData, signerInfo)
+        };
+        break;
+      case 'markdown':
+        message.markdown = {
+          content: formatContractSignNotificationMarkdown(contractData, signerInfo)
+        };
+        break;
+      default:
+        message.textcard = formatContractSignNotificationCard(contractData, signerInfo);
+    }
+    
+    // 发送消息
+    const success = await sendWecomMessage(accessToken, message);
+    
+    if (success) {
+      console.log('✓ 合同签署通知发送成功');
+    } else {
+      console.log('✗ 合同签署通知发送失败');
+    }
+    
+    return success;
+  } catch (error) {
+    console.error('发送合同签署通知出错:', error);
+    return false;
+  }
+}
+
+/**
  * 发送会员登记通知
  */
 export async function sendMemberRegistrationNotification(memberData: any): Promise<boolean> {
