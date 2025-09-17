@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       queryParams
     );
 
-    return NextResponse.json(templates as ContractTemplate[]);
+    return NextResponse.json({ templates: templates as ContractTemplate[] });
   } catch (error) {
     console.error('获取合同模板失败:', error);
     return NextResponse.json(
