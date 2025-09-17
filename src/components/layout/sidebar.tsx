@@ -48,9 +48,10 @@ const navigation: NavigationItem[] = [
           name: '合同管理',
           href: '/contracts',
           icon: FileText,
-          matchPaths: ['/contracts', '/contracts/templates', '/contracts/list', '/contracts/sign', '/contracts/test'],
+          matchPaths: ['/contracts', '/contracts/templates', '/contracts/list', '/contracts/sign', '/contracts/create', '/contracts/test'],
           children: [
             { name: '合同列表', href: '/contracts/list' },
+            { name: '发起合同', href: '/contracts/create' },
             { name: '合同模板', href: '/contracts/templates' },
             { name: '签署管理', href: '/contracts/sign' },
             { name: '测试页面', href: '/contracts/test' }

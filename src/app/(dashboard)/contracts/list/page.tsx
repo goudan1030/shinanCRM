@@ -244,8 +244,16 @@ export default function ContractListPage() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>合同列表</CardTitle>
-            <div className="text-sm text-gray-500">
-              共 {pagination.total} 条记录
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-500">
+                共 {pagination.total} 条记录
+              </div>
+              <Button asChild>
+                <Link href="/contracts/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  发起合同
+                </Link>
+              </Button>
             </div>
           </div>
         </CardHeader>
