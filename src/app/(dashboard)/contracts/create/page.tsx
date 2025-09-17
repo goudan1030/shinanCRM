@@ -658,4 +658,4 @@ export default function CreateContractPage() {
       </div>
     </div>
   );
-}
+    </div>
