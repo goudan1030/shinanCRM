@@ -7,7 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Contract } from '@/types/contract';
 import { FileText, Download, CheckCircle } from 'lucide-react';
-import SignatureCanvas from 'react-signature-canvas';
+import dynamic from 'next/dynamic';
+
+const SignatureCanvas = dynamic(() => import('react-signature-canvas'), {
+  ssr: false,
+  loading: () => <div className="w-full h-48 bg-gray-100 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-500">加载签名组件中...</div>
+});
 
 function ContractSignContent() {
   const { toast } = useToast();
