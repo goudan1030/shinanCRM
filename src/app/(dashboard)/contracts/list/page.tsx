@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { Contract, ContractListResponse, CONTRACT_STATUS_MAP, CONTRACT_TYPE_MAP } from '@/types/contract';
-import { Search, Plus, Eye, Download, Trash2, FileText, Copy, ExternalLink, RotateCcw } from 'lucide-react';
+import { Search, Plus, Eye, Download, Trash2, FileText, Copy, ExternalLink, RotateCcw, PenTool } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ContractListPage() {
@@ -284,9 +284,7 @@ export default function ContractListPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全部类型</SelectItem>
-                <SelectItem value="MEMBERSHIP">会员服务</SelectItem>
-                <SelectItem value="ONE_TIME">一次性服务</SelectItem>
-                <SelectItem value="ANNUAL">年费服务</SelectItem>
+                <SelectItem value="MEMBERSHIP">石楠文化介绍服务</SelectItem>
               </SelectContent>
             </Select>
 
@@ -384,10 +382,18 @@ export default function ContractListPage() {
                           {contract.status === 'PENDING' && (
                             <>
                               <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => router.push(`/contracts/sign/${contract.id}`)}
+                                title="签署合同"
+                              >
+                                <PenTool className="h-4 w-4" />
+                              </Button>
+                              <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  const signUrl = `${window.location.origin}/contracts/sign?id=${contract.id}`;
+                                  const signUrl = `${window.location.origin}/contracts/sign/${contract.id}`;
                                   navigator.clipboard.writeText(signUrl);
                                   toast({
                                     title: '链接已复制',

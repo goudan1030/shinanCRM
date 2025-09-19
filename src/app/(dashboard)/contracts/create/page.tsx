@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { CONTRACT_TYPE_MAP } from '@/types/contract';
+import { SERVICE_PACKAGES, ServicePackage } from '@/types/service-packages';
 import { Search, User, FileText, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -20,33 +19,56 @@ interface Member {
   wechat: string;
 }
 
-interface ContractTemplate {
-  id: number;
-  name: string;
-  type: string;
-  template_content: string;
-  variables_schema: Record<string, string>;
-}
+// 固定的合同模板信息
+const FIXED_TEMPLATE = {
+  id: 1,
+  name: '石楠文化介绍服务合同',
+  type: 'MEMBERSHIP',
+  template_content: '',
+  variables_schema: {}
+};
 
 export default function CreateContractPage() {
   const router = useRouter();
   const { toast } = useToast();
   
+  // 强制启用滚动
+  useEffect(() => {
+    document.documentElement.style.overflow = 'auto';
+    document.documentElement.style.height = 'auto';
+    document.body.style.overflow = 'auto';
+    document.body.style.height = 'auto';
+    
+    // 找到所有可能阻止滚动的父元素并修复
+    const allElements = document.querySelectorAll('*');
+    allElements.forEach(el => {
+      const element = el as HTMLElement;
+      const computedStyle = window.getComputedStyle(element);
+      if (computedStyle.overflow === 'hidden' || computedStyle.height === '100vh') {
+        element.style.overflow = 'auto';
+        element.style.height = 'auto';
+      }
+    });
+  }, []);
+  
+  
   const [members, setMembers] = useState<Member[]>([]);
-  const [templates, setTemplates] = useState<ContractTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
-  const [contractType, setContractType] = useState<string>('');
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
+  const [selectedPackages, setSelectedPackages] = useState<ServicePackage[]>([]);
+  const [expirationType, setExpirationType] = useState<'fixed' | 'custom' | 'permanent'>('fixed');
+  const [customExpirationDate, setCustomExpirationDate] = useState('');
   const [showMemberResults, setShowMemberResults] = useState(false);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   
   // 公司固定信息
   const companyInfo = {
     name: '杭州石楠文化科技有限公司',
-    taxId: '91330105MA2KCLP6X2'
+    taxId: '91330105MA2KCLP6X2',
+    address: '浙江省杭州市西湖区文三路259号',
+    phone: '0571-88888888'
   };
 
   // 获取会员列表
@@ -62,84 +84,32 @@ export default function CreateContractPage() {
     }
   };
 
-  // 获取合同模板
-  const fetchTemplates = async () => {
-    try {
-      console.log('🔍 正在获取合同模板...');
-      const response = await fetch('/api/contracts/templates');
-      const data = await response.json();
-      console.log('📋 模板API响应:', data);
-      if (response.ok) {
-        setTemplates(data.templates || []);
-        console.log('✅ 模板加载成功:', data.templates?.length || 0, '个');
-      } else {
-        console.error('❌ 模板API错误:', data.error);
-      }
-    } catch (error) {
-      console.error('❌ 获取合同模板失败:', error);
-    }
-  };
-
   useEffect(() => {
     fetchMembers();
-    fetchTemplates();
+    // 初始化固定模板的变量
+    initializeTemplateVariables();
   }, []);
 
-  // 注意：现在使用实时搜索，不再需要客户端过滤
-
-  // 根据合同类型过滤模板
-  const filteredTemplates = templates.filter(template =>
-    !contractType || template.type === contractType
-  );
-
-  // 调试信息
-  console.log('🔍 模板调试信息:');
-  console.log('  - 所有模板:', templates.map(t => ({ id: t.id, name: t.name, type: t.type })));
-  console.log('  - 当前合同类型:', contractType);
-  console.log('  - 过滤后的模板:', filteredTemplates.map(t => ({ id: t.id, name: t.name, type: t.type })));
-
-  // 处理合同类型变化
-  const handleContractTypeChange = (type: string) => {
-    setContractType(type);
-    setSelectedTemplate(null);
-    setCustomVariables({});
+  // 初始化模板变量
+  const initializeTemplateVariables = () => {
+    const variables: Record<string, string> = {
+      // 自动生成字段
+      'signing_date': new Date().toLocaleDateString('zh-CN'),
+      'contract_number': generateContractNumber(),
+      'company_name': companyInfo.name,
+      'company_tax_id': companyInfo.taxId,
+      'discount_amount': '0', // 优惠金额，默认为0
+      'service_fee': '', // 服务费用，需要用户填写
+      'service_type': '' // 服务类型，需要用户填写
+    };
+    
+    // 添加服务相关字段
+    variables['service_end_date'] = ''; // 服务到期时间，需要用户填写
+    variables['selected_packages'] = JSON.stringify(selectedPackages); // 选中的服务套餐
+    
+    setCustomVariables(variables);
   };
 
-  // 处理模板选择
-  const handleTemplateSelect = (templateId: string) => {
-    const template = templates.find(t => t.id.toString() === templateId);
-    setSelectedTemplate(template || null);
-
-    if (template) {
-      // 初始化自定义变量，包含自动生成的字段
-      const variables: Record<string, string> = {
-        // 自动生成字段
-        'signing_date': new Date().toLocaleDateString('zh-CN'),
-        'contract_number': generateContractNumber(),
-        'company_name': companyInfo.name,
-        'company_tax_id': companyInfo.taxId,
-        'discount_amount': '0', // 优惠金额，默认为0
-        'service_fee': '', // 服务费用，需要用户填写
-        'service_type': '' // 服务类型，需要用户填写
-      };
-      
-      // 根据合同类型添加特定字段
-      if (template.type === 'ONE_TIME') {
-        variables['service_count'] = ''; // 服务次数，需要用户填写
-      } else {
-        variables['service_end_date'] = ''; // 服务到期时间，需要用户填写
-      }
-      
-      // 添加模板中的其他变量
-      Object.keys(template.variables_schema).forEach(key => {
-        if (!variables[key]) {
-          variables[key] = '';
-        }
-      });
-      
-      setCustomVariables(variables);
-    }
-  };
 
   // 生成合同编号
   const generateContractNumber = () => {
@@ -158,6 +128,54 @@ export default function CreateContractPage() {
       [key]: value
     }));
   };
+
+  // 处理服务套餐选择
+  const handlePackageToggle = (packageId: string) => {
+    const packageToToggle = SERVICE_PACKAGES.find(pkg => pkg.id === packageId);
+    if (!packageToToggle) return;
+
+    setSelectedPackages(prev => {
+      const isSelected = prev.some(pkg => pkg.id === packageId);
+      if (isSelected) {
+        return prev.filter(pkg => pkg.id !== packageId);
+      } else {
+        return [...prev, packageToToggle];
+      }
+    });
+  };
+
+
+  // 计算总价格
+  // 计算原价总额（根据选择的套餐自动计算）
+  const originalAmount = selectedPackages.reduce((sum, pkg) => sum + pkg.price, 0);
+  const contractAmount = parseFloat(customVariables.contract_amount || originalAmount.toString());
+
+  // 计算到期时间
+  const calculateExpirationDate = () => {
+    if (expirationType === 'permanent') {
+      return '长期有效';
+    }
+    
+    if (expirationType === 'custom' && customExpirationDate) {
+      return customExpirationDate;
+    }
+    
+    // 检查是否选择了A套餐（固定12个月）
+    const hasPackageA = selectedPackages.some(pkg => pkg.id === 'A');
+    if (hasPackageA) {
+      // A套餐固定12个月，以付款时间为准到明年的今天
+      const today = new Date();
+      const nextYear = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+      return nextYear.toISOString().split('T')[0];
+    }
+    
+    // 其他套餐使用自定义时间或默认1年
+    const today = new Date();
+    const oneYearLater = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+    return oneYearLater.toISOString().split('T')[0];
+  };
+
+  const expirationDate = calculateExpirationDate();
 
   // 处理会员搜索
   const handleMemberSearch = async (value: string) => {
@@ -214,19 +232,12 @@ export default function CreateContractPage() {
       return;
     }
 
-    if (!contractType) {
-      toast({
-        title: '请选择合同类型',
-        description: '请选择合同类型',
-        variant: 'destructive'
-      });
-      return;
-    }
 
-    if (!selectedTemplate) {
+
+    if (selectedPackages.length === 0) {
       toast({
-        title: '请选择合同模板',
-        description: '请选择一个合同模板',
+        title: '请选择服务套餐',
+        description: '请至少选择一个服务套餐',
         variant: 'destructive'
       });
       return;
@@ -242,9 +253,31 @@ export default function CreateContractPage() {
         },
         body: JSON.stringify({
           memberId: selectedMember.id,
-          contractType,
-          templateId: selectedTemplate.id,
-          variables: customVariables
+          contractType: 'MEMBERSHIP',
+          templateId: FIXED_TEMPLATE.id,
+          variables: {
+            // 服务信息
+            serviceType: '石楠文化介绍服务',
+            serviceDuration: expirationType === 'permanent' ? '长期有效' : 
+                           expirationType === 'custom' ? `至${customExpirationDate}` : 
+                           '1年',
+            serviceFee: customVariables.contract_amount || contractAmount.toString(),
+            
+            // 客户信息（如果有的话）
+            customerName: selectedMember?.nickname || '待客户填写',
+            customerIdCard: (selectedMember as any)?.id_card || '待客户填写',
+            customerPhone: selectedMember?.phone || '待客户填写',
+            customerAddress: '待客户填写',
+            
+            // 其他信息
+            selected_packages: JSON.stringify(selectedPackages),
+            selected_package_numbers: selectedPackages.map(pkg => pkg.letter).join('、'),
+            original_amount: originalAmount.toString(),
+            contract_amount: customVariables.contract_amount || contractAmount.toString(),
+            service_end_date: expirationDate,
+            payment_days: '7', // 默认7天内付款
+            company_account_info: '账户信息待填写'
+          }
         })
       });
 
@@ -278,8 +311,7 @@ export default function CreateContractPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-6 max-w-7xl mx-auto pb-32">
+    <div className="p-6 max-w-7xl mx-auto pb-32" style={{ minHeight: '100vh' }}>
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
             <Button variant="outline" size="sm" asChild>
@@ -293,9 +325,9 @@ export default function CreateContractPage() {
           <p className="text-gray-600">选择会员和合同模板，创建新的合同</p>
         </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 选择会员 */}
-        <Card>
+        <div className="space-y-6">
+          {/* 选择会员 */}
+          <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -387,53 +419,110 @@ export default function CreateContractPage() {
           </CardContent>
         </Card>
 
-        {/* 选择合同类型和模板 */}
-        <Card className="max-h-[80vh] flex flex-col">
-          <CardHeader className="flex-shrink-0">
+        {/* 合同信息 */}
+        <Card>
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              选择合同类型和模板
+              合同信息
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto">
+          <CardContent>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="contract-type">合同类型</Label>
-                <Select value={contractType} onValueChange={handleContractTypeChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择合同类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CONTRACT_TYPE_MAP).map(([key, value]) => (
-                      <SelectItem key={key} value={key}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="px-3 py-2 border rounded-md bg-gray-50 text-gray-700">
+                  石楠文化介绍服务
+                </div>
               </div>
 
-              {contractType && (
-                <div>
-                  <Label htmlFor="template">合同模板</Label>
-                  <Select value={selectedTemplate?.id.toString() || ''} onValueChange={handleTemplateSelect}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择合同模板" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredTemplates.map((template) => (
-                        <SelectItem key={template.id} value={template.id.toString()}>
-                          {template.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div>
+                <Label htmlFor="template">合同模板</Label>
+                <div className="px-3 py-2 border rounded-md bg-gray-50 text-gray-700">
+                  {FIXED_TEMPLATE.name}
+                </div>
+              </div>
+
+              {/* 服务套餐选择 */}
+              <div>
+                <Label>选择服务套餐</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  {SERVICE_PACKAGES.map((pkg) => (
+                    <div
+                      key={pkg.id}
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        selectedPackages.some(selected => selected.id === pkg.id)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => handlePackageToggle(pkg.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                 <div className="flex-1">
+                        <h4 className="font-medium text-lg">{pkg.name}</h4>
+                        <p className="text-sm text-gray-600 mt-1">{pkg.description}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          期限：{pkg.duration}
+                          {pkg.id === 'A' && (
+                            <span className="text-green-600 font-medium ml-2">（固定期限，以付款时间为准）</span>
+                          )}
+                        </p>
+                        <p className="text-sm text-red-600 font-medium mt-1">
+                          价格：¥{pkg.price}
+                        </p>
+                   {pkg.services && pkg.services.length > 0 && (
+                     <div className="mt-2">
+                       <p className="text-xs text-gray-500 mb-1">包含服务：</p>
+                       <div className="max-h-20 overflow-y-auto">
+                         {pkg.services.slice(0, 3).map((service, index) => (
+                           <p key={index} className="text-xs text-gray-500">
+                             {index + 1}. {service.substring(0, 30)}...
+                           </p>
+                         ))}
+                         {pkg.services.length > 3 && (
+                           <p className="text-xs text-gray-400">...等{pkg.services.length}项服务</p>
+                         )}
+                       </div>
+                     </div>
+                   )}
+                 </div>
+                      <div className="text-right">
+                        <div className="mt-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedPackages.some(selected => selected.id === pkg.id)}
+                            onChange={() => handlePackageToggle(pkg.id)}
+                            className="w-4 h-4 text-blue-600"
+                          />
+                        </div>
+                      </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              {selectedPackages.length > 0 && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium mb-2">已选择的套餐：</h4>
+                  <ul className="space-y-1">
+                    {selectedPackages.map((pkg) => (
+                      <li key={pkg.id} className="flex justify-between">
+                        <span>{pkg.name}</span>
+                        <span className="text-red-600 font-medium">¥{pkg.price}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <div className="flex justify-between font-bold text-lg">
+                      <span>总计：</span>
+                      <span className="text-red-600">¥{originalAmount}</span>
+                    </div>
+                  </div>
                 </div>
               )}
+              </div>
 
               {/* 合同信息 */}
-              {selectedTemplate && (
-                <div>
+              <div>
                   <Label>合同信息</Label>
                   <div className="space-y-4 mt-2">
                     {/* 自动生成字段 - 只读显示 */}
@@ -462,40 +551,40 @@ export default function CreateContractPage() {
                       </div>
                     </div>
 
-                    {/* 公司信息 - 只读显示 */}
+                    {/* 乙方信息（公司）- 只读显示 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="company_name" className="text-sm font-medium">
-                          甲方公司名称
+                          乙方（公司）名称
                         </Label>
                         <Input
                           id="company_name"
-                          value={customVariables.company_name || ''}
+                          value={customVariables.company_name || companyInfo.name}
                           readOnly
                           className="bg-gray-50"
                         />
                       </div>
                       <div>
                         <Label htmlFor="company_tax_id" className="text-sm font-medium">
-                          统一社会信用代码
+                          乙方统一社会信用代码
                         </Label>
                         <Input
                           id="company_tax_id"
-                          value={customVariables.company_tax_id || ''}
+                          value={customVariables.company_tax_id || companyInfo.taxId}
                           readOnly
                           className="bg-gray-50"
                         />
                       </div>
                     </div>
 
-                    {/* 客户信息说明 - 简化显示 */}
+                    {/* 甲方信息说明 - 简化显示 */}
                     <div className="border-t pt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">乙方信息</h4>
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">甲方信息</h4>
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-blue-600" />
                           <p className="text-sm text-blue-700 font-medium">
-                            客户信息将在签署合同时由客户自行填写
+                            甲方（客户）信息将在签署合同时由客户自行填写
                           </p>
                         </div>
                         <p className="text-xs text-blue-600 mt-2">
@@ -509,134 +598,148 @@ export default function CreateContractPage() {
                       <h4 className="text-sm font-medium text-gray-700 mb-3">服务信息</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="service_fee" className="text-sm font-medium">
-                            服务费用 *
+                          <Label htmlFor="contract_amount" className="text-sm font-medium">
+                            合同金额 *
                           </Label>
                           <Input
-                            id="service_fee"
-                            value={customVariables.service_fee || ''}
-                            onChange={(e) => handleVariableChange('service_fee', e.target.value)}
-                            placeholder="请输入服务费用"
+                            id="contract_amount"
+                            value={customVariables.contract_amount || contractAmount.toString()}
+                            onChange={(e) => handleVariableChange('contract_amount', e.target.value)}
+                            placeholder="请输入合同金额"
                             type="number"
                             required
                           />
                         </div>
                         <div>
-                          <Label htmlFor="discount_amount" className="text-sm font-medium">
-                            优惠金额
+                          <Label htmlFor="original_amount" className="text-sm font-medium">
+                            原价总额
                           </Label>
                           <Input
-                            id="discount_amount"
-                            value={customVariables.discount_amount || '0'}
-                            onChange={(e) => handleVariableChange('discount_amount', e.target.value)}
-                            placeholder="请输入优惠金额"
-                            type="number"
+                            id="original_amount"
+                            value={originalAmount.toString()}
+                            readOnly
+                            className="bg-gray-50"
+                            placeholder="根据选择的套餐自动计算"
                           />
                         </div>
                         
-                        {/* 根据合同类型显示不同字段 */}
-                        {contractType === 'ONE_TIME' ? (
-                          <div>
-                            <Label htmlFor="service_count" className="text-sm font-medium">
-                              服务次数 *
-                            </Label>
-                            <Input
-                              id="service_count"
-                              value={customVariables.service_count || ''}
-                              onChange={(e) => handleVariableChange('service_count', e.target.value)}
-                              placeholder="请输入服务次数"
-                              type="number"
-                              required
-                            />
-                          </div>
-                        ) : (
-                          <div>
-                            <Label htmlFor="service_end_date" className="text-sm font-medium">
-                              服务到期时间 *
-                            </Label>
-                            <Input
-                              id="service_end_date"
-                              value={customVariables.service_end_date || ''}
-                              onChange={(e) => handleVariableChange('service_end_date', e.target.value)}
-                              placeholder="请选择服务到期时间"
-                              type="date"
-                              required
-                            />
-                          </div>
-                        )}
-                        
-                        <div>
-                          <Label htmlFor="service_type" className="text-sm font-medium">
-                            服务类型 *
+                        {/* 服务到期时间设置 */}
+                        <div className="col-span-2">
+                          <Label className="text-sm font-medium">
+                            服务到期时间设置
                           </Label>
-                          <Input
-                            id="service_type"
-                            value={customVariables.service_type || ''}
-                            onChange={(e) => handleVariableChange('service_type', e.target.value)}
-                            placeholder="请输入服务类型"
-                            required
-                          />
+                          <div className="mt-2 space-y-4">
+                            {/* 到期时间类型选择 */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <label className="flex items-center">
+                                <input
+                                  type="radio"
+                                  name="expirationType"
+                                  value="fixed"
+                                  checked={expirationType === 'fixed'}
+                                  onChange={(e) => setExpirationType(e.target.value as 'fixed' | 'custom' | 'permanent')}
+                                  className="mr-2"
+                                />
+                                <span className="text-sm">
+                                  {selectedPackages.some(pkg => pkg.id === 'A') 
+                                    ? 'A套餐固定12个月（到明年的今天）' 
+                                    : '默认1年期限'
+                                  }
+                                </span>
+                              </label>
+                              <label className="flex items-center">
+                                <input
+                                  type="radio"
+                                  name="expirationType"
+                                  value="custom"
+                                  checked={expirationType === 'custom'}
+                                  onChange={(e) => setExpirationType(e.target.value as 'fixed' | 'custom' | 'permanent')}
+                                  className="mr-2"
+                                />
+                                <span className="text-sm">自定义到期时间</span>
+                              </label>
+                              <label className="flex items-center">
+                                <input
+                                  type="radio"
+                                  name="expirationType"
+                                  value="permanent"
+                                  checked={expirationType === 'permanent'}
+                                  onChange={(e) => setExpirationType(e.target.value as 'fixed' | 'custom' | 'permanent')}
+                                  className="mr-2"
+                                />
+                                <span className="text-sm text-green-600 font-medium">长期有效</span>
+                              </label>
+                            </div>
+                            
+                            {/* 自定义到期时间输入 */}
+                            {expirationType === 'custom' && (
+                              <div>
+                                <Input
+                                  type="date"
+                                  value={customExpirationDate}
+                                  onChange={(e) => setCustomExpirationDate(e.target.value)}
+                                  placeholder="请选择到期时间"
+                                  min={new Date().toISOString().split('T')[0]}
+                                />
+                              </div>
+                            )}
+                            
+                            {/* 到期时间预览 */}
+                            <div className="p-3 bg-gray-50 rounded-lg">
+                              <div className="text-sm text-gray-600">
+                                <span className="font-medium">预计到期时间：</span>
+                                <span className={`font-medium ${
+                                  expirationType === 'permanent' 
+                                    ? 'text-green-600' 
+                                    : 'text-blue-600'
+                                }`}>
+                                  {expirationType === 'permanent' 
+                                    ? '长期有效' 
+                                    : expirationDate && expirationDate !== '长期有效'
+                                      ? new Date(expirationDate).toLocaleDateString('zh-CN')
+                                      : '未设置'
+                                  }
+                                </span>
+                              </div>
+                              {selectedPackages.some(pkg => pkg.id === 'A') && expirationType !== 'permanent' && (
+                                <div className="text-xs text-green-600 mt-1">
+                                  A套餐固定12个月期限，以付款时间为准
+                                </div>
+                              )}
+                              {expirationType === 'permanent' && (
+                                <div className="text-xs text-green-600 mt-1">
+                                  服务将长期有效，无到期时间限制
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
+                        
                       </div>
                     </div>
 
-                    {/* 其他模板变量 */}
-                    {Object.entries(selectedTemplate.variables_schema).map(([key, description]) => {
-                      // 跳过已经处理的字段 - 包含所有可能重复的字段
-                      const handledFields = [
-                        // 合同基本信息（已在上方显示）
-                        'contract_number', 'signing_date', 'contractNumber', 'signDate',
-                        'company_name', 'company_tax_id', 'companyName',
-                        // 服务信息（已在服务信息部分显示）
-                        'service_fee', 'discount_amount', 'service_end_date', 'service_type', 'service_count',
-                        'serviceFee', 'serviceDuration', 'serviceType',
-                        // 客户信息字段 - 这些在签署时由用户填写，不在管理后台显示
-                        'customer_name', 'customer_phone', 'customer_id_card', 'customer_address',
-                        'customerName', 'customerPhone', 'customerIdCard', 'customerAddress',
-                        // 合同标题等其他已处理字段
-                        'contractTitle'
-                      ];
-                      if (handledFields.includes(key)) return null;
-                      
-                      return (
-                        <div key={key} className="border-t pt-4">
-                          <div>
-                            <Label htmlFor={`var-${key}`} className="text-sm font-medium">
-                              {description}
-                            </Label>
-                            <Input
-                              id={`var-${key}`}
-                              value={customVariables[key] || ''}
-                              onChange={(e) => handleVariableChange(key, e.target.value)}
-                              placeholder={`请输入${description}`}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 </div>
-              )}
             </div>
           </CardContent>
         </Card>
-      </div>
+        </div>
 
       {/* 操作按钮 - 固定在底部 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-6 z-50">
-        <div className="max-w-7xl mx-auto flex justify-end gap-4">
-          <Button variant="outline" asChild>
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg py-2 px-6 z-10">
+        <div className="max-w-7xl mx-auto flex justify-end gap-3">
+          <Button variant="outline" size="sm" asChild>
             <Link href="/contracts/list">取消</Link>
           </Button>
           <Button 
+            size="sm"
             onClick={handleCreateContract}
-            disabled={loading || !selectedMember || !contractType || !selectedTemplate}
-            className="min-w-[120px]"
+            disabled={loading || !selectedMember}
+            className="min-w-[100px]"
           >
             {loading ? '创建中...' : '创建合同'}
           </Button>
         </div>
-      </div>
       </div>
     </div>
   );

@@ -197,44 +197,6 @@ export default function ContractDetailPage() {
     }
   };
 
-  // 更新合同模板
-  const handleUpdateTemplates = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/contracts/templates/update-seal', {
-        method: 'POST'
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: '模板更新成功',
-          description: '已修复盖章位置并移除不必要的甲方信息',
-        });
-        
-        // 如果当前合同存在，重新生成内容
-        if (contract) {
-          await handleRegenerateContract();
-        }
-      } else {
-        toast({
-          title: '模板更新失败',
-          description: data.error || '请稍后重试',
-          variant: 'destructive'
-        });
-      }
-    } catch (error) {
-      console.error('更新模板失败:', error);
-      toast({
-        title: '更新模板失败',
-        description: '网络错误，请稍后重试',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -444,36 +406,11 @@ export default function ContractDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={fetchContract}
+                      onClick={handleRegenerateContract}
                       disabled={loading}
                     >
-                      🔄 刷新
+                      🔄 刷新预览
                     </Button>
-                    {/* 紧急修复按钮 - 仅在开发环境显示 */}
-                    {process.env.NODE_ENV === 'development' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRegenerateContract}
-                          disabled={loading}
-                          className="text-orange-600 border-orange-300 hover:bg-orange-50"
-                          title="仅开发环境可见 - 用于修复变量填充问题"
-                        >
-                          🔧 修复填充
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleUpdateTemplates}
-                          disabled={loading}
-                          className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                          title="仅开发环境可见 - 更新合同模板"
-                        >
-                          📋 更新模板
-                        </Button>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
@@ -504,19 +441,6 @@ export default function ContractDetailPage() {
                 </div>
               </div>
               
-              {/* 合同变量信息 - 调试用 */}
-              {process.env.NODE_ENV === 'development' && contract.variables && (
-                <details className="mt-4 border rounded-lg p-4 bg-gray-50">
-                  <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2">
-                    🔍 合同变量详情（开发模式）
-                  </summary>
-                  <div className="text-xs bg-white p-3 rounded border">
-                    <pre className="whitespace-pre-wrap text-gray-600">
-                      {JSON.stringify(contract.variables, null, 2)}
-                    </pre>
-                  </div>
-                </details>
-              )}
             </CardContent>
           </Card>
         </div>

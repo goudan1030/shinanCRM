@@ -143,9 +143,9 @@ export default function DashboardLayout({
       </div>
       
       {/* 主内容区域 */}
-      <div className="pt-[48px] min-h-screen bg-white">
-        <main className="w-full relative z-[1]">
-          <div className="w-full">{children}</div>
+      <div className="pt-[48px] bg-white" style={{ height: 'auto', overflow: 'visible' }}>
+        <main className="w-full relative z-[1]" style={{ height: 'auto', overflow: 'visible' }}>
+          <div className="w-full" style={{ height: 'auto', overflow: 'visible' }}>{children}</div>
         </main>
       </div>
     </ThreeColumnLayout>

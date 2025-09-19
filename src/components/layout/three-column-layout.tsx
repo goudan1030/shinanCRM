@@ -34,16 +34,19 @@ export const ThreeColumnLayout = memo(function ThreeColumnLayout({
       )}
 
       {/* 主内容区域 - 简化布局，直接可滚动 */}
-      <div className={cn(
-        // 移动端：全宽
-        "w-full",
-        // 桌面端：使用calc计算正确宽度，避免超出屏幕
-        "md:w-[calc(100%-60px)] md:ml-[60px]",
-        // 三栏布局时的宽度计算
-        useThreeColumns && middleContent ? "lg:w-[calc(100%-297px)] lg:ml-[297px]" : "",
-        "transition-all duration-100 ease-in-out",
-        className
-      )}>
+      <div 
+        className={cn(
+          // 移动端：全宽
+          "w-full",
+          // 桌面端：使用calc计算正确宽度，避免超出屏幕
+          "md:w-[calc(100%-60px)] md:ml-[60px]",
+          // 三栏布局时的宽度计算
+          useThreeColumns && middleContent ? "lg:w-[calc(100%-297px)] lg:ml-[297px]" : "",
+          "transition-all duration-100 ease-in-out",
+          className
+        )}
+        style={{ height: 'auto', overflow: 'visible', minHeight: '100vh' }}
+      >
         {children}
       </div>
     </>

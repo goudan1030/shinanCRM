@@ -110,9 +110,7 @@ export const CONTRACT_STATUS_MAP = {
 
 // 合同类型映射
 export const CONTRACT_TYPE_MAP = {
-  MEMBERSHIP: '会员服务',
-  ONE_TIME: '一次性服务',
-  ANNUAL: '年费服务'
+  MEMBERSHIP: '石楠文化介绍服务'
 } as const;
 
 // 签署方类型映射
