@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // 验证令牌并获取合同信息
     const [tokenRows] = await executeQuery(
       `SELECT ct.*, c.id as contract_id, c.contract_number, c.status, c.content, c.variables,
-              m.id as member_id, m.name as member_name, m.phone as member_phone, m.id_card as member_id_card
+              m.id as member_id, m.nickname as member_name, m.phone as member_phone, m.id_card as member_id_card
        FROM contract_sign_tokens ct
        JOIN contracts c ON ct.contract_id = c.id
        LEFT JOIN members m ON c.member_id = m.id
