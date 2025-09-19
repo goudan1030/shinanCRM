@@ -5,7 +5,8 @@ module.exports = {
     args: 'start',
     env: {
       NODE_ENV: 'production',
-      PORT: 3002
+      PORT: 3002,
+      NEXT_PUBLIC_BASE_URL: 'https://admin.xinghun.info'
     },
     instances: 1,
     exec_mode: 'fork',

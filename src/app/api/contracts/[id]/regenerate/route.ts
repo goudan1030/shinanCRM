@@ -109,6 +109,50 @@ export async function POST(
     // 生成选中的套餐字母
     const selectedPackageLetters = selectedPackages.map((pkg: any) => pkg.letter).join('、');
     
+    // 数字转人民币大写汉字函数
+    const numberToChinese = (num: number): string => {
+      const digits = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];
+      const units = ['', '拾', '佰', '仟', '万', '拾', '佰', '仟', '亿'];
+      
+      if (num === 0) return '零';
+      if (num < 0) return '负' + numberToChinese(-num);
+      
+      let result = '';
+      let unitIndex = 0;
+      
+      while (num > 0) {
+        const digit = num % 10;
+        if (digit !== 0) {
+          result = digits[digit] + units[unitIndex] + result;
+        } else if (result && !result.startsWith('零')) {
+          result = '零' + result;
+        }
+        num = Math.floor(num / 10);
+        unitIndex++;
+      }
+      
+      return result;
+    };
+
+    // 计算合同总金额
+    const totalAmount = selectedPackages.reduce((sum: number, pkg: any) => sum + pkg.price, 0);
+    const contractAmount = existingVariables.contract_amount || totalAmount.toString();
+    const contractAmountChinese = numberToChinese(parseInt(contractAmount)) + '元';
+
+    // 处理补充信息
+    const supplementaryInfo = existingVariables.supplementary_info || '';
+    const supplementaryInfoSection = supplementaryInfo.trim() 
+      ? `<div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
+           <p style="margin: 0; font-weight: bold; text-decoration: underline; font-family: 'Microsoft YaHei', Arial, sans-serif;">
+             ${supplementaryInfo}
+           </p>
+         </div>`
+      : `<div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9; text-align: center;">
+           <p style="margin: 0; color: #666; font-style: italic;">
+             <span style="border-bottom: 1px solid #ccc; padding-bottom: 2px;">暂无补充内容</span>
+           </p>
+         </div>`;
+
     // 重新准备合同变量 - 使用新的模板结构
     const contractVariables = {
       // 合同基本信息
@@ -141,6 +185,12 @@ export async function POST(
       selectedPackages: selectedPackages,
       selectedPackageNumbers: existingVariables.selected_package_numbers || 'A',
       selectedPackageLetters: selectedPackageLetters || 'A',
+      contractAmount: contractAmount,
+      contractAmountChinese: contractAmountChinese,
+      
+      // 补充信息
+      supplementaryInfo: supplementaryInfo,
+      supplementaryInfoSection: supplementaryInfoSection,
       
       // 套餐选择状态（仅用于记录，不用于模板替换）
       packageAClass: selectedPackages.some((pkg: any) => pkg.id === 'A') ? 'selected' : '',
@@ -269,6 +319,19 @@ export async function POST(
                     <p><strong>D.☐ 增值服务2：一对一红娘匹配服务-服务费用：16888元（人民币）</strong></p>
                     <p>乙方根据甲方具体形婚需求，全网查找合适的异性信息，并服务至双方约定的成功标准为止。具体标准需另行签订补充协议约定。</p>
                 </div>
+                
+                <!-- 合同金额字段 -->
+                <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border: 2px solid #007bff; border-radius: 8px; text-align: center;">
+                    <h4 style="margin: 0 0 15px 0; color: #007bff; font-size: 18px;">合同总金额</h4>
+                    <p style="margin: 0; font-size: 24px; font-weight: bold; color: #dc3545;">
+                        <span style="background-color: #fff; padding: 10px 20px; border-radius: 5px; border: 2px solid #dc3545; display: inline-block;">
+                            {{contractAmount}}元（人民币）
+                        </span>
+                    </p>
+                    <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
+                        大写：{{contractAmountChinese}}
+                    </p>
+                </div>
             </div>
             
             <div class="contract-clause">
@@ -314,6 +377,12 @@ export async function POST(
                 <p>本合同一式两份，甲乙双方各执一份，具有同等法律效力，自双方签字、盖章之日生效。</p>
                 <p>本合同未尽事宜，可由双方另行签订补充协议。</p>
                 <p>乙方保留对本合同所涉及服务的最终解释权。</p>
+            </div>
+            
+            <!-- 补充信息显示区域 -->
+            <div class="contract-clause">
+                <h3>补充说明</h3>
+                {{supplementaryInfoSection}}
             </div>
             
             <div class="signature-section" style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 60px;">

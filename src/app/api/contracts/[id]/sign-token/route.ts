@@ -69,7 +69,8 @@ export async function POST(
     );
 
     // 生成安全的签署链接
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                   (process.env.NODE_ENV === 'production' ? 'https://admin.xinghun.info' : 'http://localhost:3000');
     const signUrl = `${baseUrl}/contracts/sign?token=${token}`;
 
     console.log(`✅ 为合同 ${contractId} 生成签署令牌: ${token}`);

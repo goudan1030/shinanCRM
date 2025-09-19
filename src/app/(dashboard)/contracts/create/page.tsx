@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { SERVICE_PACKAGES, ServicePackage } from '@/types/service-packages';
 import { Search, User, FileText, ArrowLeft } from 'lucide-react';
@@ -62,6 +63,7 @@ export default function CreateContractPage() {
   const [customExpirationDate, setCustomExpirationDate] = useState('');
   const [showMemberResults, setShowMemberResults] = useState(false);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
+  const [supplementaryInfo, setSupplementaryInfo] = useState('');
   
   // 公司固定信息
   const companyInfo = {
@@ -183,7 +185,15 @@ export default function CreateContractPage() {
     if (value.trim().length > 0) {
       setMemberSearchLoading(true);
       try {
-        const response = await fetch(`/api/members?searchKeyword=${encodeURIComponent(value)}&pageSize=20`);
+        const response = await fetch(`/api/members?searchKeyword=${encodeURIComponent(value)}&pageSize=20`, {
+          credentials: 'include',  // 确保发送cookie
+          cache: 'no-store',       // 禁用缓存
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         const data = await response.json();
         if (response.ok) {
           setMembers(data.data || []);
@@ -276,7 +286,8 @@ export default function CreateContractPage() {
             contract_amount: customVariables.contract_amount || contractAmount.toString(),
             service_end_date: expirationDate,
             payment_days: '7', // 默认7天内付款
-            company_account_info: '账户信息待填写'
+            company_account_info: '账户信息待填写',
+            supplementary_info: supplementaryInfo
           }
         })
       });
@@ -712,6 +723,27 @@ export default function CreateContractPage() {
                                 </div>
                               )}
                             </div>
+                          </div>
+                        </div>
+                        
+                        {/* 补充信息 */}
+                        <div className="border-t pt-4">
+                          <h4 className="text-sm font-medium text-gray-700 mb-3">补充信息</h4>
+                          <div>
+                            <Label htmlFor="supplementary_info" className="text-sm font-medium">
+                              优惠说明等信息（选填）
+                            </Label>
+                            <Textarea
+                              id="supplementary_info"
+                              value={supplementaryInfo}
+                              onChange={(e) => setSupplementaryInfo(e.target.value)}
+                              placeholder="请输入优惠说明、特殊约定等补充信息..."
+                              className="mt-2"
+                              rows={4}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              此信息将显示在合同预览中，用于补充说明优惠条件、特殊约定等内容
+                            </p>
                           </div>
                         </div>
                         

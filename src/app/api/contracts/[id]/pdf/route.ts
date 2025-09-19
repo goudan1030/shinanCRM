@@ -61,7 +61,8 @@ export async function GET(
     
     // 处理合同内容中的图片路径，转换为绝对URL
     let pdfContent = contract.content;
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                   (process.env.NODE_ENV === 'production' ? 'https://admin.xinghun.info' : 'http://localhost:3000');
     pdfContent = pdfContent.replace(/src="\/zhang\.png"/g, `src="${baseUrl}/zhang.png"`);
     
     await page.setContent(pdfContent, { waitUntil: 'networkidle0' });
