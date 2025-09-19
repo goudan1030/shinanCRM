@@ -114,7 +114,10 @@ export async function POST(
       signingDate: contract.signed_at ? new Date(contract.signed_at).toLocaleDateString('zh-CN') : new Date().toLocaleDateString('zh-CN'),
       
       // 甲方信息（客户信息）
-      customerName: (member.real_name && member.real_name !== member.nickname) ? member.real_name : '待客户填写',
+      customerName: member.real_name || '待客户填写',
+      customerDisplayName: member.real_name ? 
+        `${member.real_name}（${contract.member_no}）` : 
+        '待客户填写',
       customerIdCard: member.id_card || '待客户填写',
       customerPhone: member.phone || '待客户填写',
       customerAddress: '待客户填写',
@@ -216,7 +219,7 @@ export async function POST(
         </div>
         
         <div class="contract-content">
-            <p>甲方：{{customerName}}</p>
+            <p>甲方：{{customerDisplayName}}</p>
             <p>乙方：{{companyName}}</p>
             <p>签订日期：{{signingDate}}</p>
             
