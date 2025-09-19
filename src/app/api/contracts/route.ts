@@ -474,6 +474,7 @@ export async function POST(request: NextRequest) {
     let signUrl = `${baseUrl}/contracts/sign/${contractId}`; // 默认链接
     
     try {
+      console.log('🔐 合同创建 - 开始生成安全签署令牌，合同ID:', contractId);
       const tokenResponse = await fetch(`${baseUrl}/api/contracts/${contractId}/sign-token`, {
         method: 'POST',
         headers: {
@@ -481,12 +482,18 @@ export async function POST(request: NextRequest) {
         },
       });
       
+      console.log('🔐 合同创建 - 令牌生成响应状态:', tokenResponse.status);
+      
       if (tokenResponse.ok) {
         const tokenData = await tokenResponse.json();
+        console.log('🔐 合同创建 - 令牌生成成功，安全链接:', tokenData.signUrl);
         signUrl = tokenData.signUrl;
+      } else {
+        const errorData = await tokenResponse.json();
+        console.warn('🔐 合同创建 - 令牌生成失败:', errorData);
       }
     } catch (error) {
-      console.warn('生成安全签署链接失败，使用默认链接:', error);
+      console.warn('🔐 合同创建 - 生成安全签署链接失败，使用默认链接:', error);
     }
 
     const response: GenerateContractResponse = {

@@ -14,7 +14,10 @@ export async function POST(
     const resolvedParams = await params;
     const contractId = parseInt(resolvedParams.id);
     
+    console.log('🔐 令牌生成API - 收到请求，合同ID:', contractId);
+    
     if (isNaN(contractId)) {
+      console.log('🔐 令牌生成API - 无效的合同ID');
       return NextResponse.json(
         { success: false, message: '无效的合同ID' },
         { status: 400 }
@@ -22,12 +25,16 @@ export async function POST(
     }
 
     // 验证合同是否存在且状态为PENDING
+    console.log('🔐 令牌生成API - 查询合同信息');
     const contractRows = await executeQuery(
       'SELECT id, status, member_id FROM contracts WHERE id = ?',
       [contractId]
     );
 
+    console.log('🔐 令牌生成API - 合同查询结果:', contractRows);
+
     if (!contractRows || (contractRows as any[]).length === 0) {
+      console.log('🔐 令牌生成API - 合同不存在');
       return NextResponse.json(
         { success: false, message: '合同不存在' },
         { status: 404 }
@@ -35,8 +42,10 @@ export async function POST(
     }
 
     const contract = (contractRows as any[])[0];
+    console.log('🔐 令牌生成API - 合同状态:', contract.status);
     
     if (contract.status !== 'PENDING') {
+      console.log('🔐 令牌生成API - 合同状态不允许签署');
       return NextResponse.json(
         { success: false, message: '合同状态不允许签署' },
         { status: 400 }

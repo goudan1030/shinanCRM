@@ -52,6 +52,7 @@ export default function ContractDetailPage() {
 
   const generateSecureSignUrl = async () => {
     try {
+      console.log('🔐 开始生成安全签署链接，合同ID:', contractId);
       const response = await fetch(`/api/contracts/${contractId}/sign-token`, {
         method: 'POST',
         headers: {
@@ -59,15 +60,20 @@ export default function ContractDetailPage() {
         },
       });
       
+      console.log('🔐 令牌生成响应状态:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('🔐 令牌生成成功，安全链接:', data.signUrl);
         setSignUrl(data.signUrl);
       } else {
+        const errorData = await response.json();
+        console.warn('🔐 令牌生成失败，使用默认链接:', errorData);
         // 如果生成令牌失败，使用默认链接
         setSignUrl(`${window.location.origin}/contracts/sign?id=${contractId}`);
       }
     } catch (error) {
-      console.error('生成安全签署链接失败:', error);
+      console.error('🔐 生成安全签署链接失败:', error);
       // 如果生成令牌失败，使用默认链接
       setSignUrl(`${window.location.origin}/contracts/sign?id=${contractId}`);
     }
