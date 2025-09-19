@@ -95,7 +95,8 @@ export async function middleware(request: NextRequest) {
   // 特殊处理：合同签署相关的API路由（动态路由）
   if (pathname.match(/^\/api\/contracts\/\d+\/sign$/) || 
       pathname.match(/^\/api\/contracts\/\d+\/pdf$/) ||
-      pathname.match(/^\/api\/contracts\/\d+\/sign-view$/)) {
+      pathname.match(/^\/api\/contracts\/\d+\/sign-view$/) ||
+      pathname === '/api/contracts/sign-token') {
     return NextResponse.next();
   }
 

@@ -26,6 +26,7 @@ function ContractSignContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const contractId = searchParams.get('id');
+  const token = searchParams.get('token');
   
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,25 +46,31 @@ function ContractSignContent() {
 
   // 获取合同详情
   const fetchContract = async () => {
-    if (!contractId) {
+    // 优先使用token方式，如果没有token则使用id方式
+    if (!token && !contractId) {
       setLoading(false);
+      toast({
+        title: '访问错误',
+        description: '缺少必要的参数，请检查链接是否正确',
+        variant: 'destructive'
+      });
       return;
     }
 
     try {
       setLoading(true);
       
-      // 检查URL参数中是否有token
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      
       let response;
       if (token) {
-        // 使用令牌验证获取合同
-        response = await fetch(`/api/contracts/${contractId}/sign-token?token=${token}`);
-      } else {
+        // 使用令牌验证获取合同 - 不需要contractId
+        response = await fetch(`/api/contracts/sign-token?token=${token}`);
+      } else if (contractId) {
         // 使用传统方式获取合同（向后兼容）
         response = await fetch(`/api/contracts/${contractId}/sign-view`);
+      }
+      
+      if (!response) {
+        throw new Error('无法获取合同信息');
       }
       
       const data = await response.json();
@@ -97,7 +104,7 @@ function ContractSignContent() {
 
   useEffect(() => {
     fetchContract();
-  }, [contractId]);
+  }, [contractId, token]);
 
   // 添加全局样式重置
   useEffect(() => {
@@ -290,7 +297,7 @@ function ContractSignContent() {
     );
   }
 
-  if (!contractId || !contract) {
+  if (!contract) {
     return (
       <div style={{ 
         minHeight: '100vh', 
@@ -302,7 +309,7 @@ function ContractSignContent() {
       }}>
         <div style={{ textAlign: 'center' }}>
           <p style={{ color: '#666', marginBottom: '20px' }}>
-            {!contractId ? '请选择要签署的合同' : '合同不存在或已过期'}
+            {!token && !contractId ? '请选择要签署的合同' : '合同不存在或已过期'}
           </p>
           <a 
             href="/contracts/list" 
