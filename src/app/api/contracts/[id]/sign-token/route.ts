@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database';
+import { query } from '@/lib/database';
 import crypto from 'crypto';
 
 /**
@@ -26,7 +26,7 @@ export async function POST(
 
     // 验证合同是否存在且状态为PENDING
     console.log('🔐 令牌生成API - 查询合同信息');
-    const contractRows = await executeQuery(
+    const contractRows = await query(
       'SELECT id, status, member_id FROM contracts WHERE id = ?',
       [contractId]
     );
@@ -58,7 +58,7 @@ export async function POST(
     expiresAt.setHours(expiresAt.getHours() + 24); // 24小时有效期
 
     // 将令牌存储到数据库
-    await executeQuery(
+    await query(
       `INSERT INTO contract_sign_tokens (contract_id, token, expires_at, created_at) 
        VALUES (?, ?, ?, NOW()) 
        ON DUPLICATE KEY UPDATE 
@@ -112,7 +112,7 @@ export async function GET(
     }
 
     // 验证令牌
-    const tokenRows = await executeQuery(
+    const tokenRows = await query(
       `SELECT ct.*, c.id as contract_id, c.contract_number, c.status, c.content, c.variables,
               m.id as member_id, m.name as member_name, m.phone as member_phone, m.id_card as member_id_card
        FROM contract_sign_tokens ct
