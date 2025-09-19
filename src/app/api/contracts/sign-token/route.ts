@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database-netlify';
+import mysql from 'mysql2/promise';
 
 /**
  * 通过令牌获取合同信息（用于客户签署）
@@ -19,14 +19,26 @@ export async function GET(request: NextRequest) {
 
     console.log('🔐 令牌验证API - 收到请求，令牌:', token.substring(0, 10) + '...');
 
+    // 创建数据库连接
+    const connection = await mysql.createConnection({
+      host: '8.149.244.105',
+      user: 'h5_cloud_user',
+      password: 'mc72TNcMmy6HCybH',
+      port: 3306,
+      database: 'h5_cloud_db',
+      charset: 'utf8mb4'
+    });
+
     // 验证令牌并获取合同信息
-    const [tokenRows] = await executeQuery(
+    const [tokenRows] = await connection.execute(
       `SELECT ct.*, c.id as contract_id, c.contract_number, c.status, c.content, c.variables
        FROM contract_sign_tokens ct
        JOIN contracts c ON ct.contract_id = c.id
        WHERE ct.token = ? AND ct.expires_at > NOW()`,
       [token]
     );
+
+    await connection.end();
 
     if (!tokenRows || tokenRows.length === 0) {
       console.log('🔐 令牌验证API - 令牌无效或已过期');
@@ -51,7 +63,7 @@ export async function GET(request: NextRequest) {
       id: tokenData.contract_id,
       contract_number: tokenData.contract_number,
       content: tokenData.content,
-      variables: tokenData.variables ? JSON.parse(tokenData.variables) : {},
+      variables: tokenData.variables ? (typeof tokenData.variables === 'string' ? JSON.parse(tokenData.variables) : tokenData.variables) : {},
       status: tokenData.status
     };
 
@@ -65,7 +77,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('验证签署令牌失败:', error);
     return NextResponse.json(
-      { success: false, message: '验证签署令牌失败' },
+      { 
+        success: false, 
+        message: '验证签署令牌失败',
+        error: error instanceof Error ? error.message : '未知错误',
+        stack: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
