@@ -44,7 +44,6 @@ const publicRoutes = [
   '/api/auth/session',
   '/api/debug/db-test',  // 数据库调试API
   '/api/middleware-debug',  // middleware调试API
-  '/api/test-db',  // 数据库测试API
   // 合同签署相关 - 客户公开访问
   '/contracts/sign', // 合同签署页面
   // 推送相关API - 不需要认证
