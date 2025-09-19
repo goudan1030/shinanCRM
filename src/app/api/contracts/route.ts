@@ -383,7 +383,7 @@ export async function POST(request: NextRequest) {
       
       // 甲方信息（客户信息）
       customerName: member.real_name || '待客户填写',
-      customerDisplayName: member.real_name ? 
+      customerDisplayName: member.real_name && member.real_name.trim() !== '' ? 
         `${member.real_name}（${member.member_no}）` : 
         '待客户填写',
       customerIdCard: (member as any)?.id_card || '待客户填写',

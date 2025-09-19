@@ -93,6 +93,9 @@ export async function POST(
     };
 
     console.log('🔍 重新生成合同，会员信息:', member);
+    console.log('🔍 real_name值:', `"${contract.real_name}"`);
+    console.log('🔍 real_name类型:', typeof contract.real_name);
+    console.log('🔍 real_name是否为空:', !contract.real_name || contract.real_name.trim() === '');
 
     // 解析合同变量
     const existingVariables = contract.variables ? (typeof contract.variables === 'string' ? JSON.parse(contract.variables) : contract.variables) : {};
@@ -115,7 +118,7 @@ export async function POST(
       
       // 甲方信息（客户信息）
       customerName: member.real_name || '待客户填写',
-      customerDisplayName: member.real_name ? 
+      customerDisplayName: member.real_name && member.real_name.trim() !== '' ? 
         `${member.real_name}（${contract.member_no}）` : 
         '待客户填写',
       customerIdCard: member.id_card || '待客户填写',
