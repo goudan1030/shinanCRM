@@ -52,16 +52,34 @@ function ContractSignContent() {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/contracts/${contractId}/sign-view`);
+      
+      // 检查URL参数中是否有token
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      let response;
+      if (token) {
+        // 使用令牌验证获取合同
+        response = await fetch(`/api/contracts/${contractId}/sign-token?token=${token}`);
+      } else {
+        // 使用传统方式获取合同（向后兼容）
+        response = await fetch(`/api/contracts/${contractId}/sign-view`);
+      }
+      
       const data = await response.json();
 
       if (response.ok) {
-        setContract(data);
-        setIsSigned(data.status === 'SIGNED');
+        if (token && data.contract) {
+          setContract(data.contract);
+          setIsSigned(data.contract.status === 'SIGNED');
+        } else {
+          setContract(data);
+          setIsSigned(data.status === 'SIGNED');
+        }
       } else {
         toast({
           title: '获取合同失败',
-          description: data.error || '请稍后重试',
+          description: data.message || data.error || '请稍后重试',
           variant: 'destructive'
         });
       }

@@ -46,9 +46,32 @@ export default function ContractDetailPage() {
   useEffect(() => {
     if (contractId) {
       fetchContract();
-      setSignUrl(`${window.location.origin}/contracts/sign?id=${contractId}`);
+      generateSecureSignUrl();
     }
   }, [contractId]);
+
+  const generateSecureSignUrl = async () => {
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/sign-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSignUrl(data.signUrl);
+      } else {
+        // 如果生成令牌失败，使用默认链接
+        setSignUrl(`${window.location.origin}/contracts/sign?id=${contractId}`);
+      }
+    } catch (error) {
+      console.error('生成安全签署链接失败:', error);
+      // 如果生成令牌失败，使用默认链接
+      setSignUrl(`${window.location.origin}/contracts/sign?id=${contractId}`);
+    }
+  };
 
   const fetchContract = async () => {
     try {

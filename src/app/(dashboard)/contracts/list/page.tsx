@@ -392,15 +392,42 @@ export default function ContractListPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  const signUrl = `${window.location.origin}/contracts/sign/${contract.id}`;
-                                  navigator.clipboard.writeText(signUrl);
-                                  toast({
-                                    title: '链接已复制',
-                                    description: '签署链接已复制到剪贴板，可发送给客户',
-                                  });
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(`/api/contracts/${contract.id}/sign-token`, {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                    });
+                                    
+                                    if (response.ok) {
+                                      const data = await response.json();
+                                      navigator.clipboard.writeText(data.signUrl);
+                                      toast({
+                                        title: '安全链接已复制',
+                                        description: '签署链接已复制到剪贴板，可发送给客户',
+                                      });
+                                    } else {
+                                      // 如果生成令牌失败，使用默认链接
+                                      const signUrl = `${window.location.origin}/contracts/sign/${contract.id}`;
+                                      navigator.clipboard.writeText(signUrl);
+                                      toast({
+                                        title: '链接已复制',
+                                        description: '签署链接已复制到剪贴板，可发送给客户',
+                                      });
+                                    }
+                                  } catch (error) {
+                                    console.error('生成安全签署链接失败:', error);
+                                    const signUrl = `${window.location.origin}/contracts/sign/${contract.id}`;
+                                    navigator.clipboard.writeText(signUrl);
+                                    toast({
+                                      title: '链接已复制',
+                                      description: '签署链接已复制到剪贴板，可发送给客户',
+                                    });
+                                  }
                                 }}
-                                title="复制签署链接"
+                                title="复制安全签署链接"
                               >
                                 <Copy className="h-4 w-4" />
                               </Button>

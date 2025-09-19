@@ -469,8 +469,20 @@ export async function POST(request: NextRequest) {
     const contractId = (result as any).insertId;
     console.log('✅ 合同创建成功, ID:', contractId, '编号:', contractNumber);
 
-    // 生成签署链接
-    const signUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/contracts/sign/${contractId}`;
+    // 生成安全的签署令牌和链接
+    const tokenResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/contracts/${contractId}/sign-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    let signUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/contracts/sign/${contractId}`; // 默认链接
+    
+    if (tokenResponse.ok) {
+      const tokenData = await tokenResponse.json();
+      signUrl = tokenData.signUrl;
+    }
 
     const response: GenerateContractResponse = {
       contractId,
