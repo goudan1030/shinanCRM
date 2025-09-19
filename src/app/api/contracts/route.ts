@@ -470,18 +470,23 @@ export async function POST(request: NextRequest) {
     console.log('✅ 合同创建成功, ID:', contractId, '编号:', contractNumber);
 
     // 生成安全的签署令牌和链接
-    const tokenResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/contracts/${contractId}/sign-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    let signUrl = `${baseUrl}/contracts/sign/${contractId}`; // 默认链接
     
-    let signUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/contracts/sign/${contractId}`; // 默认链接
-    
-    if (tokenResponse.ok) {
-      const tokenData = await tokenResponse.json();
-      signUrl = tokenData.signUrl;
+    try {
+      const tokenResponse = await fetch(`${baseUrl}/api/contracts/${contractId}/sign-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (tokenResponse.ok) {
+        const tokenData = await tokenResponse.json();
+        signUrl = tokenData.signUrl;
+      }
+    } catch (error) {
+      console.warn('生成安全签署链接失败，使用默认链接:', error);
     }
 
     const response: GenerateContractResponse = {
