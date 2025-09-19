@@ -33,6 +33,12 @@ async function updateContractContentWithSignature(contractId: number, signerInfo
          <p>联系电话：${signerInfo.phone || '待客户填写'}</p>`
       );
     }
+    
+    // 强制替换合同顶部的甲方信息，确保不显示昵称
+    content = content.replace(
+      /<p>甲方：.*?<\/p>/,
+      '<p>甲方：待客户填写</p>'
+    );
 
     // 更新合同内容
     await executeQuery(

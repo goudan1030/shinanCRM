@@ -350,6 +350,12 @@ export async function POST(
     // 更新印章样式为叠加效果
     newContent = updateSealOverlayStyle(newContent);
 
+    // 强制替换合同顶部的甲方信息，确保不显示昵称
+    newContent = newContent.replace(
+      /<p>甲方：.*?<\/p>/,
+      '<p>甲方：待客户填写</p>'
+    );
+
     // 更新数据库中的合同内容和变量
     await executeQuery(
       'UPDATE contracts SET content = ?, variables = ?, updated_at = NOW() WHERE id = ?',
