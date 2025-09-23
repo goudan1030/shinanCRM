@@ -56,9 +56,7 @@ async function testTcpConnection(host: string, port: number): Promise<boolean> {
       user: dbUser,
       password: dbPassword,
       connectTimeout: 3000, // 快速超时
-      ssl: {
-        rejectUnauthorized: false
-      }
+      ssl: false // 禁用SSL以避免IP地址警告
     });
     
     await connection.end();
@@ -128,10 +126,8 @@ const netlifyDBConfig: PoolOptions = {
   // 禁用不必要的功能
   namedPlaceholders: false,        // 禁用命名占位符以提升性能
   
-  // 远程访问安全设置
-  ssl: {
-    rejectUnauthorized: false 
-  },
+  // 远程访问安全设置 - 禁用SSL以避免IP地址警告
+  ssl: false,
   
   // 连接保持活动设置
   enableKeepAlive: true,
