@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/database';
 import { executeQuery } from '@/lib/database-netlify';
 
 // 更新合同内容以显示客户填写的信息和签名
@@ -105,13 +104,15 @@ export async function POST(
 
     // 使用executeQuery而不是直接连接，避免事务锁问题
     try {
-      console.log('开始签署合同:', contractId);
+      console.log('开始签署合同:', contractId, '签署人信息:', signerInfo);
       
       // 首先检查合同状态
       const [contractRows] = await executeQuery(
         'SELECT status FROM contracts WHERE id = ?',
         [contractId]
       );
+      
+      console.log('合同状态查询结果:', contractRows);
 
       if (!contractRows || (contractRows as any[]).length === 0) {
         return NextResponse.json(
@@ -129,6 +130,7 @@ export async function POST(
       }
 
       // 更新合同状态为已签署
+      console.log('开始更新合同状态...');
       const updateResult = await executeQuery(
         `UPDATE contracts 
          SET status = 'SIGNED', 
@@ -139,8 +141,11 @@ export async function POST(
         [JSON.stringify({ signatureData, signerType, signerInfo }), signatureData, contractId]
       );
 
+      console.log('合同状态更新结果:', updateResult);
+
       // 检查更新是否成功
       if ((updateResult as any).affectedRows === 0) {
+        console.log('合同状态更新失败，affectedRows为0');
         return NextResponse.json(
           { success: false, message: '合同状态更新失败，可能已被其他操作修改' },
           { status: 400 }
@@ -148,7 +153,8 @@ export async function POST(
       }
 
       // 插入签署记录
-      await executeQuery(
+      console.log('开始插入签署记录...');
+      const insertResult = await executeQuery(
         `INSERT INTO contract_signatures 
          (contract_id, signer_type, signature_data, signature_hash, signed_at, ip_address, user_agent, signer_real_name, signer_id_card, signer_phone)
          VALUES (?, ?, ?, SHA2(?, 256), NOW(), ?, ?, ?, ?, ?)`,
@@ -164,6 +170,7 @@ export async function POST(
           signerInfo?.phone || null
         ]
       );
+      console.log('签署记录插入结果:', insertResult);
 
       // 更新合同内容以显示客户填写的信息和签名
       await updateContractContentWithSignature(contractId, signerInfo, signatureData);
