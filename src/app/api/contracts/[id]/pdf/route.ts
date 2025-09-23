@@ -81,7 +81,34 @@ export async function GET(
     // 处理签名图片（base64数据）
     pdfContent = pdfContent.replace(/src="data:image\/png;base64,([^"]+)"/g, 'src="data:image/png;base64,$1"');
     
-    await page.setContent(pdfContent, { waitUntil: 'networkidle0' });
+    // 添加中文字体支持，防止乱码
+    const htmlWithFonts = `
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        * {
+          font-family: 'Noto Sans SC', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', sans-serif !important;
+        }
+        body {
+          font-family: 'Noto Sans SC', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', sans-serif !important;
+          line-height: 1.6;
+          color: #333;
+        }
+        p, div, span, h1, h2, h3, h4, h5, h6 {
+          font-family: 'Noto Sans SC', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', sans-serif !important;
+        }
+      </style>
+    </head>
+    <body>
+      ${pdfContent}
+    </body>
+    </html>`;
+    
+    await page.setContent(htmlWithFonts, { waitUntil: 'networkidle0' });
 
     const pdf = await page.pdf({
       format: 'A4',
