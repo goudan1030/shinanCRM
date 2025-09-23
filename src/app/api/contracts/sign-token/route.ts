@@ -51,10 +51,11 @@ export async function GET(request: NextRequest) {
     const tokenData = (tokenRows as any[])[0];
     console.log('🔐 令牌验证API - 找到合同:', tokenData.contract_id, '状态:', tokenData.status);
 
-    if (tokenData.status !== 'PENDING') {
-      console.log('🔐 令牌验证API - 合同状态不允许签署:', tokenData.status);
+    // 已签署的合同允许查看，未签署的合同允许签署
+    if (tokenData.status !== 'PENDING' && tokenData.status !== 'SIGNED') {
+      console.log('🔐 令牌验证API - 合同状态不允许访问:', tokenData.status);
       return NextResponse.json(
-        { success: false, message: '合同状态不允许签署' },
+        { success: false, message: '合同状态异常，无法访问' },
         { status: 400 }
       );
     }
