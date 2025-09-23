@@ -52,7 +52,7 @@ async function updateContractContentWithSignature(contractId: number, signerInfo
       // 在甲方签字信息后添加签名图片
       const signatureHtml = `
         <div style="margin-top: 10px; text-align: left;">
-          <img src="${signatureData}" alt="甲方签名" style="max-width: 200px; max-height: 100px; border: 1px solid #ddd; background: white;" />
+          <img src="${signatureData}" alt="甲方签名" style="max-width: 200px; max-height: 100px; background: transparent;" />
         </div>`;
       
       content = content.replace(
@@ -68,9 +68,10 @@ async function updateContractContentWithSignature(contractId: number, signerInfo
       'src="/alipay.png" style="max-width: 200px; height: auto;"'
     );
     
+    // 修复乙方公章样式 - 覆盖在文字上并添加旋转
     content = content.replace(
       /src="\/zhang\.png"/g,
-      'src="/zhang.png" style="max-width: 100px; height: auto;"'
+      'src="/zhang.png" style="position: absolute; width: 100px; height: 100px; top: -10px; right: 20px; z-index: 2; opacity: 0.9; transform: rotate(-15deg);"'
     );
 
     // 更新合同内容
