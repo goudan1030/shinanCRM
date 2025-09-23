@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     // 验证令牌并获取合同信息
     const [tokenRows] = await connection.execute(
-      `SELECT ct.*, c.id as contract_id, c.contract_number, c.status, c.content, c.variables
+      `SELECT ct.*, c.id as contract_id, c.contract_number, c.status, c.content, c.variables, c.signed_at
        FROM contract_sign_tokens ct
        JOIN contracts c ON ct.contract_id = c.id
        WHERE ct.token = ? AND ct.expires_at > NOW()`,
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     await connection.end();
 
-    if (!tokenRows || tokenRows.length === 0) {
+    if (!tokenRows || (tokenRows as any[]).length === 0) {
       console.log('🔐 令牌验证API - 令牌无效或已过期');
       return NextResponse.json(
         { success: false, message: '无效或已过期的签署令牌' },
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const tokenData = tokenRows[0];
+    const tokenData = (tokenRows as any[])[0];
     console.log('🔐 令牌验证API - 找到合同:', tokenData.contract_id, '状态:', tokenData.status);
 
     if (tokenData.status !== 'PENDING') {
@@ -64,7 +64,8 @@ export async function GET(request: NextRequest) {
       contract_number: tokenData.contract_number,
       content: tokenData.content,
       variables: tokenData.variables ? (typeof tokenData.variables === 'string' ? JSON.parse(tokenData.variables) : tokenData.variables) : {},
-      status: tokenData.status
+      status: tokenData.status,
+      signed_at: tokenData.signed_at
     };
 
     console.log('✅ 令牌验证成功，返回合同信息');

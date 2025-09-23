@@ -78,10 +78,12 @@ function ContractSignContent() {
       if (response.ok) {
         if (token && data.contract) {
           setContract(data.contract);
-          setIsSigned(data.contract.status === 'SIGNED');
+          // 只有合同状态为SIGNED且有签署时间才认为是真正签署成功
+          setIsSigned(data.contract.status === 'SIGNED' && data.contract.signed_at);
         } else {
           setContract(data);
-          setIsSigned(data.status === 'SIGNED');
+          // 只有合同状态为SIGNED且有签署时间才认为是真正签署成功
+          setIsSigned(data.status === 'SIGNED' && data.signed_at);
         }
       } else {
         toast({
