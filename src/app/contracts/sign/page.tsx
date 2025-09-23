@@ -237,7 +237,7 @@ function ContractSignContent() {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.success) {
         toast({
           title: '签署成功',
           description: '合同已成功签署',
@@ -248,9 +248,10 @@ function ContractSignContent() {
       } else {
         toast({
           title: '签署失败',
-          description: data.error || '请稍后重试',
+          description: data.message || data.error || '请稍后重试',
           variant: 'destructive'
         });
+        console.error('签署失败详情:', data);
       }
     } catch (error) {
       console.error('签署失败:', error);

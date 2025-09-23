@@ -54,10 +54,11 @@ async function updateContractContentWithSignature(contractId: number, signerInfo
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contractId = parseInt(params.id);
+    const { id } = await params;
+    const contractId = parseInt(id);
     const body = await request.json();
     const { signatureData, signerType, signerInfo } = body;
 
@@ -68,25 +69,52 @@ export async function POST(
       );
     }
 
-    const connection = await createClient();
-
+    // 使用executeQuery而不是直接连接，避免事务锁问题
     try {
-      // 开始事务
-      await connection.beginTransaction();
+      console.log('开始签署合同:', contractId);
+      
+      // 首先检查合同状态
+      const [contractRows] = await executeQuery(
+        'SELECT status FROM contracts WHERE id = ?',
+        [contractId]
+      );
+
+      if (!contractRows || (contractRows as any[]).length === 0) {
+        return NextResponse.json(
+          { success: false, message: '合同不存在' },
+          { status: 404 }
+        );
+      }
+
+      const contract = (contractRows as any[])[0];
+      if (contract.status === 'SIGNED') {
+        return NextResponse.json(
+          { success: false, message: '合同已经签署过了' },
+          { status: 400 }
+        );
+      }
 
       // 更新合同状态为已签署
-      await connection.execute(
+      const updateResult = await executeQuery(
         `UPDATE contracts 
          SET status = 'SIGNED', 
              signed_at = NOW(),
              signature_data = ?,
              signature_hash = SHA2(?, 256)
-         WHERE id = ?`,
+         WHERE id = ? AND status = 'PENDING'`,
         [JSON.stringify({ signatureData, signerType, signerInfo }), signatureData, contractId]
       );
 
+      // 检查更新是否成功
+      if ((updateResult as any).affectedRows === 0) {
+        return NextResponse.json(
+          { success: false, message: '合同状态更新失败，可能已被其他操作修改' },
+          { status: 400 }
+        );
+      }
+
       // 插入签署记录
-      await connection.execute(
+      await executeQuery(
         `INSERT INTO contract_signatures 
          (contract_id, signer_type, signature_data, signature_hash, signed_at, ip_address, user_agent, signer_real_name, signer_id_card, signer_phone)
          VALUES (?, ?, ?, SHA2(?, 256), NOW(), ?, ?, ?, ?, ?)`,
@@ -103,21 +131,10 @@ export async function POST(
         ]
       );
 
-      // 生成PDF（这里可以调用PDF生成服务）
-      // const pdfUrl = await generateContractPDF(contractId);
-      
-      // 更新PDF URL
-      // await connection.execute(
-      //   'UPDATE contracts SET pdf_url = ? WHERE id = ?',
-      //   [pdfUrl, contractId]
-      // );
-
       // 更新合同内容以显示客户填写的信息
       await updateContractContentWithSignature(contractId, signerInfo);
 
-      // 提交事务
-      await connection.commit();
-
+      console.log('✅ 合同签署成功:', contractId);
       return NextResponse.json({
         success: true,
         message: '合同签署成功',
@@ -125,11 +142,14 @@ export async function POST(
       });
 
     } catch (error) {
-      // 回滚事务
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
+      console.error('签署合同数据库操作失败:', error);
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: '签署失败: ' + (error instanceof Error ? error.message : '未知错误')
+        },
+        { status: 500 }
+      );
     }
 
   } catch (error) {
