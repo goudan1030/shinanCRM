@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { Contract } from '@/types/contract';
-import { CheckCircle, Download, ArrowLeft } from 'lucide-react';
+import { CheckCircle, Download, ArrowLeft, Eye } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const SignatureCanvas = dynamic(() => import('react-signature-canvas'), {
@@ -277,6 +277,15 @@ function ContractSignContent() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // 查看PDF（适用于微信等环境）
+  const handleViewPDF = () => {
+    if (!contract) return;
+    
+    // 在新窗口中打开PDF查看页面
+    const pdfUrl = `/api/contracts/${contract.id}/pdf?mode=preview`;
+    window.open(pdfUrl, '_blank');
   };
 
   // 清除签名
@@ -684,26 +693,49 @@ function ContractSignContent() {
         gap: '8px'
       }}>
         {isSigned ? (
-          <button
-            onClick={handleDownloadPDF}
-            style={{
-              flex: '1',
-              height: '48px',
-              backgroundColor: '#3b82f6',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}
-          >
-            <Download style={{ width: '18px', height: '18px', marginRight: '8px' }} />
-            下载PDF
-          </button>
+          <>
+            <button
+              onClick={handleViewPDF}
+              style={{
+                flex: '1',
+                height: '48px',
+                backgroundColor: '#10b981',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                marginRight: '8px'
+              }}
+            >
+              <Eye style={{ width: '18px', height: '18px', marginRight: '8px' }} />
+              查看PDF
+            </button>
+            <button
+              onClick={handleDownloadPDF}
+              style={{
+                flex: '1',
+                height: '48px',
+                backgroundColor: '#3b82f6',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <Download style={{ width: '18px', height: '18px', marginRight: '8px' }} />
+              下载PDF
+            </button>
+          </>
         ) : signStep === 'info' ? (
           <button
             onClick={handleNextStep}
