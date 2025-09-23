@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/database';
 import { executeQuery } from '@/lib/database-netlify';
 
-// 更新合同内容以显示客户填写的信息
-async function updateContractContentWithSignature(contractId: number, signerInfo: any) {
+// 更新合同内容以显示客户填写的信息和签名
+async function updateContractContentWithSignature(contractId: number, signerInfo: any, signatureData: string) {
   try {
     // 获取当前合同内容
     const [contractRows] = await executeQuery(
@@ -24,20 +24,53 @@ async function updateContractContentWithSignature(contractId: number, signerInfo
       return;
     }
 
-    // 替换甲方信息为实际填写的信息
+    console.log('开始更新合同内容，签署人信息:', signerInfo);
+
+    // 1. 替换合同顶部的甲方信息
     if (signerInfo?.realName) {
+      content = content.replace(
+        /<p>甲方：.*?<\/p>/,
+        `<p>甲方：${signerInfo.realName}</p>`
+      );
+      console.log('✅ 已更新合同顶部甲方信息');
+    }
+
+    // 2. 替换签署区域的甲方信息
+    if (signerInfo?.realName) {
+      // 替换甲方签字信息
       content = content.replace(
         /<p><strong>甲方（签字）：<\/strong><\/p>\s*<p>身份证号：待客户填写<\/p>\s*<p>联系电话：待客户填写<\/p>/,
         `<p><strong>甲方（签字）：</strong> ${signerInfo.realName}</p>
          <p>身份证号：${signerInfo.idCard || '待客户填写'}</p>
          <p>联系电话：${signerInfo.phone || '待客户填写'}</p>`
       );
+      console.log('✅ 已更新签署区域甲方信息');
     }
-    
-    // 强制替换合同顶部的甲方信息，确保不显示昵称
+
+    // 3. 添加用户签名图片
+    if (signatureData) {
+      // 在甲方签字信息后添加签名图片
+      const signatureHtml = `
+        <div style="margin-top: 10px; text-align: left;">
+          <img src="${signatureData}" alt="甲方签名" style="max-width: 200px; max-height: 100px; border: 1px solid #ddd; background: white;" />
+        </div>`;
+      
+      content = content.replace(
+        /(<p>联系电话：.*?<\/p>)(\s*<\/div>)/,
+        `$1${signatureHtml}$2`
+      );
+      console.log('✅ 已添加用户签名图片');
+    }
+
+    // 4. 修复图片路径问题 - 将相对路径改为绝对路径
     content = content.replace(
-      /<p>甲方：.*?<\/p>/,
-      '<p>甲方：待客户填写</p>'
+      /src="\/alipay\.png"/g,
+      'src="/alipay.png" style="max-width: 200px; height: auto;"'
+    );
+    
+    content = content.replace(
+      /src="\/zhang\.png"/g,
+      'src="/zhang.png" style="max-width: 100px; height: auto;"'
     );
 
     // 更新合同内容
@@ -46,7 +79,7 @@ async function updateContractContentWithSignature(contractId: number, signerInfo
       [content, contractId]
     );
 
-    console.log('✅ 合同内容已更新，显示客户填写的信息');
+    console.log('✅ 合同内容已更新，显示客户填写的信息和签名');
   } catch (error) {
     console.error('更新合同内容失败:', error);
   }
@@ -131,8 +164,8 @@ export async function POST(
         ]
       );
 
-      // 更新合同内容以显示客户填写的信息
-      await updateContractContentWithSignature(contractId, signerInfo);
+      // 更新合同内容以显示客户填写的信息和签名
+      await updateContractContentWithSignature(contractId, signerInfo, signatureData);
 
       console.log('✅ 合同签署成功:', contractId);
       return NextResponse.json({

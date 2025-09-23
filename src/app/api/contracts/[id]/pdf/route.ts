@@ -63,7 +63,13 @@ export async function GET(
     let pdfContent = contract.content;
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
                    (process.env.NODE_ENV === 'production' ? 'https://admin.xinghun.info' : 'http://localhost:3000');
+    
+    // 修复所有图片路径
     pdfContent = pdfContent.replace(/src="\/zhang\.png"/g, `src="${baseUrl}/zhang.png"`);
+    pdfContent = pdfContent.replace(/src="\/alipay\.png"/g, `src="${baseUrl}/alipay.png"`);
+    
+    // 处理签名图片（base64数据）
+    pdfContent = pdfContent.replace(/src="data:image\/png;base64,([^"]+)"/g, 'src="data:image/png;base64,$1"');
     
     await page.setContent(pdfContent, { waitUntil: 'networkidle0' });
 
