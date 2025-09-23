@@ -53,7 +53,6 @@ const navigation: NavigationItem[] = [
             { name: '合同列表', href: '/contracts/list' },
             { name: '发起合同', href: '/contracts/create' },
             { name: '合同模板', href: '/contracts/templates' },
-            { name: '签署管理', href: '/contracts/sign' },
             { name: '测试页面', href: '/contracts/test' }
           ]
         },

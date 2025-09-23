@@ -32,14 +32,6 @@ export default function ContractLayout({
             >
               <span className="text-[13px]">合同列表</span>
             </Link>
-            <Link
-              href="/contracts/sign"
-              className={`flex items-center rounded-md py-2 px-3 ${
-                pathname === '/contracts/sign' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
-              }`}
-            >
-              <span className="text-[13px]">签署管理</span>
-            </Link>
           </div>
         </div>
 
