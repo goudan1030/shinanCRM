@@ -544,23 +544,28 @@ export async function POST(request: NextRequest) {
     
     try {
       console.log('🔐 合同创建 - 开始生成安全签署令牌，合同ID:', contractId);
-      const tokenResponse = await fetch(`${baseUrl}/api/contracts/${contractId}/sign-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
       
-      console.log('🔐 合同创建 - 令牌生成响应状态:', tokenResponse.status);
+      // 直接调用令牌生成逻辑，避免HTTP请求的权限问题
+      const crypto = require('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24小时有效期
+
+      // 将令牌存储到数据库
+      await executeQuery(
+        `INSERT INTO contract_sign_tokens (contract_id, token, expires_at, created_at) 
+         VALUES (?, ?, ?, NOW()) 
+         ON DUPLICATE KEY UPDATE 
+         token = VALUES(token), 
+         expires_at = VALUES(expires_at), 
+         created_at = NOW()`,
+        [contractId, token, expiresAt]
+      );
+
+      // 生成安全的签署链接
+      signUrl = `${baseUrl}/contracts/sign?token=${token}`;
+      console.log('🔐 合同创建 - 令牌生成成功，安全链接:', signUrl);
       
-      if (tokenResponse.ok) {
-        const tokenData = await tokenResponse.json();
-        console.log('🔐 合同创建 - 令牌生成成功，安全链接:', tokenData.signUrl);
-        signUrl = tokenData.signUrl;
-      } else {
-        const errorData = await tokenResponse.json();
-        console.warn('🔐 合同创建 - 令牌生成失败:', errorData);
-      }
     } catch (error) {
       console.warn('🔐 合同创建 - 生成安全签署链接失败，使用默认链接:', error);
     }
