@@ -36,14 +36,22 @@ async function updateContractContentWithSignature(contractId: number, signerInfo
 
     // 2. 替换签署区域的甲方信息
     if (signerInfo?.realName) {
+      // 获取当前签署日期
+      const signDate = new Date().toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      
       // 替换甲方签字信息
       content = content.replace(
         /<p><strong>甲方（签字）：<\/strong><\/p>\s*<p>身份证号：待客户填写<\/p>\s*<p>联系电话：待客户填写<\/p>/,
         `<p><strong>甲方（签字）：</strong> ${signerInfo.realName}</p>
          <p>身份证号：${signerInfo.idCard || '待客户填写'}</p>
-         <p>联系电话：${signerInfo.phone || '待客户填写'}</p>`
+         <p>联系电话：${signerInfo.phone || '待客户填写'}</p>
+         <p>签字日期：${signDate}</p>`
       );
-      console.log('✅ 已更新签署区域甲方信息');
+      console.log('✅ 已更新签署区域甲方信息和签字日期');
     }
 
     // 3. 添加用户签名图片
@@ -55,7 +63,7 @@ async function updateContractContentWithSignature(contractId: number, signerInfo
         </div>`;
       
       content = content.replace(
-        /(<p>联系电话：.*?<\/p>)(\s*<\/div>)/,
+        /(<p>签字日期：.*?<\/p>)(\s*<\/div>)/,
         `$1${signatureHtml}$2`
       );
       console.log('✅ 已添加用户签名图片');
