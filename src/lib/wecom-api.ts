@@ -237,7 +237,7 @@ export function formatMemberNotificationText(memberData: any): string {
   } = memberData;
 
   // 格式化性别
-  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : '未知';
+  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : gender === 'other' ? '其他' : '未知';
   
   // 格式化学历
   const educationMap: {[key: string]: string} = {
@@ -338,7 +338,7 @@ export function formatMemberNotificationCard(memberData: any): { title: string; 
     created_at
   } = memberData;
 
-  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : '未知';
+  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : gender === 'other' ? '其他' : '未知';
   
   // 格式化学历
   const educationMap: {[key: string]: string} = {
@@ -412,7 +412,7 @@ export function formatMemberNotificationMarkdown(memberData: any): string {
     created_at
   } = memberData;
 
-  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : '未知';
+  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : gender === 'other' ? '其他' : '未知';
   
   // 格式化学历
   const educationMap: {[key: string]: string} = {
@@ -766,6 +766,350 @@ export async function sendMemberRegistrationNotification(memberData: any): Promi
     return success;
   } catch (error) {
     console.error('发送会员登记通知出错:', error);
+    return false;
+  }
+}
+
+/**
+ * 格式化会员更新通知文本
+ */
+export function formatMemberUpdateNotificationText(memberData: any, updatedFields: string[]): string {
+  const {
+    member_no,
+    nickname,
+    phone,
+    gender,
+    birth_year,
+    height,
+    weight,
+    province,
+    city,
+    district,
+    hukou_province,
+    hukou_city,
+    education,
+    occupation,
+    house_car,
+    children_plan,
+    marriage_cert,
+    marriage_history,
+    self_description,
+    partner_requirement,
+    updated_at
+  } = memberData;
+
+  // 格式化性别
+  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : gender === 'other' ? '其他' : '未知';
+  
+  // 格式化地区信息
+  const locationText = [province, city, district].filter(Boolean).join('') || '未填写';
+  const hukouText = [hukou_province, hukou_city].filter(Boolean).join('') || '未填写';
+  
+  // 格式化更新时间
+  const updateTime = updated_at ? new Date(updated_at).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }) : '未知';
+
+  // 格式化更新字段列表
+  const fieldNames: { [key: string]: string } = {
+    'nickname': '昵称',
+    'phone': '手机号',
+    'gender': '性别',
+    'birth_year': '出生年份',
+    'height': '身高',
+    'weight': '体重',
+    'province': '所在省份',
+    'city': '所在城市',
+    'district': '所在区县',
+    'hukou_province': '户籍省份',
+    'hukou_city': '户籍城市',
+    'education': '学历',
+    'occupation': '职业',
+    'house_car': '房车情况',
+    'children_plan': '生育计划',
+    'marriage_cert': '婚姻状况',
+    'marriage_history': '婚姻经历',
+    'self_description': '自我介绍',
+    'partner_requirement': '择偶要求'
+  };
+
+  const updatedFieldNames = updatedFields.map(field => fieldNames[field] || field).join('、');
+
+  return `✅ 用户资料更新通知
+
+📋 会员信息：
+• 会员编号：${member_no || '未设置'}
+• 昵称：${nickname || '未填写'}
+• 手机号：${phone || '未填写'}
+• 性别：${genderText}
+• 出生年份：${birth_year || '未填写'}
+• 身高：${height ? height + 'cm' : '未填写'}
+• 体重：${weight ? weight + 'kg' : '未填写'}
+• 所在地区：${locationText}
+• 户籍地：${hukouText}
+• 学历：${education || '未填写'}
+• 职业：${occupation || '未填写'}
+• 房车情况：${house_car || '未填写'}
+• 生育计划：${children_plan || '未填写'}
+• 婚姻状况：${marriage_cert || '未填写'}
+• 婚姻经历：${marriage_history || '未填写'}
+
+📝 更新内容：${updatedFieldNames}
+⏰ 更新时间：${updateTime}
+
+💡 会员资料已更新，请及时查看最新信息。`;
+}
+
+/**
+ * 格式化会员更新通知卡片
+ */
+export function formatMemberUpdateNotificationCard(memberData: any, updatedFields: string[]): { title: string; description: string; url: string; btntxt?: string } {
+  const {
+    member_no,
+    nickname,
+    phone,
+    gender,
+    birth_year,
+    height,
+    weight,
+    province,
+    city,
+    district,
+    updated_at
+  } = memberData;
+
+  // 格式化性别
+  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : gender === 'other' ? '其他' : '未知';
+  
+  // 格式化地区信息
+  const locationText = [province, city, district].filter(Boolean).join('') || '未填写';
+  
+  // 格式化更新时间
+  const updateTime = updated_at ? new Date(updated_at).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }) : '未知';
+
+  // 格式化更新字段列表
+  const fieldNames: { [key: string]: string } = {
+    'nickname': '昵称',
+    'phone': '手机号',
+    'gender': '性别',
+    'birth_year': '出生年份',
+    'height': '身高',
+    'weight': '体重',
+    'province': '所在省份',
+    'city': '所在城市',
+    'district': '所在区县',
+    'hukou_province': '户籍省份',
+    'hukou_city': '户籍城市',
+    'education': '学历',
+    'occupation': '职业',
+    'house_car': '房车情况',
+    'children_plan': '生育计划',
+    'marriage_cert': '婚姻状况',
+    'marriage_history': '婚姻经历',
+    'self_description': '自我介绍',
+    'partner_requirement': '择偶要求'
+  };
+
+  const updatedFieldNames = updatedFields.map(field => fieldNames[field] || field).join('、');
+
+  return {
+    title: '用户资料更新通知',
+    description: `会员编号：${member_no || '未设置'}
+昵称：${nickname || '未填写'}
+手机号：${phone || '未填写'}
+性别：${genderText}
+出生年份：${birth_year || '未填写'}
+身高：${height ? height + 'cm' : '未填写'} | 体重：${weight ? weight + 'kg' : '未填写'}
+所在地区：${locationText}
+更新时间：${updateTime}
+更新内容：${updatedFieldNames}`,
+    url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://crm.shinanwenhua.com'}/members/${memberData.id}`,
+    btntxt: '查看会员'
+  };
+}
+
+/**
+ * 格式化会员更新通知Markdown
+ */
+export function formatMemberUpdateNotificationMarkdown(memberData: any, updatedFields: string[]): string {
+  const {
+    member_no,
+    nickname,
+    phone,
+    gender,
+    birth_year,
+    height,
+    weight,
+    province,
+    city,
+    district,
+    hukou_province,
+    hukou_city,
+    education,
+    occupation,
+    house_car,
+    children_plan,
+    marriage_cert,
+    marriage_history,
+    self_description,
+    partner_requirement,
+    updated_at
+  } = memberData;
+
+  // 格式化性别
+  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : gender === 'other' ? '其他' : '未知';
+  
+  // 格式化地区信息
+  const locationText = [province, city, district].filter(Boolean).join('') || '未填写';
+  const hukouText = [hukou_province, hukou_city].filter(Boolean).join('') || '未填写';
+  
+  // 格式化更新时间
+  const updateTime = updated_at ? new Date(updated_at).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }) : '未知';
+
+  // 格式化更新字段列表
+  const fieldNames: { [key: string]: string } = {
+    'nickname': '昵称',
+    'phone': '手机号',
+    'gender': '性别',
+    'birth_year': '出生年份',
+    'height': '身高',
+    'weight': '体重',
+    'province': '所在省份',
+    'city': '所在城市',
+    'district': '所在区县',
+    'hukou_province': '户籍省份',
+    'hukou_city': '户籍城市',
+    'education': '学历',
+    'occupation': '职业',
+    'house_car': '房车情况',
+    'children_plan': '生育计划',
+    'marriage_cert': '婚姻状况',
+    'marriage_history': '婚姻经历',
+    'self_description': '自我介绍',
+    'partner_requirement': '择偶要求'
+  };
+
+  const updatedFieldNames = updatedFields.map(field => fieldNames[field] || field).join('、');
+
+  return `## ✅ 用户资料更新通知
+
+### 📋 会员信息
+- **会员编号**：${member_no || '未设置'}
+- **昵称**：${nickname || '未填写'}
+- **手机号**：${phone || '未填写'}
+- **性别**：${genderText}
+- **出生年份**：${birth_year || '未填写'}
+- **身高**：${height ? height + 'cm' : '未填写'}
+- **体重**：${weight ? weight + 'kg' : '未填写'}
+- **所在地区**：${locationText}
+- **户籍地**：${hukouText}
+- **学历**：${education || '未填写'}
+- **职业**：${occupation || '未填写'}
+- **房车情况**：${house_car || '未填写'}
+- **生育计划**：${children_plan || '未填写'}
+- **婚姻状况**：${marriage_cert || '未填写'}
+- **婚姻经历**：${marriage_history || '未填写'}
+
+### 📝 更新内容
+${updatedFieldNames}
+
+### ⏰ 更新时间
+${updateTime}
+
+> 💡 会员资料已更新，请及时查看最新信息。`;
+}
+
+/**
+ * 发送会员资料更新通知
+ */
+export async function sendMemberUpdateNotification(memberData: any, updatedFields: string[]): Promise<boolean> {
+  try {
+    console.log('开始发送会员资料更新通知...');
+    
+    // 获取企业微信配置
+    const config = await getWecomConfig();
+    if (!config) {
+      console.log('企业微信配置不存在，跳过通知发送');
+      return false;
+    }
+    
+    // 获取Access Token
+    const accessToken = await getWecomAccessToken(config);
+    if (!accessToken) {
+      console.log('无法获取企业微信Access Token，跳过通知发送');
+      return false;
+    }
+    
+    // 准备消息内容，根据配置选择消息类型和接收者
+    const messageType = config.message_type || 'textcard';
+    const recipients = config.notification_recipients || '@all';
+    
+    const message: WecomMessage = {
+      touser: recipients,
+      msgtype: messageType,
+      agentid: config.agent_id
+    };
+    
+    // 根据消息类型设置消息内容
+    switch (messageType) {
+      case 'textcard':
+        message.textcard = formatMemberUpdateNotificationCard(memberData, updatedFields);
+        break;
+      case 'text':
+        message.text = {
+          content: formatMemberUpdateNotificationText(memberData, updatedFields)
+        };
+        break;
+      case 'markdown':
+        message.markdown = {
+          content: formatMemberUpdateNotificationMarkdown(memberData, updatedFields)
+        };
+        break;
+      default:
+        console.log('不支持的消息类型:', messageType);
+        return false;
+    }
+    
+    // 发送消息
+    const response = await fetch(`https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${accessToken}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message)
+    });
+    
+    const result = await response.json();
+    
+    if (result.errcode === 0) {
+      console.log('✅ 会员资料更新通知发送成功');
+      return true;
+    } else {
+      console.error('❌ 会员资料更新通知发送失败:', result);
+      return false;
+    }
+    
+  } catch (error) {
+    console.error('发送会员资料更新通知出错:', error);
     return false;
   }
 } 

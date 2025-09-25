@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
-import { sendMemberRegistrationNotification } from '@/lib/wecom-api';
+import { sendMemberRegistrationNotification, sendMemberUpdateNotification } from '@/lib/wecom-api';
 
 interface NotificationQueueItem {
   id: number;
   member_id: number;
   notification_type: 'NEW_MEMBER' | 'UPDATE_MEMBER';
+  status: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
   retry_count: number;
+  error_message?: string;
+  updated_fields?: string;
+  created_at: string;
+  processed_at?: string;
 }
 
 interface MemberData {
@@ -121,8 +126,32 @@ export async function GET() {
         const memberData = members[0];
         console.log(`👤 获取到会员信息: ${memberData.member_no || memberData.id}`);
 
-        // 发送企业微信通知
-        const notificationSuccess = await sendMemberRegistrationNotification(memberData);
+        // 根据通知类型发送不同的通知
+        let notificationSuccess = false;
+        
+        if (item.notification_type === 'NEW_MEMBER') {
+          // 发送会员登记通知
+          notificationSuccess = await sendMemberRegistrationNotification(memberData);
+        } else if (item.notification_type === 'UPDATE_MEMBER') {
+          // 发送会员更新通知
+          let updatedFields: string[] = [];
+          
+          // 解析更新的字段
+          if (item.updated_fields) {
+            try {
+              updatedFields = JSON.parse(item.updated_fields);
+            } catch (error) {
+              console.error('解析更新字段失败:', error);
+              updatedFields = [];
+            }
+          }
+          
+          console.log(`📝 更新的字段: ${updatedFields.join(', ')}`);
+          notificationSuccess = await sendMemberUpdateNotification(memberData, updatedFields);
+        } else {
+          console.log(`⚠️ 未知的通知类型: ${item.notification_type}`);
+          notificationSuccess = false;
+        }
 
         if (notificationSuccess) {
           // 标记为成功

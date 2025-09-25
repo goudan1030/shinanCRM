@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
+import { sendContractSignNotification } from '@/lib/wecom-api';
 
 // 更新合同内容以显示客户填写的信息和签名
 async function updateContractContentWithSignature(contractId: number, signerInfo: any, signatureData: string) {
@@ -182,6 +183,44 @@ export async function POST(
 
       // 更新合同内容以显示客户填写的信息和签名
       await updateContractContentWithSignature(contractId, signerInfo, signatureData);
+
+      // 发送企业微信通知
+      try {
+        console.log('开始发送合同签署通知...');
+        
+        // 获取完整的合同信息用于通知
+        const [contractInfoRows] = await executeQuery(
+          `SELECT 
+            c.id,
+            c.contract_number,
+            c.contract_type,
+            c.signed_at,
+            m.member_no,
+            m.nickname as member_name
+          FROM contracts c
+          LEFT JOIN members m ON c.member_id = m.id
+          WHERE c.id = ?`,
+          [contractId]
+        );
+
+        if (contractInfoRows && (contractInfoRows as any[]).length > 0) {
+          const contractData = (contractInfoRows as any[])[0];
+          
+          // 发送企业微信通知
+          const notificationSuccess = await sendContractSignNotification(contractData, signerInfo);
+          
+          if (notificationSuccess) {
+            console.log('✅ 合同签署通知发送成功');
+          } else {
+            console.log('⚠️ 合同签署通知发送失败，但合同签署成功');
+          }
+        } else {
+          console.log('⚠️ 无法获取合同信息，跳过通知发送');
+        }
+      } catch (notificationError) {
+        console.error('发送合同签署通知出错:', notificationError);
+        // 通知发送失败不影响合同签署成功
+      }
 
       console.log('✅ 合同签署成功:', contractId);
       return NextResponse.json({

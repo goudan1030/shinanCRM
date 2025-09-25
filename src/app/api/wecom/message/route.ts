@@ -560,7 +560,7 @@ function formatMemberDetailsForReply(memberInfo: any): string {
   } = memberInfo;
 
   // 格式化各种枚举值
-  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : '未知';
+  const genderText = gender === 'male' ? '男' : gender === 'female' ? '女' : gender === 'other' ? '其他' : '未知';
   
   const educationMap: {[key: string]: string} = {
     'PRIMARY_SCHOOL': '小学',

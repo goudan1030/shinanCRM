@@ -68,6 +68,8 @@ const publicRoutes = [
   '/api/wecom/test-connection', // 测试连接API
   '/api/wecom/test-notification', // 测试通知API
   '/api/wecom/test-query', // 测试查询API
+  '/api/wecom/test-contract-notification', // 测试合同签署通知API
+  '/api/wecom/test-member-update-notification', // 测试会员更新通知API
   '/api/wecom/simple', // 简单API
   '/api/wecom/logs', // 日志查看API
   '/api/wecom/callback/data', // 第三方应用数据回调
