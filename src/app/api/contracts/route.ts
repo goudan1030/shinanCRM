@@ -512,9 +512,21 @@ export async function POST(request: NextRequest) {
     
     console.log('📄 处理后合同长度:', contractContent.length);
 
-    // 设置过期时间（7天）
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    // 设置合同到期时间
+    let expiresAt = null;
+    
+    // 检查是否设置为长期有效
+    if (contractVariables.service_end_date === '长期有效') {
+      // 长期有效设置为null，表示永不过期
+      expiresAt = null;
+    } else if (contractVariables.service_end_date && contractVariables.service_end_date !== '长期有效') {
+      // 如果有具体的到期日期，使用该日期
+      expiresAt = new Date(contractVariables.service_end_date);
+    } else {
+      // 默认7天后到期
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+    }
 
     // 创建合同记录
     const [result] = await executeQuery(

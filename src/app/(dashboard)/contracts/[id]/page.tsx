@@ -22,6 +22,8 @@ interface Contract {
   status: 'DRAFT' | 'PENDING' | 'SIGNED' | 'CANCELLED';
   created_at: string;
   updated_at: string;
+  signed_at?: string;
+  expires_at?: string;
   member?: {
     member_no: string;
     member_name: string;
@@ -413,9 +415,21 @@ export default function ContractDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-500 mb-1">更新时间</div>
+                  <div className="text-sm text-gray-500 mb-1">签署时间</div>
                   <div className="font-medium">
-                    {new Date(contract.updated_at).toLocaleString('zh-CN')}
+                    {contract.signed_at 
+                      ? new Date(contract.signed_at).toLocaleString('zh-CN')
+                      : <span className="text-gray-400">未签署</span>
+                    }
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">到期时间</div>
+                  <div className="font-medium">
+                    {contract.expires_at 
+                      ? new Date(contract.expires_at).toLocaleString('zh-CN')
+                      : <span className="text-green-600 font-medium">长期有效</span>
+                    }
                   </div>
                 </div>
               </div>

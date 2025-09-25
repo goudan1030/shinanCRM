@@ -335,6 +335,7 @@ export default function ContractListPage() {
                     <TableHead>状态</TableHead>
                     <TableHead>创建时间</TableHead>
                     <TableHead>签署时间</TableHead>
+                    <TableHead>到期时间</TableHead>
                     <TableHead>操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -366,6 +367,21 @@ export default function ContractListPage() {
                           ? new Date(contract.signed_at).toLocaleString('zh-CN')
                           : '-'
                         }
+                      </TableCell>
+                      <TableCell>
+                        {contract.expires_at ? (
+                          <div className={`${
+                            new Date(contract.expires_at) < new Date() 
+                              ? 'text-red-600 font-medium' 
+                              : new Date(contract.expires_at) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                              ? 'text-orange-600 font-medium'
+                              : 'text-gray-900'
+                          }`}>
+                            {new Date(contract.expires_at).toLocaleString('zh-CN')}
+                          </div>
+                        ) : (
+                          <span className="text-green-600 font-medium">长期有效</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">

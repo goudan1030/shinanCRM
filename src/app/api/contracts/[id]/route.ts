@@ -26,10 +26,14 @@ export async function GET(
         m.real_name as member_real_name,
         m.phone as member_phone,
         m.id_card as member_id_card,
-        ct.name as template_name
+        ct.name as template_name,
+        cs.signer_real_name,
+        cs.signer_id_card,
+        cs.signer_phone
       FROM contracts c
       LEFT JOIN members m ON c.member_id = m.id
       LEFT JOIN contract_templates ct ON c.template_id = ct.id
+      LEFT JOIN contract_signatures cs ON c.id = cs.contract_id AND cs.signer_type = 'CUSTOMER'
       WHERE c.id = ?`,
       [contractId]
     );
@@ -41,7 +45,41 @@ export async function GET(
       );
     }
 
-    const contract = rows[0] as Contract;
+    const rawContract = rows[0] as any;
+    
+    // 构造正确的合同对象结构
+    const contract: Contract = {
+      id: rawContract.id,
+      contract_number: rawContract.contract_number,
+      member_id: rawContract.member_id,
+      template_id: rawContract.template_id,
+      contract_type: rawContract.contract_type,
+      content: rawContract.content,
+      variables: rawContract.variables,
+      status: rawContract.status,
+      created_at: rawContract.created_at,
+      updated_at: rawContract.updated_at,
+      signed_at: rawContract.signed_at,
+      expires_at: rawContract.expires_at,
+      pdf_url: rawContract.pdf_url,
+      signature_data: rawContract.signature_data,
+      signature_hash: rawContract.signature_hash,
+      // 构造member对象，优先使用签署记录中的真实信息
+      member: rawContract.member_no ? {
+        id: rawContract.member_id,
+        member_no: rawContract.member_no,
+        name: rawContract.signer_real_name || rawContract.member_name,
+        member_name: rawContract.member_name,
+        member_real_name: rawContract.signer_real_name || rawContract.member_real_name,
+        phone: rawContract.signer_phone || rawContract.member_phone,
+        member_phone: rawContract.signer_phone || rawContract.member_phone,
+        member_id_card: rawContract.signer_id_card || rawContract.member_id_card
+      } : undefined,
+      // 构造template对象
+      template: rawContract.template_name ? {
+        name: rawContract.template_name
+      } : undefined
+    };
 
     return NextResponse.json(contract);
   } catch (error) {
