@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置变量
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 echo "开始应急修复方案..."

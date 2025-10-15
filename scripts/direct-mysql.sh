@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 服务器信息
-SERVER="8.149.244.105"
+SERVER="121.41.65.220"
 SSH_USER="root"
 DB_NAME="h5_cloud_db"
 DB_USER="h5_cloud_user"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 数据库SSH隧道配置
-REMOTE_SERVER="8.149.244.105"  # 阿里云服务器IP地址
+REMOTE_SERVER="121.41.65.220"  # 阿里云服务器IP地址
 SSH_USER="root"                # SSH登录用户名
 SSH_PORT=22                    # SSH端口，默认是22
 REMOTE_DB_HOST="127.0.0.1"     # 远程数据库IP地址（如果数据库在同一服务器上，使用127.0.0.1）

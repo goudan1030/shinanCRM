@@ -3,13 +3,13 @@
 # 修复环境变量并启动应用
 echo "修复环境变量并启动应用..."
 
-ssh root@8.149.244.105 << 'EOT'
+ssh root@121.41.65.220 << 'EOT'
 cd /www/wwwroot/sncrm
 
 echo "1. 恢复MySQL数据库配置..."
 cat > .env.local << 'EOF'
 # 数据库配置
-DB_HOST=8.149.244.105
+DB_HOST=121.41.65.220
 DB_PORT=3306
 DB_USER=h5_cloud_user
 DB_PASSWORD=z3Mzv3PePJPu3Q5w

@@ -13,7 +13,7 @@ echo -e "${GREEN}===== SNCRM登录问题诊断工具 =====${NC}"
 
 # 设置变量
 APP_DIR="/www/wwwroot/sncrm"
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 # 诊断信息提示

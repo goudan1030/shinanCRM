@@ -45,7 +45,7 @@ node scripts/setup-phpmyadmin-pmadb.js
 
 1. **连接到服务器**
 ```bash
-ssh root@8.149.244.105
+ssh root@121.41.65.220
 ```
 
 2. **修复权限**
@@ -127,7 +127,7 @@ pma__users             - 用户管理
 ## 验证修复
 
 ### 1. 刷新phpMyAdmin页面
-访问 `http://8.149.244.105:8888/phpmyadmin/` 并刷新页面
+访问 `http://121.41.65.220:8888/phpmyadmin/` 并刷新页面
 
 ### 2. 检查错误信息
 - ✅ 红色错误横幅应该消失
@@ -190,7 +190,7 @@ A: 检查以下几点：
 - 便捷命令: 
   - `npm run fix:phpmyadmin` - 修复临时目录权限
   - `npm run setup:phpmyadmin` - 设置pmadb配置
-- 服务器地址: `8.149.244.105:8888`
+- 服务器地址: `121.41.65.220:8888`
 - phpMyAdmin路径: `/www/server/phpmyadmin/phpmyadmin_820fec596217f404/`
 
 ## 技术支持

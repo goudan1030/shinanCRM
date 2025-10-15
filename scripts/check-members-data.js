@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 
 async function checkMembersData() {
   const connection = await mysql.createConnection({
-    host: '8.149.244.105',
+    host: '121.41.65.220',
     port: 3306,
     user: 'h5_cloud_user',
     password: 'mc72TNcMmy6HCybH',

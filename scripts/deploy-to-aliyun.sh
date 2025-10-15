@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 阿里云服务器配置
-SERVER_IP="YOUR_SERVER_IP"       # 例如：8.149.244.105
+SERVER_IP="YOUR_SERVER_IP"       # 例如：121.41.65.220
 SERVER_USER="root"               # 或其他有权限的用户
 SERVER_PATH="/var/www/sncrm"     # 部署路径
 SSH_KEY="~/.ssh/id_rsa"          # SSH密钥路径，如果使用密码认证则留空

@@ -3,7 +3,7 @@ const util = require('util');
 const execAsync = util.promisify(exec);
 
 async function fixPhpMyAdminComplete() {
-  const server = '8.149.244.105';
+  const server = '121.41.65.220';
   const phpmyadminPath = '/www/server/phpmyadmin/phpmyadmin_820fec596217f404';
   const dbUser = 'root';
   const dbPassword = 'Zwd9510301115@';
@@ -95,7 +95,7 @@ async function fixPhpMyAdminComplete() {
     console.log('5. ✅ 重启了PHP-FPM服务');
     
     console.log('\n💡 现在请刷新phpMyAdmin页面，所有错误应该已经消失。');
-    console.log('🌐 访问地址: http://8.149.244.105:8888/phpmyadmin/');
+    console.log('🌐 访问地址: http://121.41.65.220:8888/phpmyadmin/');
     
   } catch (error) {
     console.error('❌ 修复过程中出现错误:', error.message);

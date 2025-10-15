@@ -4,7 +4,7 @@
 # 问题：Nginx到Next.js应用的代理配置不正确，导致API请求失败
 
 # 连接到服务器
-ssh root@8.149.244.105 << 'EOT'
+ssh root@121.41.65.220 << 'EOT'
 # 检查PM2应用状态
 pm2 list
 
@@ -23,7 +23,7 @@ sleep 3
 cat > /www/server/panel/vhost/nginx/sncrm.conf << 'EOF'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
     root /www/wwwroot/sncrm;
 
     # 静态资源直接提供

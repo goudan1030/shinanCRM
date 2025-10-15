@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 阿里云服务器配置
-SERVER_IP="8.149.244.105"        # 你的服务器IP
+SERVER_IP="121.41.65.220"        # 你的服务器IP
 SERVER_USER="root"               # 或其他有权限的用户
 SERVER_PATH="/www/wwwroot/sncrm-new"  # 新的部署路径，避免冲突
 SSH_KEY=""                       # SSH密钥路径，如果使用密码认证则留空

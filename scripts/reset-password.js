@@ -26,7 +26,7 @@ async function resetPassword() {
   try {
     // 连接数据库
     connection = await mysql.createConnection({
-      host: process.env.DB_HOST || '8.149.244.105',
+      host: process.env.DB_HOST || '121.41.65.220',
       port: process.env.DB_PORT || 3306,
       user: process.env.DB_USER || 'h5_cloud_user',
       password: process.env.DB_PASSWORD || 'mc72TNcMmy6HCybH',

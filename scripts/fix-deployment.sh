@@ -13,11 +13,11 @@ mkdir -p $LOG_DIR
 
 # 停止当前应用
 echo "===== 停止应用 ====="
-ssh root@8.149.244.105 "pm2 delete sncrm || true"
+ssh root@121.41.65.220 "pm2 delete sncrm || true"
 
 # 备份当前目录
 echo "===== 备份当前应用 ====="
-ssh root@8.149.244.105 "cp -r $DEPLOY_DIR ${DEPLOY_DIR}_backup_${CURRENT_TIME}"
+ssh root@121.41.65.220 "cp -r $DEPLOY_DIR ${DEPLOY_DIR}_backup_${CURRENT_TIME}"
 
 # 重新构建应用
 echo "===== 重新构建应用 ====="
@@ -38,11 +38,11 @@ cd deploy-package && tar -czvf ../sncrm-deploy.tar.gz . && cd ..
 
 # 上传到服务器
 echo "===== 上传到服务器 ====="
-scp sncrm-deploy.tar.gz root@8.149.244.105:/tmp/
+scp sncrm-deploy.tar.gz root@121.41.65.220:/tmp/
 
 # 清空目标目录（保留部分文件）
 echo "===== 在服务器上执行部署 ====="
-ssh root@8.149.244.105 << 'EOT'
+ssh root@121.41.65.220 << 'EOT'
 # 清空目标目录，但保留上传目录
 mkdir -p /tmp/sncrm-deploy
 tar -xzvf /tmp/sncrm-deploy.tar.gz -C /tmp/sncrm-deploy

@@ -5,7 +5,7 @@
 echo "=== 清除所有缓存 ==="
 
 # 连接到服务器并执行清理操作
-ssh root@8.149.244.105 << 'EOF'
+ssh root@121.41.65.220 << 'EOF'
 echo "1. 停止应用..."
 cd /www/wwwroot/sncrm
 pm2 stop all

@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 服务器配置（请根据你的实际情况修改）
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 PROJECT_PORT="3002"
 

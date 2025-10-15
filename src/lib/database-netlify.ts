@@ -74,7 +74,7 @@ async function testTcpConnection(host: string, port: number): Promise<boolean> {
 function initializeEnvVars() {
   // 为Netlify环境设置默认值
   const defaultEnvVars = {
-    DB_HOST: '8.149.244.105',
+    DB_HOST: '121.41.65.220',
     DB_PORT: '3306',
     DB_USER: 'h5_cloud_user',
     DB_PASSWORD: 'mc72TNcMmy6HCybH',
@@ -203,7 +203,7 @@ export async function testNetlifyConnection(): Promise<boolean> {
     console.log('开始测试Netlify数据库连接...');
     
     // 首先测试DNS解析
-    const host = process.env.DB_HOST || '8.149.244.105';
+    const host = process.env.DB_HOST || '121.41.65.220';
     const port = parseInt(process.env.DB_PORT || '3306', 10);
     
     console.log(`测试DNS解析: ${host}`);

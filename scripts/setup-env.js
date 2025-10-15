@@ -25,7 +25,7 @@ function setupEnv() {
     console.log('请手动创建.env.local文件，包含以下内容:');
     console.log(`
 # 数据库配置
-DB_HOST=8.149.244.105
+DB_HOST=121.41.65.220
 DB_PORT=3306
 DB_USER=h5_cloud_user
 DB_PASSWORD=mc72TNcMmy6HCybH
@@ -39,7 +39,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 JWT_SECRET=sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe
 
 # 服务器配置
-SERVER_URL=http://8.149.244.105:8888/
+SERVER_URL=http://121.41.65.220:8888/
     `);
     return;
   }

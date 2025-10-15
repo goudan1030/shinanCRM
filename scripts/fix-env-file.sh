@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置变量
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 echo "修复.env.local文件，添加缺失的数据库配置..."
@@ -13,7 +13,7 @@ cd /www/wwwroot/sncrm
 echo "更新.env.local文件..."
 cat > .env.local << 'EOF'
 # 数据库配置
-DB_HOST=8.149.244.105
+DB_HOST=121.41.65.220
 DB_PORT=3306
 DB_USER=h5_cloud_user
 DB_PASSWORD=z3Mzv3PePJPu3Q5w

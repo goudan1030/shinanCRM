@@ -4,7 +4,7 @@
 echo "开始最小化修复Next.js模块错误..."
 
 # 设置变量
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 # 远程执行命令
@@ -110,7 +110,7 @@ echo "更新Nginx配置..."
 cat > /www/server/panel/vhost/nginx/crm.xinghun.info.conf << 'EOF'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
     
     root /www/wwwroot/sncrm/public_static;
     

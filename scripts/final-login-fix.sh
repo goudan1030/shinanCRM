@@ -4,7 +4,7 @@
 echo "开始最终修复登录问题..."
 
 # 设置变量
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 # 远程执行修复命令
@@ -16,7 +16,7 @@ cp /www/server/panel/vhost/nginx/crm.xinghun.info.conf /www/server/panel/vhost/n
 cat > /www/server/panel/vhost/nginx/crm.xinghun.info.conf << 'EOF'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
     
     # 静态资源配置
     location /_next/static/ {

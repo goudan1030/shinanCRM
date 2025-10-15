@@ -13,7 +13,7 @@ echo -e "${BLUE}   数据库连接权限修复工具   ${NC}"
 echo -e "${BLUE}=========================================${NC}"
 
 # 从环境变量或默认值获取数据库连接信息
-DB_HOST=${DB_HOST:-"8.149.244.105"}
+DB_HOST=${DB_HOST:-"121.41.65.220"}
 DB_PORT=${DB_PORT:-"3306"}
 DB_USER=${DB_USER:-"h5_cloud_user"}
 DB_PASSWORD=${DB_PASSWORD:-"mc72TNcMmy6HCybH"}

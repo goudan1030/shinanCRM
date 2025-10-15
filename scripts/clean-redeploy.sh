@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置变量
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 PROJECT_DIR="/www/wwwroot/sncrm"
 
@@ -68,7 +68,7 @@ if [ ! -f .env.local ]; then
     echo "创建.env.local文件..."
     cat > .env.local << 'EOF'
 # 数据库配置
-DB_HOST=8.149.244.105
+DB_HOST=121.41.65.220
 DB_PORT=3306
 DB_USER=h5_cloud_user
 DB_PASSWORD=z3Mzv3PePJPu3Q5w
@@ -219,5 +219,5 @@ echo "=========================================="
 echo "应用地址: http://crm.xinghun.info"
 echo ""
 echo "如果仍有问题，请运行以下命令查看日志："
-echo "ssh root@8.149.244.105 'pm2 logs sncrm'"
+echo "ssh root@121.41.65.220 'pm2 logs sncrm'"
 echo "" 

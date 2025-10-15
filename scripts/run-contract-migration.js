@@ -12,7 +12,7 @@ async function runContractMigration() {
     
     // 创建数据库连接
     connection = await mysql.createConnection({
-      host: '8.149.244.105',
+      host: '121.41.65.220',
       user: 'h5_cloud_user',
       password: 'mc72TNcMmy6HCybH',
       port: 3306,

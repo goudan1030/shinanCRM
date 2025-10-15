@@ -40,7 +40,7 @@ if [ ! -f "${CRM_DIR}/.env" ]; then
   echo "创建.env文件..."
   cat > "${CRM_DIR}/.env" << 'EOL'
 # 数据库配置
-DB_HOST=8.149.244.105
+DB_HOST=121.41.65.220
 DB_PORT=3306
 DB_USER=h5_cloud_user
 DB_PASSWORD=mc72TNcMmy6HCybH
@@ -52,7 +52,7 @@ NEXTAUTH_URL=http://crm.xinghun.info
 NEXTAUTH_SECRET=sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe
 
 # 服务器配置
-SERVER_URL=http://8.149.244.105:8888/
+SERVER_URL=http://121.41.65.220:8888/
 NODE_ENV=production
 HOST=0.0.0.0
 PORT=3001

@@ -4,7 +4,7 @@
 echo "开始修复原有Next.js系统登录问题..."
 
 # 设置变量
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 # 远程执行命令
@@ -24,7 +24,7 @@ echo "修复Nginx配置..."
 cat > /www/server/panel/vhost/nginx/crm.xinghun.info.conf << 'EOF'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
 
     # 静态资源配置
     location /_next/static/ {
@@ -273,7 +273,7 @@ const nextConfig = {
   reactStrictMode: false,
   poweredByHeader: false,
   images: {
-    domains: ['localhost', 'crm.xinghun.info', '8.149.244.105'],
+    domains: ['localhost', 'crm.xinghun.info', '121.41.65.220'],
   },
   // 不缓存APIl路由
   serverRuntimeConfig: {

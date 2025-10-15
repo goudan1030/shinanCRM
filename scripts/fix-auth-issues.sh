@@ -13,7 +13,7 @@ echo -e "${GREEN}===== 开始修复认证和登录问题 =====${NC}"
 
 # 设置变量
 APP_DIR="/www/wwwroot/sncrm"
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 # 1. 在本地修复登录表单组件
@@ -209,7 +209,7 @@ APP_DIR="/www/wwwroot/sncrm"
 echo "1. 检查环境变量配置..."
 cat > $APP_DIR/.env.production << EOF
 # 数据库配置
-DB_HOST=8.149.244.105
+DB_HOST=121.41.65.220
 DB_PORT=3306
 DB_USER=h5_cloud_user
 DB_PASSWORD=mc72TNcMmy6HCybH
@@ -354,7 +354,7 @@ echo -e "${YELLOW}[4/5] 修复Nginx配置${NC}"
 cat > nginx-auth-fix.conf << 'EOL'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
     
     # 配置CORS头部，允许凭证
     add_header 'Access-Control-Allow-Origin' 'http://crm.xinghun.info' always;

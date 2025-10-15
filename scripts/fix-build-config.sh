@@ -3,7 +3,7 @@
 # 修复Next.js构建配置
 echo "修复Next.js构建配置..."
 
-ssh root@8.149.244.105 << 'EOT'
+ssh root@121.41.65.220 << 'EOT'
 cd /www/wwwroot/sncrm
 
 echo "1. 创建新的next.config.js..."

@@ -17,7 +17,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock-key-for-
 JWT_SECRET=sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe
 
 # 服务器配置
-SERVER_URL=http://8.149.244.105:8888/
+SERVER_URL=http://121.41.65.220:8888/
 `;
 
 // 环境变量文件路径

@@ -3,7 +3,7 @@
 # 最终的修复脚本 - 使用编译好的standalone模式
 
 # 连接到服务器
-ssh root@8.149.244.105 << 'EOT'
+ssh root@121.41.65.220 << 'EOT'
 # 停止当前应用
 echo "===== 停止当前应用 ====="
 pm2 stop sncrm || true
@@ -13,7 +13,7 @@ pm2 delete sncrm || true
 echo "===== 创建环境变量文件 ====="
 cat > /www/wwwroot/sncrm/.env << 'EOFENV'
 # 数据库配置
-DB_HOST=8.149.244.105
+DB_HOST=121.41.65.220
 DB_PORT=3306
 DB_USER=h5_cloud_user
 DB_PASSWORD=mc72TNcMmy6HCybH
@@ -25,7 +25,7 @@ NEXTAUTH_URL=http://crm.xinghun.info
 NEXTAUTH_SECRET=sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe
 
 # 服务器配置
-SERVER_URL=http://8.149.244.105:8888/
+SERVER_URL=http://121.41.65.220:8888/
 NODE_ENV=production
 HOST=0.0.0.0
 PORT=3001

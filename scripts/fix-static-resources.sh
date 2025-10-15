@@ -49,7 +49,7 @@ fi
 cat > /www/server/panel/vhost/nginx/crm.xinghun.info.conf << 'EOL'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
     
     # 强制不缓存HTML和JSON响应
     location ~* \.(html|json)$ {
@@ -203,7 +203,7 @@ echo "- Nginx错误日志: /www/wwwlogs/sncrm.error.log"
 echo "- PM2日志: pm2 logs sncrm"
 
 # 设置变量
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 echo "修复Next.js静态资源404问题..."

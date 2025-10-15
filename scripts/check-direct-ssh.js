@@ -2,7 +2,7 @@ const { exec } = require('child_process');
 require('dotenv').config({ path: '.env.local' });
 
 // 从环境变量获取SSH和数据库配置
-const REMOTE_SERVER = process.env.DB_HOST || '8.149.244.105';
+const REMOTE_SERVER = process.env.DB_HOST || '121.41.65.220';
 const SSH_USER = 'root'; // SSH用户名
 const SSH_PORT = 22;
 const DB_NAME = process.env.DB_NAME || 'h5_cloud_db';

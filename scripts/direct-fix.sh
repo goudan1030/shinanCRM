@@ -37,7 +37,7 @@ EOF
 cat > /www/server/panel/vhost/nginx/sncrm.conf << 'EOF'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
     root /www/wwwroot/sncrm;
     index index.html index.htm;
 

@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 
 // 从.env.template获取数据库配置
 const dbConfig = {
-  host: '8.149.244.105',
+  host: '121.41.65.220',
   port: 3306,
   user: 'h5_cloud_user',
   password: 'mc72TNcMmy6HCybH',

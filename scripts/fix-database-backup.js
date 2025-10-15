@@ -3,7 +3,7 @@ const util = require('util');
 const execAsync = util.promisify(exec);
 
 async function fixDatabaseBackup() {
-  const server = '8.149.244.105';
+  const server = '121.41.65.220';
   const dbUser = 'root';
   const dbPassword = 'Zwd9510301115@';
   const dbName = 'h5_cloud_db';
@@ -76,7 +76,7 @@ async function fixDatabaseBackup() {
     console.log('5. ✅ 验证了备份文件完整性');
     
     console.log('\n💡 现在请在宝塔面板中重新尝试数据库备份。');
-    console.log('🌐 宝塔面板地址: http://8.149.244.105:8888/');
+    console.log('🌐 宝塔面板地址: http://121.41.65.220:8888/');
     
   } catch (error) {
     console.error('❌ 修复过程中出现错误:', error.message);

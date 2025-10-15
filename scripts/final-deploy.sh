@@ -3,7 +3,7 @@
 # 设置目录路径
 DEPLOY_DIR="/www/wwwroot/sncrm"
 SERVER_USER="root"
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 
 echo "===== 重新构建Next.js应用 ====="
 npm run build
@@ -38,7 +38,7 @@ EOF
 cat > deploy-package/nginx-sncrm.conf << 'EOF'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
     root /www/wwwroot/sncrm;
     index index.html index.htm;
 

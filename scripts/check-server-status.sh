@@ -2,7 +2,7 @@
 
 # 服务器状态检查脚本
 
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 PROJECT_PORT="3002"
 

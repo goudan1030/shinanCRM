@@ -18,7 +18,7 @@ echo
 
 # 设置变量
 APP_DIR="/www/wwwroot/sncrm"
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 NGINX_CONF="/www/server/panel/vhost/nginx/crm.xinghun.info.conf"
 DOMAIN="crm.xinghun.info"
@@ -49,7 +49,7 @@ cp ecosystem.config.js deploy-package/
 # 准备环境变量文件
 cat > deploy-package/.env.production << EOL
 # 数据库配置
-DB_HOST=8.149.244.105
+DB_HOST=121.41.65.220
 DB_PORT=3306
 DB_USER=h5_cloud_user
 DB_PASSWORD=mc72TNcMmy6HCybH
@@ -59,7 +59,7 @@ DB_NAME=h5_cloud_db
 JWT_SECRET=sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe
 
 # 服务器配置
-SERVER_URL=http://8.149.244.105:8888/
+SERVER_URL=http://121.41.65.220:8888/
 NODE_ENV=production
 PORT=3001
 EOL
@@ -68,7 +68,7 @@ EOL
 cat > deploy-package/nginx-sncrm.conf << 'EOL'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
     
     # 强制不缓存HTML和JSON响应
     location ~* \.(html|json)$ {

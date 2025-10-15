@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置变量
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 echo "强制清除缓存并重新构建应用..."

@@ -4,7 +4,7 @@
 # 问题：浏览器请求的是 /_next/static/ 路径，但服务器上文件在 /.next/static/ 目录
 
 # 连接到服务器
-ssh root@8.149.244.105 << 'EOT'
+ssh root@121.41.65.220 << 'EOT'
 # 停止应用
 pm2 stop sncrm || true
 
@@ -16,7 +16,7 @@ ln -sf .next _next
 cat > /www/server/panel/vhost/nginx/sncrm.conf << 'EOF'
 server {
     listen 80;
-    server_name crm.xinghun.info 8.149.244.105;
+    server_name crm.xinghun.info 121.41.65.220;
     root /www/wwwroot/sncrm;
     index index.html index.htm;
 

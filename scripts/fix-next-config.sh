@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置变量
-SERVER_IP="8.149.244.105"
+SERVER_IP="121.41.65.220"
 SERVER_USER="root"
 
 echo "修复Next.js配置并重新构建..."
@@ -24,12 +24,12 @@ const nextConfig = {
   
   // 图片优化配置
   images: {
-    domains: ['8.149.244.105'],
+    domains: ['121.41.65.220'],
     unoptimized: true,
     remotePatterns: [
       {
         protocol: 'http',
-        hostname: '8.149.244.105',
+        hostname: '121.41.65.220',
       },
       {
         protocol: 'http',

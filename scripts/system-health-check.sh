@@ -63,7 +63,7 @@ echo
 echo "===== 检查MySQL连接 ====="
 if [ -f "/usr/bin/mysql" ] || [ -f "/usr/local/bin/mysql" ]; then
     # 从环境变量中获取数据库配置
-    DB_HOST="8.149.244.105"
+    DB_HOST="121.41.65.220"
     DB_PORT="3306"
     DB_USER="h5_cloud_user"
     DB_PASSWORD="mc72TNcMmy6HCybH"

@@ -4,7 +4,7 @@
 echo "修复Next.js 15 API路由类型问题..."
 
 # 在服务器上执行
-ssh root@8.149.244.105 << 'EOT'
+ssh root@121.41.65.220 << 'EOT'
 cd /www/wwwroot/sncrm
 
 echo "1. 批量修复API路由类型..."

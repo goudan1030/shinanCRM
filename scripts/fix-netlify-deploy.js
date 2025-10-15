@@ -28,7 +28,7 @@ function createNetlifyConfig() {
 
 [build.environment]
   # 数据库环境变量
-  DB_HOST = "8.149.244.105"
+  DB_HOST = "121.41.65.220"
   DB_PORT = "3306"
   DB_USER = "h5_cloud_user"
   DB_PASSWORD = "mc72TNcMmy6HCybH"
@@ -83,7 +83,7 @@ function createEnvCheck() {
     console.log('📝 创建本地环境变量文件...');
     
     const envContent = `# 本地开发环境变量
-DB_HOST=8.149.244.105
+DB_HOST=121.41.65.220
 DB_PORT=3306
 DB_USER=h5_cloud_user
 DB_PASSWORD=mc72TNcMmy6HCybH

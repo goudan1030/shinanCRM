@@ -3,7 +3,7 @@ const util = require('util');
 const execAsync = util.promisify(exec);
 
 async function fixPhpMyAdminTempDir() {
-  const server = '8.149.244.105';
+  const server = '121.41.65.220';
   const phpmyadminPath = '/www/server/phpmyadmin/phpmyadmin_820fec596217f404';
   const tempDir = `${phpmyadminPath}/tmp`;
   

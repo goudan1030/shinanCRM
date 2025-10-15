@@ -4,7 +4,7 @@
 # 问题：应用无法解析主机名 iZbp18aua0oiex6942sg6vZ
 
 # 连接到服务器
-ssh root@8.149.244.105 << 'EOT'
+ssh root@121.41.65.220 << 'EOT'
 # 检查/etc/hosts文件
 echo "检查并修改/etc/hosts文件..."
 if ! grep -q "iZbp18aua0oiex6942sg6vZ" /etc/hosts; then
