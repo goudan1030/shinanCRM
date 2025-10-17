@@ -15,6 +15,14 @@ import { useDataTable } from '@/hooks/use-data-table';
 import { Copy, CheckCircle2, QrCode, Download } from 'lucide-react';
 import QRCode from 'qrcode';
 
+const ASSET_BASE_URL = (() => {
+  const base =
+    process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+    process.env.NEXT_PUBLIC_SERVER_URL ||
+    '';
+  return base ? base.replace(/\/$/, '') : '';
+})();
+
 // 自定义会话类型
 interface SessionUser {
   id: number;
@@ -64,8 +72,8 @@ interface Member {
   marriage_history: string;
   sexual_orientation: string;
   self_description: string;
-  wechat_qrcode: string;
-  [key: string]: string | number;
+  wechat_qrcode: string | null;
+  [key: string]: string | number | null | undefined;
 }
 
 // 首先定义一个类型来表示所有可能的列键
@@ -548,9 +556,52 @@ function MembersPageContent() {
     }
   };
 
+  const resolveWechatQrCodeUrl = useCallback((value?: string | null) => {
+    if (!value) {
+      return '';
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    if (trimmed.startsWith('data:') || trimmed.includes(';base64,')) {
+      return trimmed;
+    }
+
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+
+    if (trimmed.startsWith('//')) {
+      return `https:${trimmed}`;
+    }
+
+    if (trimmed.startsWith('/')) {
+      if (ASSET_BASE_URL) {
+        return `${ASSET_BASE_URL}/${trimmed.replace(/^\/+/, '')}`;
+      }
+      return trimmed;
+    }
+
+    if (trimmed.startsWith('uploads/')) {
+      if (ASSET_BASE_URL) {
+        return `${ASSET_BASE_URL}/${trimmed}`;
+      }
+      return `/${trimmed}`;
+    }
+
+    return `data:image/png;base64,${trimmed}`;
+  }, []);
+
   // 处理图片点击事件
-  const handleImageClick = (imageUrl: string) => {
-    setPreviewImageUrl(imageUrl);
+  const handleImageClick = (imageValue?: string | null) => {
+    const resolvedUrl = resolveWechatQrCodeUrl(imageValue);
+    if (!resolvedUrl) {
+      return;
+    }
+    setPreviewImageUrl(resolvedUrl);
     setImagePreviewOpen(true);
   };
 
@@ -2332,9 +2383,17 @@ function MembersPageContent() {
                   <tbody>
                     {members.map((member) => (
                       <tr key={member.id} className="border-t hover:bg-muted/30">
-                        {selectedColumns.filter(col => col !== 'actions').map((columnKey: ColumnKey) => (
-                          <td key={columnKey} className={`px-4 py-2 whitespace-nowrap ${getColumnWidth(columnKey)}`}>
-                            {columnKey === 'type' ? (
+                        {selectedColumns
+                          .filter(col => col !== 'actions')
+                          .map((columnKey: ColumnKey) => {
+                            const qrCodeUrl =
+                              columnKey === 'wechat_qrcode'
+                                ? resolveWechatQrCodeUrl(member.wechat_qrcode)
+                                : null;
+
+                            return (
+                              <td key={columnKey} className={`px-4 py-2 whitespace-nowrap ${getColumnWidth(columnKey)}`}>
+                                {columnKey === 'type' ? (
                               <span 
                                 className={`px-2 py-1 rounded-full text-xs ${
                                   member.type === 'ANNUAL' 
@@ -2359,20 +2418,24 @@ function MembersPageContent() {
                               </span>
                             ) :
                             columnKey === 'wechat_qrcode' ? (
-                              member.wechat_qrcode ? (
+                              qrCodeUrl ? (
                                 <div className="flex items-center justify-center">
                                   <img 
-                                    src={member.wechat_qrcode.startsWith('data:') ? member.wechat_qrcode : `data:image/png;base64,${member.wechat_qrcode}`} 
+                                    src={qrCodeUrl}
                                     alt="微信二维码" 
                                     className="w-8 h-8 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                                    onClick={() => handleImageClick(member.wechat_qrcode.startsWith('data:') ? member.wechat_qrcode : `data:image/png;base64,${member.wechat_qrcode}`)}
+                                    onClick={() => handleImageClick(member.wechat_qrcode)}
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.style.display = 'none';
-                                      target.parentElement!.innerHTML = '<span class="text-gray-400 text-xs">无图</span>';
+                                      if (target.parentElement) {
+                                        target.parentElement.innerHTML = '<span class="text-gray-400 text-xs">加载失败</span>';
+                                      }
                                     }}
                                   />
                                 </div>
+                              ) : member.wechat_qrcode ? (
+                                <span className="text-gray-400 text-xs">二维码无效</span>
                               ) : (
                                 <span className="text-gray-400 text-xs">无二维码</span>
                               )
@@ -2398,7 +2461,7 @@ function MembersPageContent() {
                                 {member.status === 'ACTIVE' ? '激活' : member.status === 'REVOKED' ? '撤销' : '成功'}
                               </span>
                             ) :
-                            columnKey === 'created_at' ? new Date(member[columnKey]).toLocaleString('zh-CN', {
+                            columnKey === 'created_at' ? new Date(member[columnKey as keyof Member] as string | number).toLocaleString('zh-CN', {
                               year: 'numeric',
                               month: '2-digit',
                               day: '2-digit',
@@ -2407,7 +2470,8 @@ function MembersPageContent() {
                             }) :
                             String(member[columnKey as keyof Member])}
                           </td>
-                        ))}
+                        );
+                      })}
                         {/* 操作列固定在右侧 */}
                         {selectedColumns.includes('actions') && (
                           <td className="px-4 py-2 whitespace-nowrap sticky right-0 bg-white hover:bg-gray-50 shadow-[-4px_0_5px_-2px_rgba(0,0,0,0.1)] z-10 min-w-[280px] backdrop-blur-sm">
