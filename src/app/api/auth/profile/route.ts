@@ -1,37 +1,80 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { updateUserProfile } from '@/lib/database-netlify';
+import { updateUserProfile, executeQuery } from '@/lib/database-netlify';
+import { getTokenFromCookieStore, verifyToken, generateToken, setTokenCookie } from '@/lib/token';
 
 export async function PUT(request: Request) {
   try {
-    const cookieStore = cookies();
-    const authToken = cookieStore.get('auth_token');
-
-    if (!authToken?.value) {
-      return new NextResponse('未授权访问', { status: 401 });
+    const token = await getTokenFromCookieStore();
+    if (!token) {
+      return NextResponse.json({ error: '未授权访问' }, { status: 401 });
     }
 
-    const user = JSON.parse(authToken.value);
-    if (!user?.userId) {
-      return new NextResponse('未授权访问', { status: 401 });
+    const userData = verifyToken(token);
+    if (!userData) {
+      return NextResponse.json({ error: '未授权访问' }, { status: 401 });
     }
 
-    const data = await request.json();
-    const { name, email } = data;
+    const body = await request.json();
+    const { name, avatar_url, email } = body as {
+      name?: string;
+      avatar_url?: string | null;
+      email?: string;
+    };
 
-    // 验证输入
-    if (!name || !email) {
-      return new NextResponse('姓名和邮箱不能为空', { status: 400 });
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: '昵称不能为空' }, { status: 400 });
     }
 
-    // 更新用户信息
-    await updateUserProfile(user.userId, { name, email });
+    const updateData: Record<string, any> = {
+      name: name.trim()
+    };
 
-    return new NextResponse('更新成功', { status: 200 });
+    if (typeof avatar_url === 'string') {
+      const trimmedAvatar = avatar_url.trim();
+      updateData.avatar_url = trimmedAvatar.length > 0 ? trimmedAvatar : null;
+    }
+
+    if (typeof email === 'string' && email.trim()) {
+      updateData.email = email.trim();
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ message: '无需更新' });
+    }
+
+    await updateUserProfile(Number(userData.id), updateData);
+
+    const [rows] = await executeQuery(
+      'SELECT id, email, name, role, avatar_url FROM admin_users WHERE id = ? LIMIT 1',
+      [userData.id]
+    );
+
+    if (!rows || (rows as any[]).length === 0) {
+      return NextResponse.json({ error: '用户不存在' }, { status: 404 });
+    }
+
+    const updatedUser = (rows as any[])[0];
+
+    const response = NextResponse.json({
+      message: '更新成功',
+      user: updatedUser
+    });
+
+    const newToken = generateToken({
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      role: updatedUser.role,
+      avatar_url: updatedUser.avatar_url
+    });
+
+    setTokenCookie(response, newToken);
+
+    return response;
   } catch (error) {
     console.error('更新个人资料失败:', error);
-    return new NextResponse(
-      error instanceof Error ? error.message : '更新失败',
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : '更新失败' },
       { status: 500 }
     );
   }

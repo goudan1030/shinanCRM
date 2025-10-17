@@ -66,6 +66,30 @@ interface WecomMessage {
 }
 
 /**
+ * 将日期时间格式化为东八区中文字符串
+ */
+function formatDateTime(value?: string | Date | null, fallback = '未提供'): string {
+  if (!value) {
+    return fallback;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return fallback;
+  }
+
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'Asia/Shanghai'
+  });
+}
+
+/**
  * 获取企业微信配置
  */
 export async function getWecomConfig(): Promise<WecomConfig | null> {
@@ -1112,4 +1136,261 @@ export async function sendMemberUpdateNotification(memberData: any, updatedField
     console.error('发送会员资料更新通知出错:', error);
     return false;
   }
-} 
+}
+
+function resolveMemberTypeText(type?: string | null): string {
+  if (!type) return '未设置';
+  switch (type) {
+    case 'ANNUAL':
+      return '年费会员';
+    case 'ONE_TIME':
+      return '一次性会员';
+    case 'NORMAL':
+      return '普通会员';
+    default:
+      return type;
+  }
+}
+
+export function formatMemberRevocationNotificationCard(
+  memberData: any,
+  options: { reason?: string; revokedAt?: string | Date | null; operatorId?: string | number }
+): { title: string; description: string; url: string; btntxt?: string } {
+  const {
+    member_no,
+    nickname,
+    phone,
+    type,
+    city,
+    province
+  } = memberData;
+
+  const revokedAtText = formatDateTime(options.revokedAt, '未提供');
+
+  return {
+    title: '⚠️ 会员撤销通知',
+    description: `会员编号：${member_no || '未提供'}
+昵称：${nickname || '未填写'}
+手机号：${phone || '未填写'}
+当前类型：${resolveMemberTypeText(type)}
+所属地区：${[province, city].filter(Boolean).join(' ') || '未填写'}
+撤销时间：${revokedAtText}
+撤销原因：${options.reason || '未填写'}
+操作人ID：${options.operatorId || '未知'}`,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.xinghun.info'}/members/${memberData.id || member_no}`,
+    btntxt: '查看会员'
+  };
+}
+
+export function formatMemberRevocationNotificationText(
+  memberData: any,
+  options: { reason?: string; revokedAt?: string | Date | null; operatorId?: string | number }
+): string {
+  return `【会员撤销通知】
+会员编号：${memberData.member_no || '未提供'}
+昵称：${memberData.nickname || '未填写'}
+手机号：${memberData.phone || '未填写'}
+当前类型：${resolveMemberTypeText(memberData.type)}
+撤销时间：${formatDateTime(options.revokedAt, '未提供')}
+撤销原因：${options.reason || '未填写'}
+操作人ID：${options.operatorId || '未知'}
+详情：${process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.xinghun.info'}/members/${memberData.id || memberData.member_no}`;
+}
+
+export function formatMemberRevocationNotificationMarkdown(
+  memberData: any,
+  options: { reason?: string; revokedAt?: string | Date | null; operatorId?: string | number }
+): string {
+  return `## ⚠️ 会员撤销通知
+
+- **会员编号**：${memberData.member_no || '未提供'}
+- **昵称**：${memberData.nickname || '未填写'}
+- **手机号**：${memberData.phone || '未填写'}
+- **当前类型**：${resolveMemberTypeText(memberData.type)}
+- **撤销时间**：${formatDateTime(options.revokedAt, '未提供')}
+- **撤销原因**：${options.reason || '未填写'}
+- **操作人ID**：${options.operatorId || '未知'}
+
+> 🔗 [点击查看详情](${process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.xinghun.info'}/members/${memberData.id || memberData.member_no})
+`;
+}
+
+export async function sendMemberRevocationNotification(
+  memberData: any,
+  options: { reason?: string; revokedAt?: string | Date | null; operatorId?: string | number }
+): Promise<boolean> {
+  try {
+    const config = await getWecomConfig();
+    if (!config) {
+      return false;
+    }
+
+    const accessToken = await getWecomAccessToken(config);
+    if (!accessToken) {
+      return false;
+    }
+
+    const messageType = config.message_type || 'textcard';
+    const recipients = config.notification_recipients || '@all';
+
+    const message: WecomMessage = {
+      touser: recipients,
+      msgtype: messageType,
+      agentid: config.agent_id
+    };
+
+    switch (messageType) {
+      case 'textcard':
+        message.textcard = formatMemberRevocationNotificationCard(memberData, options);
+        break;
+      case 'text':
+        message.text = {
+          content: formatMemberRevocationNotificationText(memberData, options)
+        };
+        break;
+      case 'markdown':
+        message.markdown = {
+          content: formatMemberRevocationNotificationMarkdown(memberData, options)
+        };
+        break;
+      default:
+        message.textcard = formatMemberRevocationNotificationCard(memberData, options);
+    }
+
+    const success = await sendWecomMessage(accessToken, message);
+    if (success) {
+      console.log('✅ 会员撤销通知已发送');
+    } else {
+      console.warn('❌ 会员撤销通知发送失败');
+    }
+    return success;
+  } catch (error) {
+    console.error('发送会员撤销通知出错:', error);
+    return false;
+  }
+}
+
+export function formatMemberUpgradeNotificationCard(
+  memberData: any,
+  options: { oldType?: string | null; newType: string; paymentTime?: string | Date | null; expiryTime?: string | Date | null; operatorId?: string | number; notes?: string | null }
+): { title: string; description: string; url: string; btntxt?: string } {
+  const {
+    member_no,
+    nickname,
+    phone,
+    city,
+    province,
+    remaining_matches
+  } = memberData;
+
+  return {
+    title: '🚀 会员升级通知',
+    description: `会员编号：${member_no || '未提供'}
+昵称：${nickname || '未填写'}
+手机号：${phone || '未填写'}
+原类型：${resolveMemberTypeText(options.oldType || memberData.type)}
+新类型：${resolveMemberTypeText(options.newType)}
+匹配次数：${typeof remaining_matches === 'number' ? remaining_matches : '未设置'}
+所属地区：${[province, city].filter(Boolean).join(' ') || '未填写'}
+支付时间：${formatDateTime(options.paymentTime, '未提供')}
+到期时间：${options.expiryTime ? formatDateTime(options.expiryTime, '未设置') : '未设置'}
+备注：${options.notes || '无'}
+操作人ID：${options.operatorId || '未知'}`,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.xinghun.info'}/members/${memberData.id || member_no}`,
+    btntxt: '查看会员'
+  };
+}
+
+export function formatMemberUpgradeNotificationText(
+  memberData: any,
+  options: { oldType?: string | null; newType: string; paymentTime?: string | Date | null; expiryTime?: string | Date | null; operatorId?: string | number; notes?: string | null }
+): string {
+  return `【会员升级通知】
+会员编号：${memberData.member_no || '未提供'}
+昵称：${memberData.nickname || '未填写'}
+手机号：${memberData.phone || '未填写'}
+原类型：${resolveMemberTypeText(options.oldType || memberData.type)}
+新类型：${resolveMemberTypeText(options.newType)}
+匹配次数：${typeof memberData.remaining_matches === 'number' ? memberData.remaining_matches : '未设置'}
+支付时间：${formatDateTime(options.paymentTime, '未提供')}
+到期时间：${options.expiryTime ? formatDateTime(options.expiryTime, '未设置') : '未设置'}
+备注：${options.notes || '无'}
+操作人ID：${options.operatorId || '未知'}
+详情：${process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.xinghun.info'}/members/${memberData.id || memberData.member_no}`;
+}
+
+export function formatMemberUpgradeNotificationMarkdown(
+  memberData: any,
+  options: { oldType?: string | null; newType: string; paymentTime?: string | Date | null; expiryTime?: string | Date | null; operatorId?: string | number; notes?: string | null }
+): string {
+  return `## 🚀 会员升级通知
+
+- **会员编号**：${memberData.member_no || '未提供'}
+- **昵称**：${memberData.nickname || '未填写'}
+- **手机号**：${memberData.phone || '未填写'}
+- **原类型**：${resolveMemberTypeText(options.oldType || memberData.type)}
+- **新类型**：${resolveMemberTypeText(options.newType)}
+- **匹配次数**：${typeof memberData.remaining_matches === 'number' ? memberData.remaining_matches : '未设置'}
+- **支付时间**：${formatDateTime(options.paymentTime, '未提供')}
+- **到期时间**：${options.expiryTime ? formatDateTime(options.expiryTime, '未设置') : '未设置'}
+- **备注**：${options.notes || '无'}
+- **操作人ID**：${options.operatorId || '未知'}
+
+> 🔗 [点击查看详情](${process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.xinghun.info'}/members/${memberData.id || memberData.member_no})
+`;
+}
+
+export async function sendMemberUpgradeNotification(
+  memberData: any,
+  options: { oldType?: string | null; newType: string; paymentTime?: string | Date | null; expiryTime?: string | Date | null; operatorId?: string | number; notes?: string | null }
+): Promise<boolean> {
+  try {
+    const config = await getWecomConfig();
+    if (!config) {
+      return false;
+    }
+
+    const accessToken = await getWecomAccessToken(config);
+    if (!accessToken) {
+      return false;
+    }
+
+    const messageType = config.message_type || 'textcard';
+    const recipients = config.notification_recipients || '@all';
+
+    const message: WecomMessage = {
+      touser: recipients,
+      msgtype: messageType,
+      agentid: config.agent_id
+    };
+
+    switch (messageType) {
+      case 'textcard':
+        message.textcard = formatMemberUpgradeNotificationCard(memberData, options);
+        break;
+      case 'text':
+        message.text = {
+          content: formatMemberUpgradeNotificationText(memberData, options)
+        };
+        break;
+      case 'markdown':
+        message.markdown = {
+          content: formatMemberUpgradeNotificationMarkdown(memberData, options)
+        };
+        break;
+      default:
+        message.textcard = formatMemberUpgradeNotificationCard(memberData, options);
+    }
+
+    const success = await sendWecomMessage(accessToken, message);
+    if (success) {
+      console.log('✅ 会员升级通知已发送');
+    } else {
+      console.warn('❌ 会员升级通知发送失败');
+    }
+    return success;
+  } catch (error) {
+    console.error('发送会员升级通知出错:', error);
+    return false;
+  }
+}

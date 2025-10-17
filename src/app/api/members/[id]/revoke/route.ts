@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
+import { sendMemberRevocationNotification } from '@/lib/wecom-api';
 
 export async function POST(
   request: Request,
@@ -26,7 +27,7 @@ export async function POST(
 
     // 查找会员
     const [memberRows] = await executeQuery(
-      'SELECT id, status, nickname, member_no, type FROM members WHERE id = ?',
+      'SELECT id, status, nickname, member_no, type, phone, province, city FROM members WHERE id = ?',
       [memberId]
     );
 
@@ -65,6 +66,21 @@ export async function POST(
         data.reason || data.notes || '管理员撤销'
       ]
     );
+
+    const revokeTime = new Date();
+
+    try {
+      await sendMemberRevocationNotification(
+        { ...member, status: 'REVOKED' },
+        {
+          reason: data.reason || data.notes,
+          revokedAt: revokeTime,
+          operatorId: currentUserId
+        }
+      );
+    } catch (notifyError) {
+      console.warn('会员撤销通知发送失败:', notifyError);
+    }
 
     return NextResponse.json({ 
       message: '会员撤销成功',

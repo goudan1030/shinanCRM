@@ -371,9 +371,21 @@ export interface UserProfileUpdate {
  */
 export async function updateUserProfile(userId: number, data: UserProfileUpdate): Promise<any> {
   try {
+    const allowedFields = ['name', 'email', 'avatar_url'];
+    const entries = Object.entries(data || {}).filter(
+      ([key, value]) => allowedFields.includes(key) && value !== undefined
+    );
+
+    if (entries.length === 0) {
+      return null;
+    }
+
+    const setClause = entries.map(([key]) => `${key} = ?`).join(', ');
+    const values = entries.map(([, value]) => value);
+
     const [result] = await executeQuery(
-      'UPDATE admin_users SET ? WHERE id = ?',
-      [data, userId]
+      `UPDATE admin_users SET ${setClause}, updated_at = NOW() WHERE id = ?`,
+      [...values, userId]
     );
     return result;
   } catch (error) {

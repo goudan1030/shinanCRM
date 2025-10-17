@@ -3,11 +3,12 @@ import { executeQuery } from '@/lib/database-netlify';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getTokenFromCookieStore, verifyToken } from '@/lib/token';
+import { sendMemberUpgradeNotification } from '@/lib/wecom-api';
 
 // 会员升级
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. 首先尝试使用next-auth获取会话
@@ -68,11 +69,11 @@ export async function POST(
     }
 
     // 获取会员ID
-    const memberId = params.id;
+    const { id: memberId } = await context.params;
     
     // 先查询会员信息
     const [members] = await executeQuery(
-      'SELECT member_no, nickname, type, remaining_matches FROM members WHERE id = ?',
+      'SELECT member_no, nickname, phone, province, city, type, remaining_matches FROM members WHERE id = ?',
       [memberId]
     );
 
@@ -139,9 +140,50 @@ export async function POST(
           ]
         );
       } catch (logError) {
-        console.warn('记录升级日志失败:', logError);
+        const errorObj = logError as { code?: string };
+        if (errorObj?.code === 'ER_BAD_FIELD_ERROR') {
+          try {
+            await executeQuery(
+              'INSERT INTO member_operation_logs (member_id, operation_type, notes, created_at, operator_id) VALUES (?, ?, ?, NOW(), ?)',
+              [
+                memberId,
+                'UPGRADE',
+                notes,
+                userId
+              ]
+            );
+          } catch (fallbackError) {
+            console.warn('记录升级日志失败(兼容模式):', fallbackError);
+          }
+        } else {
+          console.warn('记录升级日志失败:', logError);
+        }
         // 不影响主要操作
       }
+    }
+
+    const paymentTimeValue = payment_time || null;
+    const expiryTimeValue = expiry_time || null;
+    const mergedNotes = notes || reason || null;
+
+    try {
+      const notificationMember = {
+        ...member,
+        id: memberId,
+        type,
+        remaining_matches: newRemainingMatches
+      };
+
+      await sendMemberUpgradeNotification(notificationMember, {
+        oldType: member.type,
+        newType: type,
+        paymentTime: paymentTimeValue,
+        expiryTime: expiryTimeValue,
+        operatorId: userId,
+        notes: mergedNotes
+      });
+    } catch (notifyError) {
+      console.warn('会员升级通知发送失败:', notifyError);
     }
 
     const typeText = type === 'ANNUAL' ? '年费会员' : type === 'ONE_TIME' ? '一次性会员' : '普通会员';
