@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
+import { randomInt } from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,16 +21,45 @@ export async function POST(request: NextRequest) {
     // 为每个用户生成4小时内随机的刷新时间
     const now = new Date();
     const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000); // 4小时前
+    const totalDuration = now.getTime() - fourHoursAgo.getTime();
+
+    const generateRandomTimes = (count: number) => {
+      if (count <= 0 || totalDuration <= 0) {
+        return [];
+      }
+
+      // 将区间划分为均匀的小段，再在每个小段内随机取值，保证分布均匀且不扎堆
+      const segmentSize = totalDuration / count;
+      const times = Array.from({ length: count }, (_, index) => {
+        const segmentStart = Math.floor(fourHoursAgo.getTime() + segmentSize * index);
+        const segmentEnd = index === count - 1
+          ? now.getTime()
+          : Math.floor(segmentStart + segmentSize);
+        const range = Math.max(segmentEnd - segmentStart, 1);
+        const offset = range > 1 ? randomInt(range) : 0;
+        const timestamp = Math.min(segmentStart + offset, now.getTime());
+        return new Date(timestamp);
+      });
+
+      // 打乱顺序，避免会员ID顺序和时间顺序相关联
+      for (let i = times.length - 1; i > 0; i--) {
+        const j = randomInt(i + 1);
+        [times[i], times[j]] = [times[j], times[i]];
+      }
+
+      return times;
+    };
+
+    const randomTimes = generateRandomTimes(memberIds.length);
     
     // 批量更新每个会员的refresh_time为随机时间
     let updatedCount = 0;
-    
-    for (const memberId of memberIds) {
+
+    for (let index = 0; index < memberIds.length; index++) {
+      const memberId = memberIds[index];
       // 生成4小时内的随机时间
-      const randomTime = new Date(
-        fourHoursAgo.getTime() + Math.random() * (now.getTime() - fourHoursAgo.getTime())
-      );
-      
+      const randomTime = randomTimes[index] || now;
+
       // 格式化为MySQL datetime格式
       const randomTimeString = randomTime.toISOString().slice(0, 19).replace('T', ' ');
       
