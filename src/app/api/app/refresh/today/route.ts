@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     const randomTimes = generateRandomTimes(memberIds.length);
     
-    // 批量更新每个会员的refresh_time为随机时间
+    // 批量更新每个会员的更新时间为随机时间
     let updatedCount = 0;
 
     const pool = getNetlifyPool();
@@ -64,12 +64,9 @@ export async function POST(request: NextRequest) {
         const randomTime = randomTimes[index] || now;
         const unixTime = Math.floor(randomTime.getTime() / 1000);
 
-        // 先设置本次更新所使用的自动更新时间
-        await connection.query('SET timestamp = ?', [unixTime]);
-
-        // 更新刷新时间，updated_at 会使用上面设置的 timestamp
+        // 设置会员的更新时间
         await connection.query(
-          'UPDATE members SET refresh_time = FROM_UNIXTIME(?) WHERE id = ?',
+          'UPDATE members SET updated_at = FROM_UNIXTIME(?) WHERE id = ?',
           [unixTime, memberId]
         );
         
@@ -82,9 +79,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       count: updatedCount,
-      message: `成功刷新 ${updatedCount} 位会员的刷新时间（4小时内随机分布）`,
+      message: `成功刷新 ${updatedCount} 位会员的更新时间（4小时内随机分布）`,
       data: {
-        refreshTimeRange: {
+        updateTimeRange: {
           start: fourHoursAgo.toISOString().slice(0, 19).replace('T', ' '),
           end: now.toISOString().slice(0, 19).replace('T', ' ')
         },

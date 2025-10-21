@@ -11,13 +11,13 @@ export async function GET(request: NextRequest) {
     const startDate = startOfDay.toISOString().slice(0, 19).replace('T', ' ');
     const endDate = endOfDay.toISOString().slice(0, 19).replace('T', ' ');
 
-    // 查询今日刷新的会员总数
+    // 查询今日刷新的会员总数（基于更新时间）
     const [countResult] = await executeQuery(
       `SELECT COUNT(*) as total FROM members 
        WHERE deleted = 0 
-       AND refresh_time IS NOT NULL 
-       AND refresh_time >= ? 
-       AND refresh_time <= ?`,
+       AND updated_at IS NOT NULL 
+       AND updated_at >= ? 
+       AND updated_at <= ?`,
       [startDate, endDate]
     );
 
@@ -38,14 +38,14 @@ export async function GET(request: NextRequest) {
         district, 
         type, 
         status, 
-        refresh_time, 
+        updated_at, 
         created_at
        FROM members 
        WHERE deleted = 0 
-       AND refresh_time IS NOT NULL 
-       AND refresh_time >= ? 
-       AND refresh_time <= ?
-       ORDER BY refresh_time DESC`,
+       AND updated_at IS NOT NULL 
+       AND updated_at >= ? 
+       AND updated_at <= ?
+       ORDER BY updated_at DESC`,
       [startDate, endDate]
     );
 

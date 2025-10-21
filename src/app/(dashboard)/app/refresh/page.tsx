@@ -20,7 +20,7 @@ interface RefreshedMember {
   district: string;
   type: string;
   status: string;
-  refresh_time: string;
+  updated_at: string;
   created_at: string;
 }
 
@@ -30,8 +30,8 @@ export default function AppRefreshPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshedMembers, setRefreshedMembers] = useState<RefreshedMember[]>([]);
   const [totalRefreshed, setTotalRefreshed] = useState(0);
-  const [lastRefreshTime, setLastRefreshTime] = useState<string | null>(null);
-  const [refreshTimeRange, setRefreshTimeRange] = useState<{start: string, end: string} | null>(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
+  const [updateTimeRange, setUpdateTimeRange] = useState<{start: string, end: string} | null>(null);
 
   // 获取今日刷新的会员列表
   const fetchRefreshedMembers = async () => {
@@ -44,7 +44,7 @@ export default function AppRefreshPage() {
         setRefreshedMembers(data.data);
         setTotalRefreshed(data.total);
         if (data.data.length > 0) {
-          setLastRefreshTime(data.data[0].refresh_time);
+          setLastUpdateTime(data.data[0].updated_at);
         }
       } else {
         toast({
@@ -77,12 +77,12 @@ export default function AppRefreshPage() {
       if (data.success) {
         toast({
           title: '刷新成功',
-          description: data.message || `已成功刷新 ${data.count} 位会员的刷新时间（4小时内随机分布）`
+          description: data.message || `已成功刷新 ${data.count} 位会员的更新时间（4小时内随机分布）`
         });
         
         // 保存时间范围信息
-        if (data.data?.refreshTimeRange) {
-          setRefreshTimeRange(data.data.refreshTimeRange);
+        if (data.data?.updateTimeRange) {
+          setUpdateTimeRange(data.data.updateTimeRange);
         }
         
         // 刷新列表
@@ -181,9 +181,9 @@ export default function AppRefreshPage() {
     };
   };
 
-  // 检查是否是今天刷新的
-  const isTodayRefresh = (refreshTime: string) => {
-    const refreshDate = new Date(refreshTime);
+  // 检查是否是今天刷新的（基于更新时间）
+  const isTodayUpdate = (updateTime: string) => {
+    const refreshDate = new Date(updateTime);
     const today = new Date();
     return refreshDate.toDateString() === today.toDateString();
   };
@@ -199,7 +199,7 @@ export default function AppRefreshPage() {
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">APP刷新管理</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            管理移动端应用的会员刷新策略，每次刷新将随机选择100名用户并分配4小时内随机的刷新时间
+            管理移动端应用的会员刷新策略，每次刷新将随机选择100名用户并分配4小时内随机的更新时间
           </p>
         </div>
         <Button 
@@ -222,7 +222,7 @@ export default function AppRefreshPage() {
               <h3 className="font-semibold text-blue-900">刷新策略说明</h3>
               <div className="text-sm text-blue-800 space-y-1">
                 <p>• 每次点击"今日刷新"将随机选择100名活跃会员</p>
-                <p>• 每个会员的刷新时间将在过去4小时内随机分配</p>
+                <p>• 每个会员的更新时间将在过去4小时内随机分配</p>
                 <p>• 这样可以模拟真实的用户活跃时间分布</p>
                 <p>• 避免所有用户同时刷新造成的服务器压力</p>
               </div>
@@ -250,9 +250,9 @@ export default function AppRefreshPage() {
             <div className="flex items-center space-x-2">
               <Clock className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">最后刷新</p>
+                <p className="text-sm font-medium text-muted-foreground">最后更新时间</p>
                 <p className="text-sm font-bold">
-                  {lastRefreshTime ? formatTime(lastRefreshTime) : '暂无'}
+                  {lastUpdateTime ? formatTime(lastUpdateTime) : '暂无'}
                 </p>
               </div>
             </div>
@@ -266,7 +266,7 @@ export default function AppRefreshPage() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">刷新状态</p>
                 <p className="text-sm font-bold">
-                  {lastRefreshTime && isTodayRefresh(lastRefreshTime) ? '已刷新' : '未刷新'}
+                  {lastUpdateTime && isTodayUpdate(lastUpdateTime) ? '已刷新' : '未刷新'}
                 </p>
               </div>
             </div>
@@ -280,8 +280,8 @@ export default function AppRefreshPage() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">时间范围</p>
                 <p className="text-xs font-bold">
-                  {refreshTimeRange ? 
-                    `${formatTimeRange(refreshTimeRange.start, refreshTimeRange.end).start} - ${formatTimeRange(refreshTimeRange.start, refreshTimeRange.end).end}` : 
+                  {updateTimeRange ? 
+                    `${formatTimeRange(updateTimeRange.start, updateTimeRange.end).start} - ${formatTimeRange(updateTimeRange.start, updateTimeRange.end).end}` : 
                     '4小时内随机'
                   }
                 </p>
@@ -296,7 +296,7 @@ export default function AppRefreshPage() {
         <CardHeader className="pb-3 sm:pb-6">
           <CardTitle className="text-lg sm:text-xl">今日刷新列表</CardTitle>
           <CardDescription className="text-sm">
-            显示今日已刷新的会员列表，每个会员的刷新时间在4小时内随机分布
+            显示今日已刷新的会员列表，每个会员的更新时间在4小时内随机分布
           </CardDescription>
         </CardHeader>
         <CardContent className="px-3 sm:px-6">
@@ -306,7 +306,7 @@ export default function AppRefreshPage() {
             </div>
           ) : refreshedMembers.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">今日暂无刷新记录</p>
+              <p className="text-muted-foreground">今日暂无更新时间记录</p>
               <Button 
                 variant="outline" 
                 className="mt-4 w-full sm:w-auto"
@@ -345,7 +345,7 @@ export default function AppRefreshPage() {
                             {formatStatus(member.status)}
                           </Badge>
                           <Badge variant="default" className="text-xs bg-green-600">
-                            {formatTime(member.refresh_time)}
+                            {formatTime(member.updated_at)}
                           </Badge>
                         </div>
                       </div>
