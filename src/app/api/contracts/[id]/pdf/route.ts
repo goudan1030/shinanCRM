@@ -51,10 +51,33 @@ export async function GET(
       );
     }
 
+    const resolveExecutablePath = () => {
+      const envPaths = [
+        process.env.CHROME_EXECUTABLE_PATH,
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        process.env.CHROMIUM_PATH,
+        process.env.CHROME_PATH,
+        process.env.CHROME_BIN
+      ].filter((value): value is string => !!value);
+
+      if (envPaths.length > 0) {
+        return envPaths[0];
+      }
+
+      try {
+        return puppeteer.executablePath();
+      } catch (error) {
+        console.warn('未能获取puppeteer自带的Chromium路径:', error);
+        return undefined;
+      }
+    };
+
+    const executablePath = resolveExecutablePath();
+
     // 生成PDF
     const browser = await puppeteer.launch({
-      headless: true,
-      executablePath: '/usr/bin/chromium-browser', // 使用系统安装的Chrome
+      headless: 'new',
+      executablePath,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
