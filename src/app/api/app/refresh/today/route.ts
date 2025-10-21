@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database-netlify';
+import { executeQuery, getNetlifyPool } from '@/lib/database-netlify';
 import { randomInt } from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -55,21 +55,28 @@ export async function POST(request: NextRequest) {
     // 批量更新每个会员的refresh_time为随机时间
     let updatedCount = 0;
 
-    for (let index = 0; index < memberIds.length; index++) {
-      const memberId = memberIds[index];
-      // 生成4小时内的随机时间
-      const randomTime = randomTimes[index] || now;
+    const pool = getNetlifyPool();
+    const connection = await pool.getConnection();
 
-      // 格式化为MySQL datetime格式
-      const randomTimeString = randomTime.toISOString().slice(0, 19).replace('T', ' ');
-      
-      // 更新单个用户的刷新时间
-      await executeQuery(
-        'UPDATE members SET refresh_time = ?, updated_at = ? WHERE id = ?',
-        [randomTimeString, randomTimeString, memberId]
-      );
-      
-      updatedCount++;
+    try {
+      for (let index = 0; index < memberIds.length; index++) {
+        const memberId = memberIds[index];
+        const randomTime = randomTimes[index] || now;
+        const unixTime = Math.floor(randomTime.getTime() / 1000);
+
+        // 先设置本次更新所使用的自动更新时间
+        await connection.query('SET timestamp = ?', [unixTime]);
+
+        // 更新刷新时间，updated_at 会使用上面设置的 timestamp
+        await connection.query(
+          'UPDATE members SET refresh_time = FROM_UNIXTIME(?) WHERE id = ?',
+          [unixTime, memberId]
+        );
+        
+        updatedCount++;
+      }
+    } finally {
+      connection.release();
     }
 
     return NextResponse.json({
