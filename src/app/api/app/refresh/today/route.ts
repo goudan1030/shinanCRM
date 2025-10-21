@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
       
       // 更新单个用户的刷新时间
       await executeQuery(
-        'UPDATE members SET refresh_time = ?, updated_at = NOW() WHERE id = ?',
-        [randomTimeString, memberId]
+        'UPDATE members SET refresh_time = ?, updated_at = ? WHERE id = ?',
+        [randomTimeString, randomTimeString, memberId]
       );
       
       updatedCount++;
