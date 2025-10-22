@@ -220,7 +220,7 @@ export function Sidebar({ className, onMenuClick }: SidebarProps) {
   return (
     <div className={cn('h-full', className)}>
       {/* 桌面端侧边栏 */}
-      <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col bg-white border-r transition-all duration-300 overflow-hidden group/sidebar relative z-[1001]">
+      <div className="hidden md:flex h-full w-[57px] hover:w-[207px] flex-col bg-card border-r border-border transition-all duration-300 overflow-hidden group/sidebar relative z-[1001]">
         <div className="h-[48px] flex items-center border-b">
           <div className="w-[57px] flex items-center justify-center flex-shrink-0">
             <Image

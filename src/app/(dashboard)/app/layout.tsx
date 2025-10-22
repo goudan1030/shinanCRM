@@ -15,13 +15,13 @@ export default function AppLayout({
   return (
     <ThreeColumnLayout 
       sidebarContent={<Sidebar />}
-      className="bg-gray-50"
+      className="bg-background"
     >
       <div className="flex">
         {/* 左侧导航菜单 - 固定位置，移动端隐藏 */}
-        <div className="hidden lg:block fixed inset-y-0 left-[57px] w-[240px] bg-white border-r z-[900]">
-          <div className="flex h-[48px] items-center px-6 border-b">
-            <h1 className="text-2xl font-semibold text-gray-900">APP管理</h1>
+        <div className="hidden lg:block fixed inset-y-0 left-[57px] w-[240px] bg-card border-r border-border z-[900]">
+          <div className="flex h-[48px] items-center px-6 border-b border-border">
+            <h1 className="text-2xl font-semibold text-foreground">APP管理</h1>
           </div>
           <div className="space-y-1 p-2">
             <Link
