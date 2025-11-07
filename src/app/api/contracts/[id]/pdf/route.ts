@@ -1,6 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
 import puppeteer from 'puppeteer';
+import { existsSync } from 'fs';
+
+const CHROME_FALLBACK_PATHS = [
+  '/usr/bin/chromium-browser',
+  '/usr/bin/chromium',
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/snap/bin/chromium',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+];
+
+const isAbsolutePath = (filePath: string) => {
+  return filePath.startsWith('/') || /^[a-zA-Z]:\\/.test(filePath);
+};
+
+const resolveExecutablePath = () => {
+  const envPaths = [
+    process.env.CHROME_EXECUTABLE_PATH,
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    process.env.CHROMIUM_PATH,
+    process.env.CHROME_PATH,
+    process.env.CHROME_BIN
+  ].filter((value): value is string => !!value && value.trim().length > 0);
+
+  for (const candidate of envPaths) {
+    if (isAbsolutePath(candidate) && !existsSync(candidate)) {
+      console.warn(`环境指定的Chromium路径不存在: ${candidate}`);
+      continue;
+    }
+    return candidate;
+  }
+
+  const fallbackPath = CHROME_FALLBACK_PATHS.find(path => existsSync(path));
+  if (fallbackPath) {
+    return fallbackPath;
+  }
+
+  try {
+    return puppeteer.executablePath();
+  } catch (error) {
+    console.warn('未能获取puppeteer自带的Chromium路径:', error);
+    return undefined;
+  }
+};
 
 // 生成合同PDF
 export async function GET(
@@ -51,32 +97,12 @@ export async function GET(
       );
     }
 
-    const resolveExecutablePath = () => {
-      const envPaths = [
-        process.env.CHROME_EXECUTABLE_PATH,
-        process.env.PUPPETEER_EXECUTABLE_PATH,
-        process.env.CHROMIUM_PATH,
-        process.env.CHROME_PATH,
-        process.env.CHROME_BIN
-      ].filter((value): value is string => !!value);
-
-      if (envPaths.length > 0) {
-        return envPaths[0];
-      }
-
-      try {
-        return puppeteer.executablePath();
-      } catch (error) {
-        console.warn('未能获取puppeteer自带的Chromium路径:', error);
-        return undefined;
-      }
-    };
-
     const executablePath = resolveExecutablePath();
+    console.log('使用的Chromium路径:', executablePath || 'puppeteer默认内置版本');
 
     // 生成PDF
     const browser = await puppeteer.launch({
-      headless: 'new',
+      headless: true,
       executablePath,
       args: [
         '--no-sandbox',
