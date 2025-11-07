@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
 import puppeteer from 'puppeteer';
 import { existsSync } from 'fs';
+import path from 'path';
 
 const CHROME_FALLBACK_PATHS = [
   '/usr/bin/chromium-browser',
@@ -18,7 +19,24 @@ const isAbsolutePath = (filePath: string) => {
   return filePath.startsWith('/') || /^[a-zA-Z]:\\/.test(filePath);
 };
 
-const resolveExecutablePath = () => {
+type ChromeDebugInfo = {
+  envCandidates: Array<{
+    original?: string;
+    resolved?: string;
+    exists: boolean;
+    skippedReason?: string;
+  }>;
+  fallbackCandidates: Array<{ path: string; exists: boolean }>;
+  puppeteerDefault?: string;
+  selected?: string;
+};
+
+const resolveExecutablePath = (): { executablePath?: string; debugInfo: ChromeDebugInfo } => {
+  const debugInfo: ChromeDebugInfo = {
+    envCandidates: [],
+    fallbackCandidates: []
+  };
+
   const envPaths = [
     process.env.CHROME_EXECUTABLE_PATH,
     process.env.PUPPETEER_EXECUTABLE_PATH,
@@ -27,24 +45,52 @@ const resolveExecutablePath = () => {
     process.env.CHROME_BIN
   ].filter((value): value is string => !!value && value.trim().length > 0);
 
+  const fallbackCandidates = CHROME_FALLBACK_PATHS.map(candidatePath => ({
+    path: candidatePath,
+    exists: existsSync(candidatePath)
+  }));
+  debugInfo.fallbackCandidates = fallbackCandidates;
+  const fallbackPath = fallbackCandidates.find(item => item.exists)?.path;
+
   for (const candidate of envPaths) {
-    if (isAbsolutePath(candidate) && !existsSync(candidate)) {
-      console.warn(`环境指定的Chromium路径不存在: ${candidate}`);
+    const resolved = isAbsolutePath(candidate) ? candidate : path.resolve(candidate);
+    const exists = existsSync(resolved);
+    const candidateInfo: ChromeDebugInfo['envCandidates'][number] = {
+      original: candidate,
+      resolved,
+      exists
+    };
+
+    if (!exists) {
+      candidateInfo.skippedReason = 'not_found';
+      debugInfo.envCandidates.push(candidateInfo);
       continue;
     }
-    return candidate;
+
+    if (resolved.includes('.local-chromium') && fallbackPath) {
+      candidateInfo.skippedReason = 'bundled_chromium_preempted_by_system';
+      debugInfo.envCandidates.push(candidateInfo);
+      continue;
+    }
+
+    debugInfo.envCandidates.push(candidateInfo);
+    debugInfo.selected = resolved;
+    return { executablePath: resolved, debugInfo };
   }
 
-  const fallbackPath = CHROME_FALLBACK_PATHS.find(path => existsSync(path));
   if (fallbackPath) {
-    return fallbackPath;
+    debugInfo.selected = fallbackPath;
+    return { executablePath: fallbackPath, debugInfo };
   }
 
   try {
-    return puppeteer.executablePath();
+    const defaultPath = puppeteer.executablePath();
+    debugInfo.puppeteerDefault = defaultPath;
+    debugInfo.selected = defaultPath;
+    return { executablePath: defaultPath, debugInfo };
   } catch (error) {
     console.warn('未能获取puppeteer自带的Chromium路径:', error);
-    return undefined;
+    return { executablePath: undefined, debugInfo };
   }
 };
 
@@ -53,12 +99,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let chromeDebugInfo: ChromeDebugInfo | undefined;
+
   try {
     const contractId = parseInt(params.id);
     
     // 获取URL参数，判断是预览还是下载
     const { searchParams } = new URL(request.url);
     const mode = searchParams.get('mode') || 'download'; // download | preview
+    const debug = searchParams.get('debug') === '1';
     const userAgent = request.headers.get('user-agent') || '';
     
     // 检测是否在微信环境
@@ -97,7 +146,9 @@ export async function GET(
       );
     }
 
-    const executablePath = resolveExecutablePath();
+    const resolveResult = resolveExecutablePath();
+    const executablePath = resolveResult.executablePath;
+    chromeDebugInfo = resolveResult.debugInfo;
     console.log('使用的Chromium路径:', executablePath || 'puppeteer默认内置版本');
 
     // 生成PDF
@@ -204,8 +255,15 @@ export async function GET(
     return new NextResponse(pdf, { headers });
   } catch (error) {
     console.error('生成PDF失败:', error);
+    const errorMessage = error instanceof Error ? error.message : '未知错误';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     return NextResponse.json(
-      { error: '生成PDF失败' },
+      {
+        error: '生成PDF失败',
+        detail: debug || process.env.NODE_ENV !== 'production' ? errorMessage : undefined,
+        stack: !process.env.NODE_ENV || process.env.NODE_ENV !== 'production' ? errorStack : undefined,
+        chrome: debug ? chromeDebugInfo : undefined
+      },
       { status: 500 }
     );
   }
