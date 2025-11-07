@@ -100,6 +100,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   let chromeDebugInfo: ChromeDebugInfo | undefined;
+  let debug = false;
 
   try {
     const contractId = parseInt(params.id);
@@ -107,7 +108,7 @@ export async function GET(
     // 获取URL参数，判断是预览还是下载
     const { searchParams } = new URL(request.url);
     const mode = searchParams.get('mode') || 'download'; // download | preview
-    const debug = searchParams.get('debug') === '1';
+    debug = searchParams.get('debug') === '1';
     const userAgent = request.headers.get('user-agent') || '';
     
     // 检测是否在微信环境
