@@ -18,7 +18,7 @@ interface Contract {
   template_id: number;
   contract_type: string;
   content: string;
-  variables: any;
+  variables: Record<string, unknown>;
   status: 'DRAFT' | 'PENDING' | 'SIGNED' | 'CANCELLED';
   created_at: string;
   updated_at: string;
@@ -48,34 +48,52 @@ export default function ContractDetailPage() {
   useEffect(() => {
     if (contractId) {
       fetchContract();
-      generateSecureSignUrl();
     }
   }, [contractId]);
 
+  // 当合同加载完成后，如果是待签署状态，则生成安全签署链接
+  useEffect(() => {
+    if (contract && contract.status === 'PENDING') {
+      generateSecureSignUrl();
+    } else if (contract && contract.status === 'SIGNED') {
+      // 已签署的合同不需要签署链接，但可以设置查看链接
+      setSignUrl(`${window.location.origin}/contracts/sign?id=${contractId}`);
+    }
+  }, [contract, contractId]);
+
   const generateSecureSignUrl = async () => {
+    // 只在合同状态为PENDING时生成签署令牌
+    if (!contract || contract.status !== 'PENDING') {
+      return;
+    }
+
     try {
-      console.log('🔐 开始生成安全签署链接，合同ID:', contractId);
       const response = await fetch(`/api/contracts/${contractId}/sign-token`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
       });
       
-      console.log('🔐 令牌生成响应状态:', response.status);
-      
       if (response.ok) {
-        const data = await response.json();
-        console.log('🔐 令牌生成成功，安全链接:', data.signUrl);
-        setSignUrl(data.signUrl);
+        const apiResponse = await response.json();
+        // 检查响应格式，可能是直接返回或包装在data中
+        const signUrl = apiResponse.data?.signUrl || apiResponse.signUrl;
+        if (signUrl) {
+          setSignUrl(signUrl);
+        } else {
+          // 如果生成令牌失败，使用默认链接
+          setSignUrl(`${window.location.origin}/contracts/sign?id=${contractId}`);
+        }
       } else {
-        const errorData = await response.json();
-        console.warn('🔐 令牌生成失败，使用默认链接:', errorData);
         // 如果生成令牌失败，使用默认链接
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('生成安全签署链接失败:', errorData.message || '未知错误');
         setSignUrl(`${window.location.origin}/contracts/sign?id=${contractId}`);
       }
     } catch (error) {
-      console.error('🔐 生成安全签署链接失败:', error);
+      console.error('生成安全签署链接失败:', error);
       // 如果生成令牌失败，使用默认链接
       setSignUrl(`${window.location.origin}/contracts/sign?id=${contractId}`);
     }
@@ -85,16 +103,16 @@ export default function ContractDetailPage() {
     try {
       setLoading(true);
       const response = await fetch(`/api/contracts/${contractId}`);
-      const data = await response.json();
+      const apiResponse = await response.json();
 
-      if (response.ok) {
-        console.log('🔍 合同数据:', data);
-        console.log('📄 合同内容:', data.content);
-        setContract(data);
+      if (response.ok && apiResponse.success) {
+        // API使用createSuccessResponse包装，数据在data字段中
+        const contractData: Contract = apiResponse.data;
+        setContract(contractData);
       } else {
         toast({
           title: '获取合同详情失败',
-          description: data.error || '请稍后重试',
+          description: apiResponse.error || apiResponse.message || '请稍后重试',
           variant: 'destructive'
         });
       }
@@ -128,9 +146,9 @@ export default function ContractDetailPage() {
         method: 'POST'
       });
       
-      const data = await response.json();
+      const apiResponse = await response.json();
       
-      if (response.ok) {
+      if (response.ok && apiResponse.success) {
         toast({
           title: '重新生成成功',
           description: '合同内容已重新生成并填充变量',
@@ -140,7 +158,7 @@ export default function ContractDetailPage() {
       } else {
         toast({
           title: '重新生成失败',
-          description: data.error || '请稍后重试',
+          description: apiResponse.error || apiResponse.message || '请稍后重试',
           variant: 'destructive'
         });
       }
@@ -465,15 +483,8 @@ export default function ContractDetailPage() {
                 <div className="!p-2 md:!p-6">
                   {contract.content ? (
                     <div 
-                      className="contract-preview"
-                      dangerouslySetInnerHTML={{ __html: contract.content }} 
-                      style={{
-                        fontFamily: '"Microsoft YaHei", Arial, sans-serif',
-                        lineHeight: '1.6',
-                        fontSize: '12px',
-                        color: '#333'
-                      }}
-                      className="text-xs md:text-sm"
+                      className="contract-preview text-xs md:text-sm"
+                      dangerouslySetInnerHTML={{ __html: contract.content }}
                     />
                   ) : (
                     <div className="text-center text-gray-500 py-20">
@@ -615,9 +626,9 @@ export default function ContractDetailPage() {
                   {contract.status === 'CANCELLED' && '合同已取消'}
                 </span>
               </div>
-              {contract.status === 'PENDING' && (
+              {contract.status === 'PENDING' && contract.expires_at && (
                 <p className="text-xs text-gray-500 mt-2">
-                  过期时间: 2025/9/24 1:57:42
+                  过期时间: {new Date(contract.expires_at).toLocaleString('zh-CN')}
                 </p>
               )}
             </CardContent>

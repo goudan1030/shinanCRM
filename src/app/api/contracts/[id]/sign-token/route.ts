@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/database';
+import { executeQuery } from '@/lib/database-netlify';
 import crypto from 'crypto';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/contracts/sign-token');
 
 /**
  * 生成合同签署令牌
@@ -25,29 +28,46 @@ export async function POST(
     }
 
     // 验证合同是否存在且状态为PENDING
-    console.log('🔐 令牌生成API - 查询合同信息');
-    const contractRows = await query(
+    logger.debug('查询合同信息', { contractId });
+    const contractResult = await executeQuery(
       'SELECT id, status, member_id FROM contracts WHERE id = ?',
       [contractId]
     );
 
-    console.log('🔐 令牌生成API - 合同查询结果:', contractRows);
+    // executeQuery返回格式: [rows, fields]
+    let contractRows: any[] = [];
+    if (Array.isArray(contractResult)) {
+      if (contractResult.length === 2 && Array.isArray(contractResult[0])) {
+        contractRows = contractResult[0];
+      } else if (Array.isArray(contractResult[0])) {
+        contractRows = contractResult[0];
+      } else {
+        contractRows = contractResult;
+      }
+    }
 
-    if (!contractRows || (contractRows as any[]).length === 0) {
-      console.log('🔐 令牌生成API - 合同不存在');
+    logger.debug('合同查询结果', { count: contractRows.length });
+
+    if (!contractRows || contractRows.length === 0) {
+      logger.warn('合同不存在', { contractId });
       return NextResponse.json(
         { success: false, message: '合同不存在' },
         { status: 404 }
       );
     }
 
-    const contract = (contractRows as any[])[0];
-    console.log('🔐 令牌生成API - 合同状态:', contract.status);
+    const contract = contractRows[0];
+    logger.debug('合同状态', { contractId, status: contract.status });
     
     if (contract.status !== 'PENDING') {
-      console.log('🔐 令牌生成API - 合同状态不允许签署');
+      logger.warn('合同状态不允许签署', { contractId, status: contract.status });
       return NextResponse.json(
-        { success: false, message: '合同状态不允许签署' },
+        { 
+          success: false, 
+          message: contract.status === 'SIGNED' 
+            ? '合同已签署，无需生成签署链接' 
+            : '合同状态不允许签署' 
+        },
         { status: 400 }
       );
     }
@@ -58,7 +78,7 @@ export async function POST(
     expiresAt.setHours(expiresAt.getHours() + 24); // 24小时有效期
 
     // 将令牌存储到数据库
-    await query(
+    await executeQuery(
       `INSERT INTO contract_sign_tokens (contract_id, token, expires_at, created_at) 
        VALUES (?, ?, ?, NOW()) 
        ON DUPLICATE KEY UPDATE 
@@ -113,7 +133,7 @@ export async function GET(
     }
 
     // 验证令牌
-    const tokenRows = await query(
+    const tokenResult = await executeQuery(
       `SELECT ct.*, c.id as contract_id, c.contract_number, c.status, c.content, c.variables,
               m.id as member_id, m.name as member_name, m.phone as member_phone, m.id_card as member_id_card
        FROM contract_sign_tokens ct
@@ -123,14 +143,26 @@ export async function GET(
       [token]
     );
 
-    if (!tokenRows || (tokenRows as any[]).length === 0) {
+    // executeQuery返回格式: [rows, fields]
+    let tokenRows: any[] = [];
+    if (Array.isArray(tokenResult)) {
+      if (tokenResult.length === 2 && Array.isArray(tokenResult[0])) {
+        tokenRows = tokenResult[0];
+      } else if (Array.isArray(tokenResult[0])) {
+        tokenRows = tokenResult[0];
+      } else {
+        tokenRows = tokenResult;
+      }
+    }
+
+    if (!tokenRows || tokenRows.length === 0) {
       return NextResponse.json(
         { success: false, message: '无效或已过期的签署令牌' },
         { status: 404 }
       );
     }
 
-    const tokenData = (tokenRows as any[])[0];
+    const tokenData = tokenRows[0];
 
     if (tokenData.status !== 'PENDING') {
       return NextResponse.json(
