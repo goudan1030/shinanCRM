@@ -79,7 +79,18 @@ export default function CreateContractPage() {
       const response = await fetch('/api/members?pageSize=100');
       const data = await response.json();
       if (response.ok) {
-        setMembers(data.data || []);
+        // 兼容新旧API响应格式
+        // 新格式: { success: true, data: { data: [...], total: ..., pagination: {...} } }
+        // 旧格式: { data: [...], total: ... }
+        let membersList: Member[] = [];
+        if (data.success && data.data) {
+          membersList = Array.isArray(data.data.data) ? data.data.data : [];
+        } else if (Array.isArray(data.data)) {
+          membersList = data.data;
+        } else {
+          membersList = Array.isArray(data.data?.data) ? data.data.data : [];
+        }
+        setMembers(membersList);
       }
     } catch (error) {
       console.error('获取会员列表失败:', error);
@@ -196,10 +207,23 @@ export default function CreateContractPage() {
         });
         const data = await response.json();
         if (response.ok) {
-          setMembers(data.data || []);
+          // 兼容新旧API响应格式
+          // 新格式: { success: true, data: { data: [...], total: ..., pagination: {...} } }
+          // 旧格式: { data: [...], total: ... }
+          let membersList: Member[] = [];
+          if (data.success && data.data) {
+            membersList = Array.isArray(data.data.data) ? data.data.data : [];
+          } else if (Array.isArray(data.data)) {
+            membersList = data.data;
+          } else {
+            membersList = Array.isArray(data.data?.data) ? data.data.data : [];
+          }
+          setMembers(membersList);
           setShowMemberResults(true);
         } else {
-          console.error('搜索会员失败:', data.error);
+          console.error('搜索会员失败:', data.error || '未知错误');
+          setMembers([]);
+          setShowMemberResults(true);
         }
       } catch (error) {
         console.error('搜索会员失败:', error);
@@ -292,20 +316,30 @@ export default function CreateContractPage() {
         })
       });
 
-      const data = await response.json();
+      const apiResponse = await response.json();
 
-      if (response.ok) {
+      if (response.ok && apiResponse.success) {
+        // API使用createSuccessResponse包装，数据在data字段中
+        const contractData = apiResponse.data;
         toast({
           title: '合同创建成功',
-          description: `合同编号: ${data.contractNumber}`,
+          description: `合同编号: ${contractData.contractNumber}`,
         });
         
         // 跳转到合同详情页面
-        router.push(`/contracts/${data.contractId}`);
+        if (contractData.contractId) {
+          router.push(`/contracts/${contractData.contractId}`);
+        } else {
+          toast({
+            title: '创建合同失败',
+            description: '合同ID获取失败，请刷新合同列表查看',
+            variant: 'destructive'
+          });
+        }
       } else {
         toast({
           title: '创建合同失败',
-          description: data.error || '请稍后重试',
+          description: apiResponse.error || apiResponse.message || '请稍后重试',
           variant: 'destructive'
         });
       }
@@ -322,7 +356,7 @@ export default function CreateContractPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto pb-32" style={{ minHeight: '100vh' }}>
+    <div className="p-6 max-w-7xl mx-auto pb-32 min-h-screen">
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
             <Button variant="outline" size="sm" asChild>
@@ -501,9 +535,11 @@ export default function CreateContractPage() {
                         <div className="mt-2">
                           <input
                             type="checkbox"
+                            id={`package-${pkg.id}`}
                             checked={selectedPackages.some(selected => selected.id === pkg.id)}
                             onChange={() => handlePackageToggle(pkg.id)}
                             className="w-4 h-4 text-blue-600"
+                            aria-label={`选择${pkg.name}`}
                           />
                         </div>
                       </div>
