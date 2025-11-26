@@ -115,14 +115,19 @@ export async function refreshToken(user: UserPayload): Promise<string> {
  * @returns 更新后的响应对象
  */
 export function setTokenCookie(response: NextResponse, token: string): NextResponse {
+  // 检测是否在HTTPS环境中
+  const isHttps = process.env.NEXT_PUBLIC_HTTPS === 'true' || 
+                  (typeof process !== 'undefined' && process.env.FORCE_SECURE_COOKIE === 'true');
+  
   response.cookies.set({
     name: 'auth_token',
     value: token,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps, // 根据实际协议设置
     sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60, // 7天（秒）
     path: '/'
+    // 不设置domain，让浏览器自动处理
   });
   return response;
 }

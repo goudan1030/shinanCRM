@@ -168,30 +168,23 @@ export function refreshToken(user: UserPayload): string {
  */
 export function setTokenCookie(response: NextResponse, token: string): NextResponse {
   // 检测是否在HTTPS环境中
-  const isProduction = process.env.NODE_ENV === 'production';
-  const isNetlify = process.env.NETLIFY === 'true';
-  
-  // 针对阿里云部署环境优化：即使在生产环境也不强制secure
-  // 让浏览器根据实际协议决定
-  const shouldSecure = false; // 暂时禁用secure，让HTTP也能工作
-  
-  console.log('设置Cookie配置:', {
-    isProduction,
-    isNetlify,
-    shouldSecure,
-    domain: process.env.VERCEL_URL || process.env.URL || 'localhost'
-  });
+  // 在服务端，我们通过环境变量或请求头来判断
+  // 默认情况下，如果明确设置了HTTPS环境变量，则启用secure
+  // 否则禁用secure，让HTTP和HTTPS都能工作
+  const shouldSecure = process.env.NEXT_PUBLIC_HTTPS === 'true' || 
+                       process.env.FORCE_SECURE_COOKIE === 'true';
   
   response.cookies.set({
     name: TOKEN_COOKIE_NAME,
     value: token,
     httpOnly: true,                           // 仅服务器可访问Cookie
-    secure: shouldSecure,                     // 针对阿里云优化：禁用secure要求
+    secure: shouldSecure,                     // 根据环境变量设置
     sameSite: 'lax',                         // 使用lax，兼容性更好
     maxAge: 7 * 24 * 60 * 60,                 // 7天（秒）
     path: '/',                                // 所有路径可访问
-    domain: undefined                         // 让浏览器自动处理域名
+    // 不设置domain，让浏览器自动处理，确保子域名也能访问
   });
+  
   return response;
 }
 

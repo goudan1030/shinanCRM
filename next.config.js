@@ -8,7 +8,8 @@ const nextConfig = {
   reactStrictMode: false,
   
   // 资源前缀配置，以支持子路径部署
-  assetPrefix: process.env.NODE_ENV === 'production' ? '/' : '',
+  // 不设置assetPrefix，让Next.js自动处理静态资源路径
+  // assetPrefix: process.env.NODE_ENV === 'production' ? '/' : '',
   
   // 先进的图片优化
   images: {
