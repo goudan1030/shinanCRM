@@ -50,14 +50,6 @@ export default function FinanceLayout({
             >
               <span className="text-[13px]">结算管理</span>
             </Link>
-            <Link
-              href="/finance/alipay"
-              className={`flex items-center rounded-md py-2 px-3 ${
-                pathname === '/finance/alipay' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
-              }`}
-            >
-              <span className="text-[13px]">支付宝收款</span>
-            </Link>
           </div>
         </div>
 

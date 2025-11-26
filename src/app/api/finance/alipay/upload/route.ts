@@ -115,38 +115,153 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('CSV文件中没有有效数据', 400);
     }
 
-    // 插入数据库
+    // 处理记录：保存到支付宝表并导入到收入记录表
     let successCount = 0;
     let failedCount = 0;
     const errors: string[] = [];
 
     for (const record of records) {
       try {
-        // 检查是否已存在（根据交易号）
-        const [existing] = await executeQuery(
+        // 只处理交易成功的记录
+        if (record.trade_status !== '交易成功' && record.trade_status !== '成功') {
+          logger.debug('跳过非成功交易', { trade_no: record.trade_no, status: record.trade_status });
+          continue;
+        }
+
+        // 尝试根据付款方信息匹配会员
+        let memberNo: string | null = null;
+        
+        // 先尝试根据付款方账号（手机号）匹配
+        if (record.payer_account) {
+          const phonePattern = record.payer_account.replace(/\*/g, '%');
+          const [memberResult] = await executeQuery(
+            'SELECT member_no FROM members WHERE phone LIKE ? LIMIT 1',
+            [phonePattern]
+          );
+          
+          let memberRows: any[] = [];
+          if (Array.isArray(memberResult)) {
+            if (memberResult.length === 2 && Array.isArray(memberResult[0])) {
+              memberRows = memberResult[0];
+            } else if (Array.isArray(memberResult[0])) {
+              memberRows = memberResult[0];
+            } else {
+              memberRows = memberResult;
+            }
+          }
+          
+          if (memberRows.length > 0) {
+            memberNo = memberRows[0].member_no;
+            logger.debug('根据手机号匹配到会员', { trade_no: record.trade_no, member_no: memberNo });
+          }
+        }
+
+        // 如果没匹配到，尝试根据付款方姓名匹配
+        if (!memberNo && record.payer_name) {
+          const [memberResult] = await executeQuery(
+            'SELECT member_no FROM members WHERE nickname LIKE ? OR real_name LIKE ? LIMIT 1',
+            [`%${record.payer_name}%`, `%${record.payer_name}%`]
+          );
+          
+          let memberRows: any[] = [];
+          if (Array.isArray(memberResult)) {
+            if (memberResult.length === 2 && Array.isArray(memberResult[0])) {
+              memberRows = memberResult[0];
+            } else if (Array.isArray(memberResult[0])) {
+              memberRows = memberResult[0];
+            } else {
+              memberRows = memberResult;
+            }
+          }
+          
+          if (memberRows.length > 0) {
+            memberNo = memberRows[0].member_no;
+            logger.debug('根据姓名匹配到会员', { trade_no: record.trade_no, member_no: memberNo });
+          }
+        }
+
+        // 检查收入记录是否已存在（根据交易号或交易时间+金额）
+        const [existingIncome] = await executeQuery(
+          `SELECT id FROM income_records 
+           WHERE payment_method = '支付宝' 
+           AND payment_date = DATE(?)
+           AND amount = ?
+           AND notes LIKE ?`,
+          [record.trade_time, record.amount, `%${record.trade_no}%`]
+        );
+
+        let existingIncomeRows: any[] = [];
+        if (Array.isArray(existingIncome)) {
+          if (existingIncome.length === 2 && Array.isArray(existingIncome[0])) {
+            existingIncomeRows = existingIncome[0];
+          } else if (Array.isArray(existingIncome[0])) {
+            existingIncomeRows = existingIncome[0];
+          } else {
+            existingIncomeRows = existingIncome;
+          }
+        }
+
+        if (existingIncomeRows.length > 0) {
+          // 收入记录已存在，只更新支付宝记录表
+          logger.debug('收入记录已存在，跳过', { trade_no: record.trade_no });
+        } else {
+          // 创建收入记录
+          const paymentDate = record.trade_time ? new Date(record.trade_time).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          const notes = `支付宝交易号: ${record.trade_no}${record.payer_name ? ` | 付款方: ${record.payer_name}` : ''}${record.remark ? ` | ${record.remark}` : ''}`;
+
+          const [incomeResult] = await executeQuery(
+            `INSERT INTO income_records 
+            (member_no, payment_date, payment_method, amount, notes, operator_id) 
+            VALUES (?, ?, '支付宝', ?, ?, ?)`,
+            [
+              memberNo || '',
+              paymentDate,
+              record.amount,
+              notes,
+              operatorId
+            ]
+          );
+
+          interface InsertResult {
+            insertId: number;
+            affectedRows: number;
+          }
+          const incomeId = incomeResult && typeof incomeResult === 'object' && 'insertId' in incomeResult
+            ? (incomeResult as InsertResult).insertId
+            : null;
+
+          logger.info('创建收入记录成功', { 
+            trade_no: record.trade_no, 
+            income_id: incomeId,
+            member_no: memberNo || '未匹配'
+          });
+        }
+
+        // 保存到支付宝记录表（用于记录和查询）
+        const [existingAlipay] = await executeQuery(
           'SELECT id FROM alipay_transactions WHERE trade_no = ?',
           [record.trade_no]
         );
 
-        let existingRows: any[] = [];
-        if (Array.isArray(existing)) {
-          if (existing.length === 2 && Array.isArray(existing[0])) {
-            existingRows = existing[0];
-          } else if (Array.isArray(existing[0])) {
-            existingRows = existing[0];
+        let existingAlipayRows: any[] = [];
+        if (Array.isArray(existingAlipay)) {
+          if (existingAlipay.length === 2 && Array.isArray(existingAlipay[0])) {
+            existingAlipayRows = existingAlipay[0];
+          } else if (Array.isArray(existingAlipay[0])) {
+            existingAlipayRows = existingAlipay[0];
           } else {
-            existingRows = existing;
+            existingAlipayRows = existingAlipay;
           }
         }
 
-        if (existingRows.length > 0) {
+        if (existingAlipayRows.length > 0) {
           // 更新已存在的记录
           await executeQuery(
             `UPDATE alipay_transactions SET 
               out_trade_no = ?, trade_time = ?, amount = ?, 
               payer_account = ?, payer_name = ?, trade_status = ?, 
               trade_type = ?, product_name = ?, remark = ?,
-              synced_at = NOW(), synced_by = ?
+              member_no = ?, synced_at = NOW(), synced_by = ?
             WHERE trade_no = ?`,
             [
               record.out_trade_no,
@@ -158,18 +273,18 @@ export async function POST(request: NextRequest) {
               record.trade_type,
               record.product_name,
               record.remark,
+              memberNo,
               operatorId,
               record.trade_no
             ]
           );
-          logger.debug('更新已存在的支付宝记录', { trade_no: record.trade_no });
         } else {
           // 插入新记录
           await executeQuery(
             `INSERT INTO alipay_transactions 
             (trade_no, out_trade_no, trade_time, amount, payer_account, payer_name, 
-             trade_status, trade_type, product_name, remark, synced_at, synced_by) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+             trade_status, trade_type, product_name, remark, member_no, synced_at, synced_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
             [
               record.trade_no,
               record.out_trade_no,
@@ -181,11 +296,12 @@ export async function POST(request: NextRequest) {
               record.trade_type,
               record.product_name,
               record.remark,
+              memberNo,
               operatorId
             ]
           );
-          logger.debug('插入新的支付宝记录', { trade_no: record.trade_no });
         }
+
         successCount++;
       } catch (error) {
         failedCount++;
@@ -220,8 +336,9 @@ export async function POST(request: NextRequest) {
       total: records.length,
       success: successCount,
       failed: failedCount,
+      imported: successCount, // 已导入到收入管理的数量
       errors: errors.length > 0 ? errors.slice(0, 10) : [] // 只返回前10个错误
-    }, '上传完成');
+    }, `上传完成，已导入 ${successCount} 条收入记录`);
 
   } catch (error) {
     logger.error('上传支付宝CSV文件失败', error instanceof Error ? error : new Error(String(error)));

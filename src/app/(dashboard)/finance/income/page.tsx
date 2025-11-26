@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, ChangeEvent, useCallback } from 'react';
+import { useEffect, useState, ChangeEvent, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Upload } from 'lucide-react';
 
 interface SessionUser {
   id: number;
@@ -71,6 +72,73 @@ export default function IncomePage() {
     notes: ''
   });
   const [editLoading, setEditLoading] = useState(false);
+
+  // 支付宝导入相关
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleAlipayUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast({
+        variant: 'destructive',
+        title: '上传失败',
+        description: '只支持CSV格式文件'
+      });
+      return;
+    }
+
+    if (!session?.user?.id) {
+      toast({
+        variant: 'destructive',
+        title: '上传失败',
+        description: '请先登录'
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('operator_id', String(session.user.id));
+
+      const response = await fetch('/api/finance/alipay/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const apiResponse = await response.json();
+
+      if (response.ok && apiResponse.success) {
+        const data = apiResponse.data;
+        toast({
+          title: '导入成功',
+          description: `成功导入 ${data.imported || data.success} 条收入记录${data.failed > 0 ? `，失败 ${data.failed} 条` : ''}`
+        });
+        
+        // 刷新列表
+        await fetchRecords();
+      } else {
+        throw new Error(apiResponse.error || apiResponse.message || '导入失败');
+      }
+    } catch (error) {
+      console.error('导入支付宝收款失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '导入失败',
+        description: error instanceof Error ? error.message : '请稍后重试'
+      });
+    } finally {
+      setUploading(false);
+      // 清空文件输入
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const fetchRecords = async () => {
     try {
@@ -165,12 +233,31 @@ export default function IncomePage() {
       <div className="p-3 sm:p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <h1 className="text-lg sm:text-xl font-semibold">收入管理</h1>
-          <Button 
-            onClick={() => setNewIncomeDialogOpen(true)}
-            className="w-full sm:w-auto"
-          >
-            新增收入
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleAlipayUpload}
+              className="hidden"
+              disabled={uploading}
+            />
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              {uploading ? '导入中...' : '导入支付宝收款'}
+            </Button>
+            <Button 
+              onClick={() => setNewIncomeDialogOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              新增收入
+            </Button>
+          </div>
         </div>
 
         <Card className="p-3 sm:p-4 mb-4">
