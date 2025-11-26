@@ -201,9 +201,34 @@ function UsersPageContent() {
       }
       
       const data = await response.json();
-      setUsers(data.users || []);
-      setTotalCount(data.total || data.users?.length || 0);
-      setTotalPages(Math.ceil((data.total || data.users?.length || 0) / size));
+      
+      // 兼容新旧API响应格式
+      // 新格式: { success: true, data: { users: [...], total: ..., page: ..., pageSize: ..., totalPages: ... } }
+      // 旧格式: { users: [...], total: ... }
+      let usersList: User[] = [];
+      let total = 0;
+      let calculatedTotalPages = 1;
+      
+      if (data.success && data.data) {
+        // 新格式：使用 createSuccessResponse 返回的格式
+        usersList = Array.isArray(data.data.users) ? data.data.users : [];
+        total = data.data.total || 0;
+        calculatedTotalPages = data.data.totalPages || Math.ceil(total / size);
+      } else if (Array.isArray(data.users)) {
+        // 旧格式：直接是 users 数组
+        usersList = data.users;
+        total = data.total || data.users.length || 0;
+        calculatedTotalPages = Math.ceil(total / size);
+      } else {
+        // 兼容处理：尝试从 data.data 获取
+        usersList = Array.isArray(data.data?.users) ? data.data.users : [];
+        total = data.data?.total || data.total || 0;
+        calculatedTotalPages = data.data?.totalPages || Math.ceil(total / size);
+      }
+      
+      setUsers(usersList);
+      setTotalCount(total);
+      setTotalPages(calculatedTotalPages);
       setLoading(false);
     } catch (error) {
       console.error('获取用户列表失败:', error);
@@ -878,6 +903,8 @@ function UsersPageContent() {
               fetchUsers(1, newSize);
               setCurrentPage(1);
             }}
+            aria-label="每页显示条数"
+            title="选择每页显示的记录数"
           >
             <option value="10">10条/页</option>
             <option value="25">25条/页</option>
@@ -891,7 +918,9 @@ function UsersPageContent() {
             <input 
               type="number" 
               min="1" 
-              max={totalPages} 
+              max={totalPages}
+              aria-label="跳转到页码"
+              placeholder="页码"
               value={currentPage}
               onChange={(e) => {
                 const value = parseInt(e.target.value);

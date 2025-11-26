@@ -20,14 +20,16 @@ export default function ContractTestPage() {
     try {
       setLoading(true);
       const response = await fetch('/api/contracts?page=1&limit=10&status=all&contractType=all&search=');
-      const data: ContractListResponse = await response.json();
+      const apiResponse = await response.json();
 
-      console.log('API响应:', data);
+      console.log('API响应:', apiResponse);
 
-      if (response.ok) {
-        setContracts(data.contracts);
+      if (response.ok && apiResponse.success) {
+        // API使用createSuccessResponse包装，数据在data字段中
+        const data: ContractListResponse = apiResponse.data || {};
+        setContracts(data.contracts || []);
       } else {
-        console.error('获取合同列表失败:', data.error);
+        console.error('获取合同列表失败:', apiResponse.error || apiResponse.message);
       }
     } catch (error) {
       console.error('获取合同列表失败:', error);

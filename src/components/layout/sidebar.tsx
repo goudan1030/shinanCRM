@@ -194,14 +194,14 @@ export function Sidebar({ className, onMenuClick }: SidebarProps) {
     const targetPath = href in menuRedirectMap ? 
       menuRedirectMap[href as keyof typeof menuRedirectMap] : 
       href;
-    
+      
     // 在移动端点击菜单后立即关闭菜单，提升响应速度
     if (onMenuClick) {
       onMenuClick();
     }
     
     // 立即导航，不使用startTransition避免潜在问题
-    router.push(targetPath);
+      router.push(targetPath);
   };
 
 

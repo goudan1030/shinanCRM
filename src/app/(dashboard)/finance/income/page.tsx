@@ -92,18 +92,21 @@ export default function IncomePage() {
         }
       });
       
-      if (!response.ok) {
-        throw new Error('获取数据失败');
-      }
+      const apiResponse = await response.json();
 
-      const data = await response.json() as {
+      if (response.ok && apiResponse.success) {
+        // API使用createSuccessResponse包装，数据在data字段中
+        const data = apiResponse.data as {
         records: IncomeRecord[];
         total: number;
         totalPages: number;
       };
       setRecords(data.records || []);
-      setTotalCount(data.total);
-      setTotalPages(data.totalPages);
+        setTotalCount(data.total || 0);
+        setTotalPages(data.totalPages || 1);
+      } else {
+        throw new Error(apiResponse.error || apiResponse.message || '获取数据失败');
+      }
     } catch (error) {
       console.error('获取收入记录失败:', error);
       toast({
@@ -116,19 +119,19 @@ export default function IncomePage() {
     }
   };
 
+  // 当筛选条件变化时，重置到第一页
   useEffect(() => {
     if (session) {
-      fetchRecords();
+      setCurrentPage(1);
     }
-  }, [session]);
+  }, [searchKeyword, paymentMethodFilter, yearFilter, monthFilter, session]);
 
-  // 添加筛选条件变化时的数据刷新
+  // 当页码或筛选条件变化时，重新获取数据
   useEffect(() => {
     if (session) {
-      setCurrentPage(1); // 重置到第一页
       fetchRecords();
     }
-  }, [searchKeyword, paymentMethodFilter, yearFilter, monthFilter]);
+  }, [session, currentPage, searchKeyword, paymentMethodFilter, yearFilter, monthFilter]);
 
   const getPaymentMethodText = (method: string) => {
     switch (method) {
@@ -513,9 +516,10 @@ export default function IncomePage() {
                     })
                   });
 
-                  if (!response.ok) {
-                    const errorData = await response.json() as { error: string };
-                    throw new Error(errorData.error || '创建失败');
+                  const apiResponse = await response.json();
+                  
+                  if (!response.ok || !apiResponse.success) {
+                    throw new Error(apiResponse.error || apiResponse.message || '创建失败');
                   }
 
                   toast({
@@ -588,9 +592,10 @@ export default function IncomePage() {
                     body: JSON.stringify({ id: selectedRecordId })
                   });
 
-                  if (!response.ok) {
-                    const errorData = await response.json() as { error: string };
-                    throw new Error(errorData.error || '删除失败');
+                  const apiResponse = await response.json();
+                  
+                  if (!response.ok || !apiResponse.success) {
+                    throw new Error(apiResponse.error || apiResponse.message || '删除失败');
                   }
 
                   toast({
@@ -735,9 +740,10 @@ export default function IncomePage() {
                     })
                   });
 
-                  if (!response.ok) {
-                    const errorData = await response.json() as { error: string };
-                    throw new Error(errorData.error || '更新失败');
+                  const apiResponse = await response.json();
+                  
+                  if (!response.ok || !apiResponse.success) {
+                    throw new Error(apiResponse.error || apiResponse.message || '更新失败');
                   }
 
                   toast({

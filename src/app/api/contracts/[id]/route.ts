@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
 import { Contract } from '@/types/contract';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/contracts/[id]');
 
 // 获取单个合同详情
 export async function GET(
@@ -12,10 +16,7 @@ export async function GET(
     const contractId = parseInt(id);
 
     if (isNaN(contractId)) {
-      return NextResponse.json(
-        { error: '无效的合同ID' },
-        { status: 400 }
-      );
+      return createErrorResponse('无效的合同ID', 400);
     }
 
     const [rows] = await executeQuery(
@@ -39,13 +40,37 @@ export async function GET(
     );
 
     if (!rows || rows.length === 0) {
-      return NextResponse.json(
-        { error: '合同不存在' },
-        { status: 404 }
-      );
+      return createErrorResponse('合同不存在', 404);
     }
 
-    const rawContract = rows[0] as any;
+    interface ContractRow {
+      id: number;
+      contract_number: string;
+      member_id: number;
+      template_id: number;
+      contract_type: string;
+      content: string;
+      variables: Record<string, unknown>;
+      status: string;
+      created_at: string;
+      updated_at: string;
+      signed_at?: string | null;
+      expires_at?: string | null;
+      pdf_url?: string | null;
+      signature_data?: string | null;
+      signature_hash?: string | null;
+      member_no?: string;
+      member_name?: string;
+      member_real_name?: string;
+      member_phone?: string;
+      member_id_card?: string;
+      template_name?: string;
+      signer_real_name?: string;
+      signer_phone?: string;
+      signer_id_card?: string;
+      [key: string]: unknown;
+    }
+    const rawContract = (Array.isArray(rows) && rows[0] ? rows[0] : {}) as ContractRow;
     
     // 构造正确的合同对象结构
     const contract: Contract = {
@@ -81,13 +106,10 @@ export async function GET(
       } : undefined
     };
 
-    return NextResponse.json(contract);
+    return createSuccessResponse(contract, '获取合同详情成功');
   } catch (error) {
-    console.error('获取合同详情失败:', error);
-    return NextResponse.json(
-      { error: '获取合同详情失败' },
-      { status: 500 }
-    );
+    logger.error('获取合同详情失败', error instanceof Error ? error : new Error(String(error)));
+    return createErrorResponse('获取合同详情失败', 500);
   }
 }
 
@@ -103,10 +125,7 @@ export async function PUT(
     const { status, pdfUrl } = body;
 
     if (isNaN(contractId)) {
-      return NextResponse.json(
-        { error: '无效的合同ID' },
-        { status: 400 }
-      );
+      return createErrorResponse('无效的合同ID', 400);
     }
 
     // 验证合同是否存在
@@ -116,10 +135,7 @@ export async function PUT(
     );
 
     if (!existingRows || existingRows.length === 0) {
-      return NextResponse.json(
-        { error: '合同不存在' },
-        { status: 404 }
-      );
+      return createErrorResponse('合同不存在', 404);
     }
 
     // 更新合同
@@ -141,10 +157,7 @@ export async function PUT(
     }
 
     if (updateFields.length === 0) {
-      return NextResponse.json(
-        { error: '没有需要更新的字段' },
-        { status: 400 }
-      );
+      return createErrorResponse('没有需要更新的字段', 400);
     }
 
     updateValues.push(contractId);
@@ -154,13 +167,10 @@ export async function PUT(
       updateValues
     );
 
-    return NextResponse.json({ success: true });
+    return createSuccessResponse(null, '更新合同成功');
   } catch (error) {
-    console.error('更新合同失败:', error);
-    return NextResponse.json(
-      { error: '更新合同失败' },
-      { status: 500 }
-    );
+    logger.error('更新合同失败', error instanceof Error ? error : new Error(String(error)));
+    return createErrorResponse('更新合同失败', 500);
   }
 }
 
@@ -174,10 +184,7 @@ export async function DELETE(
     const contractId = parseInt(id);
 
     if (isNaN(contractId)) {
-      return NextResponse.json(
-        { error: '无效的合同ID' },
-        { status: 400 }
-      );
+      return createErrorResponse('无效的合同ID', 400);
     }
 
     // 检查合同是否存在
@@ -187,10 +194,7 @@ export async function DELETE(
     );
 
     if (!rows || rows.length === 0) {
-      return NextResponse.json(
-        { error: '合同不存在' },
-        { status: 404 }
-      );
+      return createErrorResponse('合同不存在', 404);
     }
 
     // 开始事务删除合同及相关数据
@@ -201,18 +205,18 @@ export async function DELETE(
       // 2. 删除合同记录
       await executeQuery('DELETE FROM contracts WHERE id = ?', [contractId]);
       
-      console.log(`成功删除合同 ${contractId} 及其相关签署信息`);
+      logger.info('成功删除合同及其相关签署信息', { contractId });
     } catch (deleteError) {
-      console.error('删除合同相关数据失败:', deleteError);
+      logger.error('删除合同相关数据失败', { 
+        contractId, 
+        error: deleteError instanceof Error ? deleteError : new Error(String(deleteError)) 
+      });
       throw deleteError;
     }
 
-    return NextResponse.json({ success: true });
+    return createSuccessResponse(null, '删除合同成功');
   } catch (error) {
-    console.error('删除合同失败:', error);
-    return NextResponse.json(
-      { error: '删除合同失败' },
-      { status: 500 }
-    );
+    logger.error('删除合同失败', error instanceof Error ? error : new Error(String(error)));
+    return createErrorResponse('删除合同失败', 500);
   }
 }

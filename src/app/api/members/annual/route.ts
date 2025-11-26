@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '../../../../lib/mysql';
-import { RowDataPacket } from 'mysql2';
+import { NextRequest } from 'next/server';
+import { executeQuery } from '@/lib/database-netlify';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/members/annual');
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,50 +11,37 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '25');
     
-    console.log('年费会员查询参数:', { page, pageSize });
+    logger.debug('年费会员查询参数', { page, pageSize });
 
-    // 使用真实数据库查询
-    const mysql = await createClient();
-    
     // 计算分页参数
     const offset = (page - 1) * pageSize;
 
-    // 完全简化，不使用任何条件，只做基本查询
-    const query = `SELECT * FROM members LIMIT ${pageSize} OFFSET ${offset}`;
-    console.log('执行查询:', query);
-    
-    const [rows] = await mysql.query<RowDataPacket[]>(query);
-    
     // 获取总数
-    const countQuery = 'SELECT COUNT(*) as total FROM members';
-    console.log('执行总数查询:', countQuery);
+    const [countResult] = await executeQuery('SELECT COUNT(*) as total FROM members WHERE type = ?', ['ANNUAL']);
+    interface CountResult {
+      total: number;
+    }
+    const total = Array.isArray(countResult) && countResult[0] && typeof countResult[0] === 'object' && 'total' in countResult[0]
+      ? Number((countResult[0] as CountResult).total) || 0
+      : 0;
     
-    const [countResult] = await mysql.query<RowDataPacket[]>(countQuery);
+    // 查询数据
+    const [rows] = await executeQuery(
+      'SELECT * FROM members WHERE type = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      ['ANNUAL', pageSize, offset]
+    );
     
-    await mysql.end();
+    logger.debug('年费会员API返回数据', { count: Array.isArray(rows) ? rows.length : 0, total });
     
-    const total = (countResult as RowDataPacket[])[0]?.total || 0;
-    
-    // 输出查询结果信息
-    console.log('年费会员API返回数据条数:', (rows as RowDataPacket[]).length);
-    
-    return new NextResponse(JSON.stringify({
-      data: rows,
+    return createSuccessResponse({
+      data: Array.isArray(rows) ? rows : [],
       total,
       page,
-      pageSize
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+      pageSize,
+      totalPages: Math.ceil(total / pageSize)
+    }, '获取年费会员列表成功');
   } catch (error) {
-    console.error('获取年费会员列表失败:', error);
-    return new NextResponse(JSON.stringify({ 
-      error: '获取年费会员列表失败', 
-      details: error instanceof Error ? error.message : String(error)
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    logger.error('获取年费会员列表失败', error instanceof Error ? error : new Error(String(error)));
+    return createErrorResponse('获取年费会员列表失败', 500);
   }
 }

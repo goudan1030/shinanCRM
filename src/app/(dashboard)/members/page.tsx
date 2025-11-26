@@ -309,20 +309,39 @@ function MembersPageContent() {
         success: response.ok,
         error: data.error,
         details: data.details,
-        totalRecords: data.total,
-        records: data.data?.length,
-        recordSample: data.data && data.data.length > 0 ? data.data[0] : '无数据'
+        hasSuccess: 'success' in data,
+        dataKeys: data.data ? Object.keys(data.data) : 'no data'
       });
 
       if (!response.ok) {
         throw new Error(data.error || '获取会员列表失败');
       }
 
-      console.log('成功获取会员数据，记录数:', data.data?.length);
-      setMembers(data.data || []);
-      setTotal(data.total || 0);
-      setTotalCount(data.total || 0);
-      setMemberCounts(data.memberCounts || { total: data.total || 0 });
+      // 兼容新旧API响应格式
+      // 新格式: { success: true, data: { data: [...], total: ..., pagination: {...} } }
+      // 旧格式: { data: [...], total: ... }
+      let membersList: Member[] = [];
+      let totalCount = 0;
+      
+      if (data.success && data.data) {
+        // 新格式：使用 createSuccessResponse 返回的格式
+        membersList = Array.isArray(data.data.data) ? data.data.data : [];
+        totalCount = data.data.total || 0;
+      } else if (Array.isArray(data.data)) {
+        // 旧格式：直接是数组
+        membersList = data.data;
+        totalCount = data.total || 0;
+      } else {
+        // 兼容处理：如果 data.data 是对象但包含 data 字段
+        membersList = Array.isArray(data.data?.data) ? data.data.data : [];
+        totalCount = data.data?.total || data.total || 0;
+      }
+
+      console.log('成功获取会员数据，记录数:', membersList.length);
+      setMembers(membersList);
+      setTotal(totalCount);
+      setTotalCount(totalCount);
+      setMemberCounts(data.memberCounts || { total: totalCount });
       console.log('===== 会员列表获取完成 =====');
     } catch (error) {
       console.error('获取会员列表失败:', error);

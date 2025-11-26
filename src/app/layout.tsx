@@ -8,6 +8,12 @@ import ClientPerformanceMonitor from '@/components/utils/client-performance-moni
 import { Suspense } from 'react'
 import { LoadingOverlay } from '@/components/layout/loading-overlay';
 import { ClientErrorBoundary } from '@/components/layout/client-error-boundary';
+import { validateEnvOnStartup } from '@/lib/env-validator';
+
+// 在服务器端验证环境变量
+if (typeof window === 'undefined') {
+  validateEnvOnStartup();
+}
 
 // 为视口和主题颜色添加单独的配置
 export const viewport: Viewport = {

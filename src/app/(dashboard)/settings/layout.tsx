@@ -34,6 +34,14 @@ export default function SettingsLayout({
         >
           <span className="text-[13px]">安全设置</span>
         </Link>
+        <Link
+          href="/system/api-check"
+          className={`flex items-center rounded-md py-2 px-3 ${
+            pathname === '/system/api-check' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+          }`}
+        >
+          <span className="text-[13px]">API检查</span>
+        </Link>
       </div>
     </div>
   );

@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/finance/income/update');
 
 export async function POST(request: Request) {
   try {
@@ -7,14 +11,11 @@ export async function POST(request: Request) {
     
     // 验证必填字段
     if (!data.id || !data.member_no || !data.payment_date || !data.amount) {
-      return NextResponse.json(
-        { error: '请填写必要的信息' },
-        { status: 400 }
-      );
+      return createErrorResponse('请填写必要的信息', 400);
     }
 
     // 更新收入记录
-    const [result] = await executeQuery(
+    await executeQuery(
       'UPDATE income_records SET member_no = ?, payment_date = ?, payment_method = ?, amount = ?, notes = ? WHERE id = ?',
       [
         data.member_no,
@@ -26,19 +27,9 @@ export async function POST(request: Request) {
       ]
     );
 
-    const response = NextResponse.json({ success: true, data: result });
-    
-    // 设置防缓存头
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-    
-    return response;
+    return createSuccessResponse(null, '更新收入记录成功');
   } catch (error) {
-    console.error('更新收入记录失败:', error);
-    return NextResponse.json(
-      { error: '更新收入记录失败' },
-      { status: 500 }
-    );
+    logger.error('更新收入记录失败', error instanceof Error ? error : new Error(String(error)));
+    return createErrorResponse('更新收入记录失败', 500);
   }
 }

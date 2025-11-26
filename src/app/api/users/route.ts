@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { executeQuery, testNetlifyConnection } from '@/lib/database-netlify';
+import { executeQuery } from '@/lib/database-netlify';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/users');
 
 // 获取所有用户
 export async function GET(request: Request) {
@@ -14,7 +18,12 @@ export async function GET(request: Request) {
     
     // 查询总记录数
     const [countResult] = await executeQuery('SELECT COUNT(*) as total FROM users');
-    const total = (countResult as any[])[0].total;
+    interface CountResult {
+      total: number;
+    }
+    const total = Array.isArray(countResult) && countResult[0] && typeof countResult[0] === 'object' && 'total' in countResult[0]
+      ? Number((countResult[0] as CountResult).total) || 0
+      : 0;
     
     // 分页查询用户并关联会员信息，包含view_count字段
     const [users] = await executeQuery(
@@ -25,46 +34,22 @@ export async function GET(request: Request) {
       [pageSize, offset]
     );
     
-    return NextResponse.json({ 
-      success: true, 
+    return createSuccessResponse({
       users,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize)
-    });
-  } catch (error: any) {
-    console.error('获取用户失败:', error);
+    }, '获取用户列表成功');
+  } catch (error) {
+    logger.error('获取用户失败', error instanceof Error ? error : new Error(String(error)));
     
-    // 详细的错误日志
-    if (error instanceof Error) {
-      console.error('错误详情:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-      
-      // 特殊处理数据库连接错误
-      if (error.message.includes('connect') || error.message.includes('ECONNREFUSED')) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'Database connection failed. Please check server configuration.',
-            details: '数据库连接失败，请检查服务器配置'
-          },
-          { status: 503 }
-        );
-      }
+    // 特殊处理数据库连接错误
+    if (error instanceof Error && (error.message.includes('connect') || error.message.includes('ECONNREFUSED'))) {
+      return createErrorResponse('数据库连接失败，请检查服务器配置', 503);
     }
     
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: '获取用户列表失败',
-        details: error instanceof Error ? error.message : '服务器内部错误'
-      },
-      { status: 500 }
-    );
+    return createErrorResponse('获取用户列表失败', 500);
   }
 }
 
@@ -83,19 +68,13 @@ export async function POST(request: Request) {
     
     // 基本验证
     if (!phone) {
-      return NextResponse.json(
-        { success: false, error: '手机号不能为空' },
-        { status: 400 }
-      );
+      return createErrorResponse('手机号不能为空', 400);
     }
     
     // 检查手机号是否已存在
     const [existingUsers] = await executeQuery('SELECT * FROM users WHERE phone = ?', [phone]);
-    if ((existingUsers as any[]).length > 0) {
-      return NextResponse.json(
-        { success: false, error: '该手机号已注册' },
-        { status: 400 }
-      );
+    if (Array.isArray(existingUsers) && existingUsers.length > 0) {
+      return createErrorResponse('该手机号已注册', 400);
     }
     
     // 插入新用户
@@ -111,32 +90,19 @@ export async function POST(request: Request) {
       ]
     );
     
-    const userId = (result as any).insertId;
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: '用户创建成功',
-      id: userId
-    });
-  } catch (error: any) {
-    console.error('创建用户失败:', error);
-    
-    // 详细的错误日志
-    if (error instanceof Error) {
-      console.error('错误详情:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
+    interface InsertResult {
+      insertId: number;
+      affectedRows: number;
     }
+    const userId = result && typeof result === 'object' && 'insertId' in result
+      ? (result as InsertResult).insertId
+      : null;
     
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: '创建用户失败',
-        details: error instanceof Error ? error.message : '服务器内部错误'
-      },
-      { status: 500 }
-    );
+    return createSuccessResponse({ 
+      id: userId
+    }, '用户创建成功');
+  } catch (error) {
+    logger.error('创建用户失败', error instanceof Error ? error : new Error(String(error)));
+    return createErrorResponse('创建用户失败', 500);
   }
 } 

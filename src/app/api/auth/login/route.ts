@@ -1,36 +1,34 @@
 import { NextResponse } from 'next/server';
 import { authenticateUser } from '../../../../lib/database-netlify';
 import { generateToken, setTokenCookie } from '../../../../lib/token';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/auth/login');
 
 export async function POST(request: Request) {
-  console.log('=== 开始处理登录请求 ===');
+  logger.debug('开始处理登录请求');
   try {
     const data = await request.json() as { email: string; password: string };
     const { email, password } = data;
-    console.log('收到登录请求:', { email, passwordProvided: !!password });
+    logger.debug('收到登录请求', { email, passwordProvided: !!password });
 
     // 验证必填字段
     if (!email || !password) {
-      console.log('✗ 登录失败: 缺少必填字段');
-      return NextResponse.json(
-        { error: '请输入邮箱和密码' },
-        { status: 400 }
-      );
+      logger.warn('登录失败: 缺少必填字段');
+      return createErrorResponse('请输入邮箱和密码', 400);
     }
 
     // 验证用户凭据
     try {
-      console.log('开始验证用户凭据...');
+      logger.debug('开始验证用户凭据');
       const user = await authenticateUser(email, password);
       if (!user) {
-        console.log('✗ 登录失败: 用户验证未通过');
-        return NextResponse.json(
-          { error: '邮箱或密码错误，请检查输入是否正确' },
-          { status: 401 }
-        );
+        logger.warn('登录失败: 用户验证未通过', { email });
+        return createErrorResponse('邮箱或密码错误，请检查输入是否正确', 401);
       }
 
-      console.log('✓ 用户验证通过，准备创建JWT Token...');
+      logger.debug('用户验证通过，准备创建JWT Token', { userId: user.id });
       
       // 创建JWT Token
       const token = generateToken({
@@ -42,52 +40,36 @@ export async function POST(request: Request) {
       });
       
       // 创建响应对象
-      const response = NextResponse.json({
+      const response = createSuccessResponse({
         user: {
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
           avatar_url: user.avatar_url
-        },
-        message: '登录成功'
-      });
+        }
+      }, '登录成功');
 
       // 在响应中设置JWT Token Cookie
-      console.log('设置JWT Token Cookie:', { userId: user.id, email: user.email });
+      logger.debug('设置JWT Token Cookie', { userId: user.id, email: user.email });
       setTokenCookie(response, token);
 
-      console.log('✓ 登录成功');
-      console.log('=== 登录请求处理完成 ===');
+      logger.info('登录成功', { userId: user.id, email: user.email });
       return response;
 
     } catch (authError) {
-      // 正确提取错误信息，避免返回 [object Object]
+      logger.error('用户验证过程出错', authError instanceof Error ? authError : new Error(String(authError)));
       const errorMessage = authError instanceof Error 
         ? authError.message 
-        : (typeof authError === 'object' && authError !== null && 'message' in authError)
-          ? String((authError as any).message)
-          : String(authError || '验证过程发生错误');
-      
-      console.error('✗ 用户验证过程出错:', errorMessage, authError);
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: 401 }
-      );
+        : String(authError || '验证过程发生错误');
+      return createErrorResponse(errorMessage, 401);
     }
 
   } catch (error) {
-    // 正确提取错误信息，避免返回 [object Object]
+    logger.error('登录请求处理失败', error instanceof Error ? error : new Error(String(error)));
     const errorMessage = error instanceof Error 
       ? error.message 
-      : (typeof error === 'object' && error !== null && 'message' in error)
-        ? String((error as any).message)
-        : String(error || '登录失败，请重试');
-    
-    console.error('✗ 登录请求处理失败:', errorMessage, error);
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+      : String(error || '登录失败，请重试');
+    return createErrorResponse(errorMessage, 500);
   }
 }

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     // 构建查询条件
     let whereClause = 'WHERE deleted = 0';
-    const queryParams: any[] = [];
+    const queryParams: (string | number)[] = [];
 
     if (searchKeyword) {
       // 判断是否为会员编号格式（M开头+数字）
@@ -54,7 +54,12 @@ export async function GET(request: NextRequest) {
       `SELECT COUNT(*) as total FROM members ${whereClause}`,
       queryParams
     );
-    const total = (countResult as any[])[0].total;
+    interface CountResult {
+      total: number;
+    }
+    const total = Array.isArray(countResult) && countResult[0] && typeof countResult[0] === 'object' && 'total' in countResult[0]
+      ? Number((countResult[0] as CountResult).total) || 0
+      : 0;
 
     // 获取分页数据
     const [rows] = await executeQuery(
@@ -96,8 +101,8 @@ export async function GET(request: NextRequest) {
       [...queryParams, pageSize, offset]
     );
 
-    const response = NextResponse.json({
-      success: true,
+    const { createSuccessResponse } = await import('@/lib/api-utils');
+    return createSuccessResponse({
       data: rows,
       total: total,
       pagination: {
@@ -106,27 +111,12 @@ export async function GET(request: NextRequest) {
         total,
         totalPages: Math.ceil(total / pageSize)
       }
-    });
-
-    // 禁用缓存
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-
-    return response;
+    }, '获取会员列表成功');
   } catch (error) {
-    console.error('获取会员列表失败:', error);
+    const logger = (await import('@/lib/logger')).createLogger('api/members');
+    logger.error('获取会员列表失败', error instanceof Error ? error : new Error(String(error)));
     
-    const response = NextResponse.json({
-      success: false,
-      error: '获取会员列表失败'
-    }, { status: 500 });
-
-    // 禁用缓存
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-
-    return response;
+    const { createErrorResponse } = await import('@/lib/api-utils');
+    return createErrorResponse('获取会员列表失败', 500);
   }
 }

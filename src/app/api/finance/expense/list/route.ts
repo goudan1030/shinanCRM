@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { executeQuery, testNetlifyConnection } from '@/lib/database-netlify';
+import { executeQuery } from '@/lib/database-netlify';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/finance/expense/list');
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +15,7 @@ export async function GET(request: Request) {
     const month = searchParams.get('month') || '';
     const year = searchParams.get('year') || '';
 
-    console.log('查询参数:', { page, pageSize, searchKeyword, month, year });
+    logger.debug('查询参数', { page, pageSize, searchKeyword, month, year });
 
     const offset = (page - 1) * pageSize;
 
@@ -68,53 +72,34 @@ export async function GET(request: Request) {
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     params.push(pageSize, offset);
 
-    console.log('执行计数查询...');
     // 执行计数查询
     const [countResult] = await executeQuery(countQuery, countParams);
-    const total = (countResult as any[])[0].total;
-    console.log('支出记录总数:', total);
+    interface CountResult {
+      total: number;
+    }
+    const total = Array.isArray(countResult) && countResult[0] && typeof countResult[0] === 'object' && 'total' in countResult[0]
+      ? Number((countResult[0] as CountResult).total) || 0
+      : 0;
 
-    console.log('执行主查询...');
     // 执行主查询
     const [records] = await executeQuery(query, params);
-    console.log('✓ 支出记录查询成功，返回', (records as any[]).length, '条记录');
+    logger.debug('查询完成', { total, recordCount: Array.isArray(records) ? records.length : 0 });
 
-    return NextResponse.json({
-      records,
+    return createSuccessResponse({
+      records: Array.isArray(records) ? records : [],
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize)
-    });
+    }, '获取支出记录成功');
   } catch (error) {
-    console.error('获取支出记录失败:', error);
-    
-    // 详细的错误日志
-    if (error instanceof Error) {
-      console.error('错误详情:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
+    logger.error('获取支出记录失败', error instanceof Error ? error : new Error(String(error)));
       
       // 特殊处理数据库连接错误
-      if (error.message.includes('connect') || error.message.includes('ECONNREFUSED')) {
-        return NextResponse.json(
-          { 
-            error: 'Database connection failed. Please check server configuration.',
-            details: '数据库连接失败，请检查服务器配置'
-          },
-          { status: 503 }
-        );
-      }
+    if (error instanceof Error && (error.message.includes('connect') || error.message.includes('ECONNREFUSED'))) {
+      return createErrorResponse('数据库连接失败，请检查服务器配置', 503);
     }
     
-    return NextResponse.json(
-      { 
-        error: '获取支出记录失败',
-        details: error instanceof Error ? error.message : '服务器内部错误'
-      },
-      { status: 500 }
-    );
+    return createErrorResponse('获取支出记录失败', 500);
   }
 }

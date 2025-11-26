@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 // 在Netlify环境使用优化的数据库连接
-import { executeQuery, testNetlifyConnection } from '@/lib/database-netlify';
+import { executeQuery } from '@/lib/database-netlify';
 import { getSession } from '@/lib/auth';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/members/create');
 
 
 // 定义会员数据类型
@@ -37,13 +41,13 @@ export async function POST(request: Request) {
     
     // 使用自定义认证替代next-auth
     const session = await getSession().catch(err => {
-      console.log('认证检查失败（忽略）:', err.message);
+      logger.debug('认证检查失败（忽略）', { error: err.message });
       return null;
     });
-    console.log('用户会话验证:', session ? '已登录' : '未登录');
+    logger.debug('用户会话验证', { authenticated: !!session });
     
     const data = await request.json() as MemberData;
-    console.log('接收到的数据:', { 
+    logger.debug('接收到的数据', { 
       member_no: data.member_no, 
       wechat: data.wechat, 
       phone: data.phone,
@@ -54,11 +58,8 @@ export async function POST(request: Request) {
     const requiredFields = ['member_no', 'wechat', 'phone'];
     for (const field of requiredFields) {
       if (!data[field as keyof MemberData]) {
-        console.log(`验证失败: ${field} 为空`);
-        return NextResponse.json(
-          { error: `${field} 不能为空` },
-          { status: 400 }
-        );
+        logger.warn(`验证失败: ${field} 为空`);
+        return createErrorResponse(`${field} 不能为空`, 400);
       }
     }
 
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       }
     });
 
-    console.log('开始数据库插入操作...');
+    logger.debug('开始数据库插入操作');
     
     // 使用优化的数据库查询函数
     const [result] = await executeQuery(
@@ -114,49 +115,29 @@ export async function POST(request: Request) {
     );
     
     // 获取新创建的会员ID
-    const memberId = (result as any).insertId;
-    console.log('✓ 会员创建成功:', { memberId });
+    interface InsertResult {
+      insertId: number;
+      affectedRows: number;
+    }
+    const memberId = result && typeof result === 'object' && 'insertId' in result
+      ? (result as InsertResult).insertId
+      : null;
+    
+    logger.info('会员创建成功', { memberId });
+    logger.debug('企业微信通知将由数据库触发器自动处理', { memberId });
 
-    // 企业微信通知已改为数据库触发器自动处理
-    // 数据库触发器会自动检测新增会员并添加到通知队列
-    // 后台监控脚本会定期处理队列并发送通知
-    console.log('✓ 会员创建成功，企业微信通知将由数据库触发器自动处理:', { memberId });
-
-    return NextResponse.json({
-      success: true,
-      message: '创建成功',
+    return createSuccessResponse({
       id: memberId
-    });
+    }, '创建成功');
 
   } catch (error) {
-    console.error('创建会员失败:', error);
+    logger.error('创建会员失败', error instanceof Error ? error : new Error(String(error)));
     
-    // 详细的错误日志
-    if (error instanceof Error) {
-      console.error('错误详情:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-      
-      // 特殊处理数据库连接错误
-      if (error.message.includes('connect') || error.message.includes('ECONNREFUSED')) {
-        return NextResponse.json(
-          { 
-            error: 'Database connection failed. Please check server configuration.',
-            details: '数据库连接失败，请检查服务器配置'
-          },
-          { status: 503 }
-        );
-      }
+    // 特殊处理数据库连接错误
+    if (error instanceof Error && (error.message.includes('connect') || error.message.includes('ECONNREFUSED'))) {
+      return createErrorResponse('数据库连接失败，请检查服务器配置', 503);
     }
     
-    return NextResponse.json(
-      { 
-        error: 'There is a problem with the server configuration. Check the server logs for more information.',
-        details: error instanceof Error ? error.message : '创建失败'
-      },
-      { status: 500 }
-    );
+    return createErrorResponse('创建会员失败', 500);
   }
 }

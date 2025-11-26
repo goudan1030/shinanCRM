@@ -84,12 +84,17 @@ export default function ExpensePage() {
       const { url, options } = createNoCacheRequest(`/api/finance/expense/list?${searchParams.toString()}`);
       const response = await fetch(url, options);
       
-      if (!response.ok) throw new Error('获取数据失败');
+      const apiResponse = await response.json();
       
-      const data = await response.json() as ExpenseListResponse;
+      if (response.ok && apiResponse.success) {
+        // API使用createSuccessResponse包装，数据在data字段中
+        const data = apiResponse.data as ExpenseListResponse;
       setRecords(data.records || []);
       setTotalCount(data.total || 0);
       setTotalPages(data.totalPages || 1);
+      } else {
+        throw new Error(apiResponse.error || apiResponse.message || '获取数据失败');
+      }
     } catch (error) {
       console.error('获取支出记录失败:', error);
       toast({
@@ -543,9 +548,10 @@ export default function ExpensePage() {
                     })
                   });
                   
-                  if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error((error as {message?: string}).message || '创建失败');
+                  const apiResponse = await response.json();
+                  
+                  if (!response.ok || !apiResponse.success) {
+                    throw new Error(apiResponse.error || apiResponse.message || '创建失败');
                   }
 
                   toast({
@@ -616,9 +622,10 @@ export default function ExpensePage() {
                     body: JSON.stringify({ id: selectedRecordId })
                   });
 
-                  if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error((error as {error?: string}).error || '删除失败');
+                  const apiResponse = await response.json();
+                  
+                  if (!response.ok || !apiResponse.success) {
+                    throw new Error(apiResponse.error || apiResponse.message || '删除失败');
                   }
 
                   toast({
@@ -721,9 +728,10 @@ export default function ExpensePage() {
                     })
                   });
 
-                  if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error((error as {message?: string}).message || '更新失败');
+                  const apiResponse = await response.json();
+                  
+                  if (!response.ok || !apiResponse.success) {
+                    throw new Error(apiResponse.error || apiResponse.message || '更新失败');
                   }
 
                   toast({

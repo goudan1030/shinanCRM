@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/members/import');
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,10 +11,7 @@ export async function POST(request: NextRequest) {
     const { members } = body;
 
     if (!Array.isArray(members) || members.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: '请提供有效的会员数据'
-      }, { status: 400 });
+      return createErrorResponse('请提供有效的会员数据', 400);
     }
 
     let successCount = 0;
@@ -62,41 +63,24 @@ export async function POST(request: NextRequest) {
 
         successCount++;
       } catch (error) {
-        console.error(`导入会员失败:`, error);
+        logger.error('导入单个会员失败', { 
+          member: member.nickname, 
+          error: error instanceof Error ? error : new Error(String(error)) 
+        });
         errors.push(`会员 ${member.nickname} 导入失败`);
         errorCount++;
       }
     }
 
-    const response = NextResponse.json({
-      success: true,
-      data: {
+    logger.info('批量导入会员完成', { successCount, errorCount, total: members.length });
+    
+    return createSuccessResponse({
         successCount,
         errorCount,
         errors: errors.slice(0, 10) // 只返回前10个错误
-      },
-      message: `导入完成：成功 ${successCount} 个，失败 ${errorCount} 个`
-    });
-
-    // 禁用缓存
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-
-    return response;
+    }, `导入完成：成功 ${successCount} 个，失败 ${errorCount} 个`);
   } catch (error) {
-    console.error('批量导入会员失败:', error);
-    
-    const response = NextResponse.json({
-      success: false,
-      error: '批量导入失败'
-    }, { status: 500 });
-
-    // 禁用缓存
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-
-    return response;
+    logger.error('批量导入会员失败', error instanceof Error ? error : new Error(String(error)));
+    return createErrorResponse('批量导入失败', 500);
   }
 } 

@@ -484,7 +484,7 @@ export default function ContractDetailPage() {
                   {contract.content ? (
                     <div 
                       className="contract-preview text-xs md:text-sm"
-                      dangerouslySetInnerHTML={{ __html: contract.content }}
+                      dangerouslySetInnerHTML={{ __html: contract.content }} 
                     />
                   ) : (
                     <div className="text-center text-gray-500 py-20">
