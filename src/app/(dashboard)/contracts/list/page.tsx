@@ -50,6 +50,8 @@ export default function ContractListPage() {
         params.append('search', filters.search);
       }
 
+      console.log('请求合同列表:', `/api/contracts?${params}`);
+      
       const response = await fetch(`/api/contracts?${params}`, {
         credentials: 'include',  // 确保发送cookie
         cache: 'no-store',       // 禁用缓存
@@ -59,14 +61,39 @@ export default function ContractListPage() {
           'Expires': '0'
         }
       });
-      const apiResponse = await response.json();
 
-      if (response.ok && apiResponse.success) {
+      console.log('合同列表响应状态:', response.status, response.statusText);
+      
+      // 检查响应状态
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('合同列表API错误:', response.status, errorText);
+        let errorMessage = '请稍后重试';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorJson.message || errorMessage;
+        } catch {
+          errorMessage = errorText || `服务器错误: ${response.status}`;
+        }
+        toast({
+          title: '获取合同列表失败',
+          description: errorMessage,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const apiResponse = await response.json();
+      console.log('合同列表API响应:', apiResponse);
+
+      if (apiResponse.success) {
         // API使用createSuccessResponse包装，数据在data字段中
         const data: ContractListResponse = apiResponse.data || {};
         const contractsList = data.contracts || [];
         const total = data.total || 0;
         const calculatedTotalPages = data.totalPages || Math.ceil(total / pagination.limit);
+        
+        console.log('解析后的合同数据:', { count: contractsList.length, total, totalPages: calculatedTotalPages });
         
         setContracts(contractsList);
         setPagination(prev => ({
@@ -75,6 +102,7 @@ export default function ContractListPage() {
           totalPages: calculatedTotalPages
         }));
       } else {
+        console.error('合同列表API返回失败:', apiResponse);
         toast({
           title: '获取合同列表失败',
           description: (apiResponse && typeof apiResponse === 'object' && 'error' in apiResponse && typeof apiResponse.error === 'string') 
@@ -84,9 +112,10 @@ export default function ContractListPage() {
         });
       }
     } catch (error) {
+      console.error('获取合同列表异常:', error);
       toast({
         title: '获取合同列表失败',
-        description: '网络错误，请稍后重试',
+        description: error instanceof Error ? error.message : '网络错误，请稍后重试',
         variant: 'destructive'
       });
     } finally {
