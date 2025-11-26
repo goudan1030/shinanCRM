@@ -125,12 +125,33 @@ export async function GET(
     }
 
     // 获取合同信息
-    const [contractRows] = await executeQuery(
+    const contractResult = await executeQuery(
       'SELECT * FROM contracts WHERE id = ?',
       [contractId]
     );
 
+    console.log('合同查询结果:', { 
+      resultType: Array.isArray(contractResult) ? 'array' : typeof contractResult,
+      resultLength: Array.isArray(contractResult) ? contractResult.length : 'N/A'
+    });
+
+    // executeQuery返回格式: [rows, fields]
+    let contractRows: any[] = [];
+    if (Array.isArray(contractResult)) {
+      if (contractResult.length === 2 && Array.isArray(contractResult[0])) {
+        // 格式: [[rows], fields]
+        contractRows = contractResult[0];
+      } else if (Array.isArray(contractResult[0])) {
+        // 格式: [[rows]]
+        contractRows = contractResult[0];
+      } else {
+        // 格式: [rows]
+        contractRows = contractResult;
+      }
+    }
+
     if (!contractRows || contractRows.length === 0) {
+      console.error('合同不存在:', contractId);
       return NextResponse.json(
         { error: '合同不存在' },
         { status: 404 }
@@ -138,6 +159,7 @@ export async function GET(
     }
 
     const contract = contractRows[0];
+    console.log('找到合同:', { id: contract.id, contract_number: contract.contract_number, status: contract.status });
 
     // 检查合同是否已签署
     if (contract.status !== 'SIGNED') {
@@ -151,109 +173,187 @@ export async function GET(
     const executablePath = resolveResult.executablePath;
     chromeDebugInfo = resolveResult.debugInfo;
     console.log('使用的Chromium路径:', executablePath || 'puppeteer默认内置版本');
+    console.log('Chrome调试信息:', JSON.stringify(chromeDebugInfo, null, 2));
 
-    // 生成PDF
-    const browser = await puppeteer.launch({
-      headless: true,
-      executablePath,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
-    });
-
-    const page = await browser.newPage();
-    
-    // 处理合同内容中的图片路径，转换为绝对URL
-    let pdfContent = contract.content;
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                   (process.env.NODE_ENV === 'production' ? 'https://admin.xinghun.info' : 'http://localhost:3000');
-    
-    // 修复所有图片路径
-    pdfContent = pdfContent.replace(/src="\/zhang\.png"/g, `src="${baseUrl}/zhang.png"`);
-    pdfContent = pdfContent.replace(/src="\/alipay\.png"/g, `src="${baseUrl}/alipay.png"`);
-    
-    // 处理签名图片（base64数据）
-    pdfContent = pdfContent.replace(/src="data:image\/png;base64,([^"]+)"/g, 'src="data:image/png;base64,$1"');
-    
-    // 添加中文字体支持，防止乱码
-    const htmlWithFonts = `
-    <!DOCTYPE html>
-    <html lang="zh-CN">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
-        * {
-          font-family: 'Noto Sans SC', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', sans-serif !important;
-        }
-        body {
-          font-family: 'Noto Sans SC', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', sans-serif !important;
-          line-height: 1.6;
-          color: #333;
-        }
-        p, div, span, h1, h2, h3, h4, h5, h6 {
-          font-family: 'Noto Sans SC', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', sans-serif !important;
-        }
-      </style>
-    </head>
-    <body>
-      ${pdfContent}
-    </body>
-    </html>`;
-    
-    await page.setContent(htmlWithFonts, { waitUntil: 'networkidle0' });
-
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '20mm',
-        right: '20mm',
-        bottom: '20mm',
-        left: '20mm'
-      }
-    });
-
-    await browser.close();
-
-    // 根据模式和环境设置不同的响应头
-    const filename = `contract-${contract.contract_number}.pdf`;
-    let headers: Record<string, string> = {
-      'Content-Type': 'application/pdf',
-      'Cache-Control': 'no-cache',
-      'Content-Length': pdf.length.toString()
-    };
-
-    if (mode === 'preview' || isWeChat) {
-      // 预览模式或微信环境：在浏览器中直接显示PDF
-      headers['Content-Disposition'] = `inline; filename="${filename}"`;
-      
-      // 为微信环境添加特殊头部
-      if (isWeChat) {
-        headers['X-Content-Type-Options'] = 'nosniff';
-        headers['X-Frame-Options'] = 'SAMEORIGIN';
-      }
-    } else {
-      // 下载模式：触发文件下载
-      headers['Content-Disposition'] = `attachment; filename="${filename}"`;
-      
-      // iOS Safari 特殊处理
-      if (isIOS) {
-        headers['Content-Disposition'] = `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
-      }
+    if (!executablePath) {
+      console.error('无法找到Chrome/Chromium可执行文件');
+      return NextResponse.json(
+        {
+          error: 'PDF生成失败：无法找到Chrome/Chromium浏览器',
+          detail: '服务器未安装Chrome或Chromium浏览器，请联系管理员安装',
+          chrome: debug ? chromeDebugInfo : undefined
+        },
+        { status: 500 }
+      );
     }
 
-    console.log('PDF响应头:', headers);
+    // 生成PDF
+    console.log('启动Puppeteer浏览器...');
+    let browser;
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        executablePath,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions'
+        ],
+        timeout: 30000 // 30秒超时
+      });
+      console.log('浏览器启动成功');
+    } catch (launchError) {
+      console.error('浏览器启动失败:', launchError);
+      return NextResponse.json(
+        {
+          error: 'PDF生成失败：无法启动浏览器',
+          detail: launchError instanceof Error ? launchError.message : '未知错误',
+          chrome: debug ? chromeDebugInfo : undefined
+        },
+        { status: 500 }
+      );
+    }
 
-    return new NextResponse(pdf, { headers });
+    let page;
+    try {
+      page = await browser.newPage();
+      console.log('页面创建成功');
+    } catch (pageError) {
+      console.error('创建页面失败:', pageError);
+      await browser.close();
+      return NextResponse.json(
+        {
+          error: 'PDF生成失败：无法创建页面',
+          detail: pageError instanceof Error ? pageError.message : '未知错误'
+        },
+        { status: 500 }
+      );
+    }
+    
+    try {
+      // 处理合同内容中的图片路径，转换为绝对URL
+      let pdfContent = contract.content || '';
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                     (process.env.NODE_ENV === 'production' ? 'https://admin.xinghun.info' : 'http://localhost:3000');
+      
+      console.log('处理合同内容，baseUrl:', baseUrl);
+      
+      // 修复所有图片路径
+      pdfContent = pdfContent.replace(/src="\/zhang\.png"/g, `src="${baseUrl}/zhang.png"`);
+      pdfContent = pdfContent.replace(/src="\/alipay\.png"/g, `src="${baseUrl}/alipay.png"`);
+      
+      // 处理签名图片（base64数据）
+      pdfContent = pdfContent.replace(/src="data:image\/png;base64,([^"]+)"/g, 'src="data:image/png;base64,$1"');
+      
+      // 添加中文字体支持，防止乱码
+      const htmlWithFonts = `
+      <!DOCTYPE html>
+      <html lang="zh-CN">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+          * {
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', sans-serif !important;
+          }
+          body {
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', sans-serif !important;
+            line-height: 1.6;
+            color: #333;
+          }
+          p, div, span, h1, h2, h3, h4, h5, h6 {
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', sans-serif !important;
+          }
+        </style>
+      </head>
+      <body>
+        ${pdfContent}
+      </body>
+      </html>`;
+      
+      console.log('设置页面内容...');
+      await page.setContent(htmlWithFonts, { 
+        waitUntil: 'networkidle0',
+        timeout: 30000 // 30秒超时
+      });
+      console.log('页面内容加载完成');
+
+      console.log('生成PDF...');
+      const pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20mm',
+          right: '20mm',
+          bottom: '20mm',
+          left: '20mm'
+        },
+        timeout: 30000 // 30秒超时
+      });
+      console.log('PDF生成成功，大小:', pdf.length, 'bytes');
+
+      await browser.close();
+      console.log('浏览器已关闭');
+
+      // 根据模式和环境设置不同的响应头
+      const filename = `contract-${contract.contract_number}.pdf`;
+      let headers: Record<string, string> = {
+        'Content-Type': 'application/pdf',
+        'Cache-Control': 'no-cache',
+        'Content-Length': pdf.length.toString()
+      };
+
+      if (mode === 'preview' || isWeChat) {
+        // 预览模式或微信环境：在浏览器中直接显示PDF
+        headers['Content-Disposition'] = `inline; filename="${filename}"`;
+        
+        // 为微信环境添加特殊头部
+        if (isWeChat) {
+          headers['X-Content-Type-Options'] = 'nosniff';
+          headers['X-Frame-Options'] = 'SAMEORIGIN';
+        }
+      } else {
+        // 下载模式：触发文件下载
+        headers['Content-Disposition'] = `attachment; filename="${filename}"`;
+        
+        // iOS Safari 特殊处理
+        if (isIOS) {
+          headers['Content-Disposition'] = `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+        }
+      }
+
+      console.log('PDF响应头:', headers);
+
+      return new NextResponse(pdf, { headers });
+    } catch (pdfError) {
+      console.error('PDF生成过程失败:', pdfError);
+      if (browser) {
+        try {
+          await browser.close();
+        } catch (closeError) {
+          console.error('关闭浏览器失败:', closeError);
+        }
+      }
+      const errorMessage = pdfError instanceof Error ? pdfError.message : '未知错误';
+      const errorStack = pdfError instanceof Error ? pdfError.stack : undefined;
+      return NextResponse.json(
+        {
+          error: '生成PDF失败',
+          detail: debug || process.env.NODE_ENV !== 'production' ? errorMessage : undefined,
+          stack: !process.env.NODE_ENV || process.env.NODE_ENV !== 'production' ? errorStack : undefined,
+          chrome: debug ? chromeDebugInfo : undefined
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('生成PDF失败:', error);
     const errorMessage = error instanceof Error ? error.message : '未知错误';
