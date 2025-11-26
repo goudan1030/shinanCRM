@@ -110,8 +110,15 @@ export async function GET(request: NextRequest) {
     queryParams.push(limit, offset);
     logger.debug('执行合同列表查询', { query: contractsQuery, params: queryParams });
     
-    const [contracts] = await executeQuery(contractsQuery, queryParams);
-    logger.debug('合同列表查询结果', { count: Array.isArray(contracts) ? contracts.length : 0 });
+    let contracts: any[] = [];
+    try {
+      const result = await executeQuery(contractsQuery, queryParams);
+      contracts = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : (Array.isArray(result) ? result : []);
+      logger.debug('合同列表查询结果', { count: contracts.length, resultType: Array.isArray(result) ? 'array' : typeof result });
+    } catch (queryError) {
+      logger.error('合同列表查询失败', queryError instanceof Error ? queryError : new Error(String(queryError)));
+      throw queryError;
+    }
 
     // 获取总数
     const countQuery = `
@@ -124,12 +131,34 @@ export async function GET(request: NextRequest) {
     const countParams = queryParams.slice(0, -2); // 移除 limit 和 offset
     logger.debug('执行总数查询', { query: countQuery, params: countParams });
     
-    const [countResult] = await executeQuery(countQuery, countParams);
-    logger.debug('总数查询结果', { countResult });
-    
-    const total = Array.isArray(countResult) && countResult[0] && typeof countResult[0] === 'object' && 'total' in countResult[0]
-      ? Number(countResult[0].total) || 0
-      : 0;
+    let total = 0;
+    try {
+      const countResult = await executeQuery(countQuery, countParams);
+      logger.debug('总数查询结果', { countResult, resultType: Array.isArray(countResult) ? 'array' : typeof countResult });
+      
+      // 处理不同的返回格式
+      if (Array.isArray(countResult)) {
+        if (Array.isArray(countResult[0])) {
+          // 格式: [[{total: 10}]]
+          const firstRow = countResult[0][0];
+          total = firstRow && typeof firstRow === 'object' && 'total' in firstRow
+            ? Number(firstRow.total) || 0
+            : 0;
+        } else if (countResult[0] && typeof countResult[0] === 'object' && 'total' in countResult[0]) {
+          // 格式: [{total: 10}]
+          total = Number(countResult[0].total) || 0;
+        } else {
+          // 格式: [10] 或其他
+          total = Number(countResult[0]) || 0;
+        }
+      } else if (countResult && typeof countResult === 'object' && 'total' in countResult) {
+        total = Number(countResult.total) || 0;
+      }
+    } catch (countError) {
+      logger.error('总数查询失败', countError instanceof Error ? countError : new Error(String(countError)));
+      // 如果总数查询失败，使用合同列表的长度作为总数
+      total = contracts.length;
+    }
 
     logger.debug('解析总数', { total });
 
