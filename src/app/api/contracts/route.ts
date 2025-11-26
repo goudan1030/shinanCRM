@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
 import { ContractListResponse, GenerateContractRequest, GenerateContractResponse } from '@/types/contract';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('api/contracts');
 
 // 更新印章样式为叠加效果
 function updateSealOverlayStyle(content: string): string {
@@ -47,6 +51,7 @@ function updateSealOverlayStyle(content: string): string {
 // 获取合同列表
 export async function GET(request: NextRequest) {
   try {
+    logger.debug('开始处理合同列表请求');
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -55,10 +60,12 @@ export async function GET(request: NextRequest) {
     const memberId = searchParams.get('memberId');
     const search = searchParams.get('search');
 
+    logger.debug('请求参数', { page, limit, status, contractType, memberId, search });
+
     const offset = (page - 1) * limit;
     
     let whereConditions = [];
-    let queryParams: any[] = [];
+    let queryParams: (string | number)[] = [];
 
     if (status && status !== 'all') {
       whereConditions.push('c.status = ?');
@@ -101,7 +108,10 @@ export async function GET(request: NextRequest) {
     `;
 
     queryParams.push(limit, offset);
+    logger.debug('执行合同列表查询', { query: contractsQuery, params: queryParams });
+    
     const [contracts] = await executeQuery(contractsQuery, queryParams);
+    logger.debug('合同列表查询结果', { count: Array.isArray(contracts) ? contracts.length : 0 });
 
     // 获取总数
     const countQuery = `
@@ -112,11 +122,30 @@ export async function GET(request: NextRequest) {
     `;
     
     const countParams = queryParams.slice(0, -2); // 移除 limit 和 offset
+    logger.debug('执行总数查询', { query: countQuery, params: countParams });
+    
     const [countResult] = await executeQuery(countQuery, countParams);
-    const total = (countResult as any[])[0]?.total || 0;
+    logger.debug('总数查询结果', { countResult });
+    
+    const total = Array.isArray(countResult) && countResult[0] && typeof countResult[0] === 'object' && 'total' in countResult[0]
+      ? Number(countResult[0].total) || 0
+      : 0;
+
+    logger.debug('解析总数', { total });
 
     // 格式化合同数据，将平铺的会员字段转换为嵌套结构
-    const formattedContracts = (contracts as any[]).map(contract => ({
+    interface ContractRow {
+      id: number;
+      contract_number: string;
+      member_id: number;
+      member_no?: string;
+      member_name?: string;
+      member_phone?: string;
+      member_wechat?: string;
+      template_name?: string;
+      [key: string]: unknown;
+    }
+    const formattedContracts = (Array.isArray(contracts) ? contracts : []).map((contract: ContractRow) => ({
       ...contract,
       member: contract.member_no ? {
         id: contract.member_id,
@@ -130,6 +159,8 @@ export async function GET(request: NextRequest) {
       } : null
     }));
 
+    logger.debug('格式化后的合同数据', { count: formattedContracts.length });
+
     const response: ContractListResponse = {
       contracts: formattedContracts,
       total,
@@ -138,13 +169,14 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit)
     };
 
-    return NextResponse.json(response);
+    logger.info('合同列表获取成功', { total, page, limit });
+    return createSuccessResponse(response, '获取合同列表成功');
   } catch (error) {
-    console.error('获取合同列表失败:', error);
-    return NextResponse.json(
-      { error: '获取合同列表失败' },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.error('获取合同列表失败', error instanceof Error ? error : new Error(String(error)));
+    logger.error('错误详情', { errorMessage, errorStack });
+    return createErrorResponse(`获取合同列表失败: ${errorMessage}`, 500);
   }
 }
 
@@ -156,10 +188,7 @@ export async function POST(request: NextRequest) {
 
     // 验证必需参数
     if (!memberId || !contractType) {
-      return NextResponse.json(
-        { error: '缺少必需参数' },
-        { status: 400 }
-      );
+      return createErrorResponse('缺少必需参数', 400);
     }
 
     // 获取会员信息 - 尝试获取真实姓名和身份证号，如果不存在则使用默认字段
@@ -169,14 +198,17 @@ export async function POST(request: NextRequest) {
     );
 
     if (!memberRows || (memberRows as any[]).length === 0) {
-      return NextResponse.json(
-        { error: '会员不存在' },
-        { status: 404 }
-      );
+      return createErrorResponse('会员不存在', 404);
     }
 
-    const member = (memberRows as any[])[0];
-    console.log('👤 会员信息:', member);
+    interface MemberRow {
+      id: number;
+      member_no: string;
+      nickname?: string;
+      [key: string]: unknown;
+    }
+    const member = memberRows[0] as MemberRow;
+    logger.debug('会员信息', { memberId: member.id, memberNo: member.member_no });
 
     // 使用固定的PDF格式模板
     const template = {
@@ -381,17 +413,25 @@ export async function POST(request: NextRequest) {
 </html>`
     };
     
-    console.log('📋 使用固定PDF模板');
+    logger.debug('使用固定PDF模板', { templateId: template.id, templateName: template.name });
 
     // 生成合同编号
     const contractNumber = `CT${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
     // 解析选中的套餐
-    const selectedPackages = variables.selected_packages ? JSON.parse(variables.selected_packages) : [];
-    console.log('📦 选中的套餐:', selectedPackages);
+    interface PackageItem {
+      id: string;
+      letter: string;
+      price: number;
+      [key: string]: unknown;
+    }
+    const selectedPackages: PackageItem[] = variables.selected_packages 
+      ? (JSON.parse(String(variables.selected_packages)) as PackageItem[])
+      : [];
+    logger.debug('选中的套餐', { selectedPackages });
     
     // 生成选中的套餐字母
-    const selectedPackageLetters = selectedPackages.map((pkg: any) => pkg.letter).join('、');
+    const selectedPackageLetters = selectedPackages.map((pkg) => pkg.letter).join('、');
 
     // 数字转人民币大写汉字函数
     const numberToChinese = (num: number): string => {
@@ -419,7 +459,7 @@ export async function POST(request: NextRequest) {
     };
 
     // 计算合同总金额
-    const totalAmount = selectedPackages.reduce((sum: number, pkg: any) => sum + pkg.price, 0);
+    const totalAmount = selectedPackages.reduce((sum: number, pkg) => sum + (typeof pkg.price === 'number' ? pkg.price : 0), 0);
     const contractAmount = variables.contract_amount || totalAmount.toString();
     const contractAmountChinese = numberToChinese(parseInt(contractAmount)) + '元';
 
@@ -471,10 +511,10 @@ export async function POST(request: NextRequest) {
       supplementaryInfoSection: supplementaryInfoSection,
       
       // 套餐选择状态（用于模板渲染）
-      packageAClass: selectedPackages.some((pkg: any) => pkg.id === 'A') ? 'selected' : '',
-      packageBClass: selectedPackages.some((pkg: any) => pkg.id === 'B') ? 'selected' : '',
-      packageCClass: selectedPackages.some((pkg: any) => pkg.id === 'C') ? 'selected' : '',
-      packageDClass: selectedPackages.some((pkg: any) => pkg.id === 'D') ? 'selected' : '',
+      packageAClass: selectedPackages.some((pkg) => pkg.id === 'A') ? 'selected' : '',
+      packageBClass: selectedPackages.some((pkg) => pkg.id === 'B') ? 'selected' : '',
+      packageCClass: selectedPackages.some((pkg) => pkg.id === 'C') ? 'selected' : '',
+      packageDClass: selectedPackages.some((pkg) => pkg.id === 'D') ? 'selected' : '',
       
       // 其他自定义变量
       ...variables
@@ -484,20 +524,21 @@ export async function POST(request: NextRequest) {
     let contractContent = template.template_content;
     
     // 调试日志：输出变量信息
-    console.log('🔍 合同变量:', JSON.stringify(contractVariables, null, 2));
-    console.log('📄 原始模板长度:', template.template_content.length);
+    logger.debug('合同变量', { 
+      variableCount: Object.keys(contractVariables).length,
+      templateLength: template.template_content.length 
+    });
     
     // 替换所有变量 - 使用更强健的替换方法
+    let replacedCount = 0;
     Object.entries(contractVariables).forEach(([key, value]) => {
       const placeholder = `{{${key}}}`;
       const valueStr = String(value || '');
       
       // 检查是否存在该占位符
       if (contractContent.includes(placeholder)) {
-        console.log(`✅ 替换变量 ${placeholder} -> "${valueStr}"`);
         contractContent = contractContent.split(placeholder).join(valueStr);
-      } else {
-        console.log(`⚠️ 未找到占位符: ${placeholder}`);
+        replacedCount++;
       }
     });
 
@@ -507,10 +548,13 @@ export async function POST(request: NextRequest) {
     // 检查是否还有未替换的变量
     const remainingVariables = contractContent.match(/{{[^}]+}}/g);
     if (remainingVariables) {
-      console.log('⚠️ 未替换的变量:', remainingVariables);
+      logger.warn('未替换的变量', { remainingVariables });
     }
     
-    console.log('📄 处理后合同长度:', contractContent.length);
+    logger.debug('合同内容处理完成', { 
+      replacedCount, 
+      finalLength: contractContent.length 
+    });
 
     // 设置合同到期时间
     let expiresAt = null;
@@ -547,7 +591,7 @@ export async function POST(request: NextRequest) {
     );
 
     const contractId = (result as any).insertId;
-    console.log('✅ 合同创建成功, ID:', contractId, '编号:', contractNumber);
+    logger.info('合同创建成功', { contractId, contractNumber });
 
     // 生成安全的签署令牌和链接
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
@@ -555,7 +599,7 @@ export async function POST(request: NextRequest) {
     let signUrl = `${baseUrl}/contracts/sign/${contractId}`; // 默认链接
     
     try {
-      console.log('🔐 合同创建 - 开始生成安全签署令牌，合同ID:', contractId);
+      logger.debug('开始生成安全签署令牌', { contractId });
       
       // 直接调用令牌生成逻辑，避免HTTP请求的权限问题
       const crypto = require('crypto');
@@ -576,10 +620,13 @@ export async function POST(request: NextRequest) {
 
       // 生成安全的签署链接
       signUrl = `${baseUrl}/contracts/sign?token=${token}`;
-      console.log('🔐 合同创建 - 令牌生成成功，安全链接:', signUrl);
+      logger.debug('令牌生成成功', { contractId, tokenLength: token.length });
       
     } catch (error) {
-      console.warn('🔐 合同创建 - 生成安全签署链接失败，使用默认链接:', error);
+      logger.warn('生成安全签署链接失败，使用默认链接', { 
+        contractId, 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
 
     const response: GenerateContractResponse = {
@@ -589,12 +636,9 @@ export async function POST(request: NextRequest) {
       expiresAt: expiresAt.toISOString()
     };
 
-    return NextResponse.json(response);
+    return createSuccessResponse(response, '合同创建成功');
   } catch (error) {
-    console.error('生成合同失败:', error);
-    return NextResponse.json(
-      { error: '生成合同失败' },
-      { status: 500 }
-    );
+    logger.error('生成合同失败', error instanceof Error ? error : new Error(String(error)));
+    return createErrorResponse('生成合同失败', 500);
   }
 }
