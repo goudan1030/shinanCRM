@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,21 +51,14 @@ export default function ContractListPage() {
       }
 
       const response = await fetch(`/api/contracts?${params}`);
-      const data: ContractListResponse = await response.json();
+      const apiResponse = await response.json();
 
-      if (response.ok) {
+      if (response.ok && apiResponse.success) {
+        // API使用createSuccessResponse包装，数据在data字段中
+        const data: ContractListResponse = apiResponse.data || {};
         const contractsList = data.contracts || [];
         const total = data.total || 0;
         const calculatedTotalPages = data.totalPages || Math.ceil(total / pagination.limit);
-        
-        console.log('合同列表数据:', {
-          contracts: contractsList.length,
-          total: total,
-          totalPages: calculatedTotalPages,
-          page: data.page || pagination.page,
-          limit: data.limit || pagination.limit,
-          calculatedTotalPages
-        });
         
         setContracts(contractsList);
         setPagination(prev => ({
@@ -76,12 +69,13 @@ export default function ContractListPage() {
       } else {
         toast({
           title: '获取合同列表失败',
-          description: (data as any).error || '请稍后重试',
+          description: (apiResponse && typeof apiResponse === 'object' && 'error' in apiResponse && typeof apiResponse.error === 'string') 
+            ? apiResponse.error 
+            : apiResponse.message || '请稍后重试',
           variant: 'destructive'
         });
       }
     } catch (error) {
-      console.error('获取合同列表失败:', error);
       toast({
         title: '获取合同列表失败',
         description: '网络错误，请稍后重试',
@@ -103,19 +97,22 @@ export default function ContractListPage() {
   };
 
   // 处理筛选
-  const handleFilterChange = (key: string, value: string) => {
+  const handleFilterChange = useCallback((key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPagination(prev => ({ ...prev, page: 1 }));
-  };
+  }, []);
 
   // 处理分页
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setPagination(prev => ({ ...prev, page }));
-  };
+  }, []);
 
 
-  // 检测环境
-  const detectEnvironment = () => {
+  // 检测环境 - 使用useMemo缓存结果
+  const environment = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return { isWeChat: false, isIOS: false, isAndroid: false, isMobile: false };
+    }
     const userAgent = navigator.userAgent;
     const isWeChat = userAgent.includes('MicroMessenger');
     const isIOS = /iPhone|iPad|iPod/.test(userAgent);
@@ -123,13 +120,11 @@ export default function ContractListPage() {
     const isMobile = isIOS || isAndroid;
     
     return { isWeChat, isIOS, isAndroid, isMobile };
-  };
+  }, []);
 
   // 下载PDF - 智能处理不同环境
-  const handleDownloadPDF = (contractId: number, contractNumber: string) => {
-    const { isWeChat, isIOS, isMobile } = detectEnvironment();
-    
-    console.log('PDF下载环境检测:', { isWeChat, isIOS, isMobile });
+  const handleDownloadPDF = useCallback((contractId: number, contractNumber: string) => {
+    const { isWeChat, isIOS } = environment;
 
     if (isWeChat) {
       // 微信环境：提供预览页面选项
@@ -182,10 +177,10 @@ export default function ContractListPage() {
         description: `正在下载合同 ${contractNumber} 的PDF文件`,
       });
     }
-  };
+  }, [environment, toast]);
 
   // 删除合同
-  const handleDeleteContract = async (contractId: number, contractNumber?: string) => {
+  const handleDeleteContract = useCallback(async (contractId: number, contractNumber?: string) => {
     const confirmMessage = `确定要删除合同 ${contractNumber || contractId} 吗？\n\n此操作将同时删除：\n- 合同记录\n- 相关的签署信息\n- 所有关联数据\n\n此操作不可撤销！`;
     if (!confirm(confirmMessage)) return;
 
@@ -209,17 +204,16 @@ export default function ContractListPage() {
         });
       }
     } catch (error) {
-      console.error('删除合同失败:', error);
       toast({
         title: '删除失败',
         description: '网络错误，请稍后重试',
         variant: 'destructive'
       });
     }
-  };
+  }, [fetchContracts, toast]);
 
   // 撤销签署
-  const handleRevokeSignature = async (contractId: number, contractNumber?: string) => {
+  const handleRevokeSignature = useCallback(async (contractId: number, contractNumber?: string) => {
     const confirmMessage = `确定要撤销合同 ${contractNumber || contractId} 的签署吗？\n\n此操作将：\n- 将合同状态改为"待签署"\n- 清除签署时间和签名数据\n- 删除签署记录\n- 恢复合同内容为未签署状态\n\n撤销后需要重新签署！`;
     if (!confirm(confirmMessage)) return;
 
@@ -244,17 +238,16 @@ export default function ContractListPage() {
         });
       }
     } catch (error) {
-      console.error('撤销签署失败:', error);
       toast({
         title: '撤销失败',
         description: '网络错误，请稍后重试',
         variant: 'destructive'
       });
     }
-  };
+  }, [fetchContracts, toast]);
 
-  // 获取状态颜色
-  const getStatusColor = (status: string) => {
+  // 获取状态颜色 - 使用useMemo缓存
+  const getStatusColor = useMemo(() => (status: string) => {
     switch (status) {
       case 'DRAFT': return 'bg-gray-100 text-gray-800';
       case 'PENDING': return 'bg-yellow-100 text-yellow-800';
@@ -263,7 +256,7 @@ export default function ContractListPage() {
       case 'CANCELLED': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
-  };
+  }, []);
 
   return (
     <div className="p-4 md:p-6 pb-[64px] min-h-screen">
@@ -448,7 +441,7 @@ export default function ContractListPage() {
                             variant="default"
                             size="sm"
                             className="h-8 px-3 text-xs flex-1"
-                            onClick={() => router.push(`/contracts/sign/${contract.id}`)}
+                            onClick={() => router.push(`/contracts/sign?id=${contract.id}`)}
                           >
                             <PenTool className="h-3 w-3 mr-1" />
                             签署
@@ -474,7 +467,7 @@ export default function ContractListPage() {
                                     description: '签署链接已复制到剪贴板',
                                   });
                                 } else {
-                                  const signUrl = `${window.location.origin}/contracts/sign/${contract.id}`;
+                                  const signUrl = `${window.location.origin}/contracts/sign?id=${contract.id}`;
                                   navigator.clipboard.writeText(signUrl);
                                   toast({
                                     title: '链接已复制',
@@ -483,7 +476,7 @@ export default function ContractListPage() {
                                 }
                               } catch (error) {
                                 console.error('生成安全签署链接失败:', error);
-                                const signUrl = `${window.location.origin}/contracts/sign/${contract.id}`;
+                                const signUrl = `${window.location.origin}/contracts/sign?id=${contract.id}`;
                                 navigator.clipboard.writeText(signUrl);
                                 toast({
                                   title: '链接已复制',
@@ -615,7 +608,7 @@ export default function ContractListPage() {
                                 <Button
                                   variant="default"
                                   size="sm"
-                                  onClick={() => router.push(`/contracts/sign/${contract.id}`)}
+                                  onClick={() => router.push(`/contracts/sign?id=${contract.id}`)}
                                   title="签署合同"
                                 >
                                   <PenTool className="h-4 w-4" />
@@ -641,7 +634,7 @@ export default function ContractListPage() {
                                         });
                                       } else {
                                         // 如果生成令牌失败，使用默认链接
-                                        const signUrl = `${window.location.origin}/contracts/sign/${contract.id}`;
+                                        const signUrl = `${window.location.origin}/contracts/sign?id=${contract.id}`;
                                         navigator.clipboard.writeText(signUrl);
                                         toast({
                                           title: '链接已复制',
@@ -650,7 +643,7 @@ export default function ContractListPage() {
                                       }
                                     } catch (error) {
                                       console.error('生成安全签署链接失败:', error);
-                                      const signUrl = `${window.location.origin}/contracts/sign/${contract.id}`;
+                                      const signUrl = `${window.location.origin}/contracts/sign?id=${contract.id}`;
                                       navigator.clipboard.writeText(signUrl);
                                       toast({
                                         title: '链接已复制',
@@ -733,6 +726,8 @@ export default function ContractListPage() {
                   page: 1 // 重置到第一页
                 }));
               }}
+              aria-label="每页显示条数"
+              title="选择每页显示的记录数"
             >
               <option value="10">10条/页</option>
               <option value="20">20条/页</option>
@@ -755,6 +750,8 @@ export default function ContractListPage() {
                   }
                 }}
                 className="w-[40px] md:w-[50px] px-1 md:px-2 py-1 border border-gray-300 rounded text-center text-xs md:text-sm"
+                aria-label="跳转到页码"
+                placeholder="页码"
               />
               <span className="ml-1 md:ml-2">页</span>
             </div>
