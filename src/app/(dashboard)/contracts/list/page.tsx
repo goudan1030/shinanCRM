@@ -50,7 +50,15 @@ export default function ContractListPage() {
         params.append('search', filters.search);
       }
 
-      const response = await fetch(`/api/contracts?${params}`);
+      const response = await fetch(`/api/contracts?${params}`, {
+        credentials: 'include',  // 确保发送cookie
+        cache: 'no-store',       // 禁用缓存
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       const apiResponse = await response.json();
 
       if (response.ok && apiResponse.success) {
@@ -186,7 +194,8 @@ export default function ContractListPage() {
 
     try {
       const response = await fetch(`/api/contracts/${contractId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -219,7 +228,8 @@ export default function ContractListPage() {
 
     try {
       const response = await fetch(`/api/contracts/${contractId}/revoke`, {
-        method: 'POST'
+        method: 'POST',
+        credentials: 'include'
       });
 
       const data = await response.json();
@@ -454,6 +464,7 @@ export default function ContractListPage() {
                               try {
                                 const response = await fetch(`/api/contracts/${contract.id}/sign-token`, {
                                   method: 'POST',
+                                  credentials: 'include',
                                   headers: {
                                     'Content-Type': 'application/json',
                                   },
@@ -620,6 +631,7 @@ export default function ContractListPage() {
                                     try {
                                       const response = await fetch(`/api/contracts/${contract.id}/sign-token`, {
                                         method: 'POST',
+                                        credentials: 'include',
                                         headers: {
                                           'Content-Type': 'application/json',
                                         },
