@@ -200,10 +200,8 @@ export function Sidebar({ className, onMenuClick }: SidebarProps) {
       onMenuClick();
     }
     
-    // 使用startTransition优化路由切换，避免阻塞UI
-    startTransition(() => {
-      router.push(targetPath);
-    });
+    // 立即导航，不使用startTransition避免潜在问题
+    router.push(targetPath);
   };
 
 
