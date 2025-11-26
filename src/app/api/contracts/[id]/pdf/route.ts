@@ -89,8 +89,21 @@ const resolveExecutablePath = (): { executablePath?: string; debugInfo: ChromeDe
   try {
     const defaultPath = puppeteer.executablePath();
     debugInfo.puppeteerDefault = defaultPath;
-    debugInfo.selected = defaultPath;
-    return { executablePath: defaultPath, debugInfo };
+    
+    // 检查puppeteer默认路径是否存在
+    if (defaultPath && existsSync(defaultPath)) {
+      debugInfo.selected = defaultPath;
+      return { executablePath: defaultPath, debugInfo };
+    } else {
+      logger.warn('Puppeteer默认路径不存在，尝试下载', { 
+        defaultPath,
+        error: 'executable not found'
+      });
+      // 如果默认路径不存在，尝试让puppeteer下载
+      // 注意：这需要PUPPETEER_SKIP_DOWNLOAD未设置
+      debugInfo.selected = defaultPath;
+      return { executablePath: defaultPath, debugInfo };
+    }
   } catch (error) {
     logger.warn('未能获取puppeteer自带的Chromium路径', { 
       error: error instanceof Error ? error.message : String(error)
