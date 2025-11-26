@@ -22,13 +22,13 @@ export const ThreeColumnLayout = memo(function ThreeColumnLayout({
   return (
     <>
       {/* 侧边栏容器 - 在移动端隐藏 */}
-      <div className="hidden md:block fixed inset-y-0 left-0 z-[1000]">
+      <div className="hidden md:block fixed inset-y-0 left-0 z-[1000] h-screen">
         {sidebarContent}
       </div>
 
       {/* 中间栏容器 - 仅在三栏布局时显示，移动端隐藏 */}
       {useThreeColumns && middleContent && (
-        <div className="hidden lg:block fixed inset-y-0 left-[57px] z-[999] w-[240px]">
+        <div className="hidden lg:block fixed inset-y-0 left-[57px] z-[999] w-[240px] h-screen">
           {middleContent}
         </div>
       )}

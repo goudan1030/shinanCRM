@@ -4,6 +4,8 @@
 
 body {
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 @layer base {
@@ -68,6 +70,8 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 }
 
@@ -79,6 +83,8 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 }
 

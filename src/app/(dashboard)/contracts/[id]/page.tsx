@@ -264,7 +264,7 @@ export default function ContractDetailPage() {
   }
 
   return (
-    <div className="p-6 pb-20 min-h-screen">
+    <div className="!p-2 md:!p-6 pb-20 md:pb-6 min-h-screen">
       {/* 合同样式 */}
       <style jsx global>{`
         .contract-preview {
@@ -373,31 +373,32 @@ export default function ContractDetailPage() {
       `}</style>
       
       {/* 头部导航 */}
-      <div className="mb-6">
-        <div className="flex items-center gap-4 mb-4">
-          <Button variant="outline" size="sm" asChild>
+      <div className="mb-3 md:mb-6">
+        <div className="flex items-center gap-2 md:gap-4 mb-3">
+          <Button variant="outline" size="sm" asChild className="h-8 md:h-9">
             <Link href="/contracts/list">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              返回合同列表
+              <ArrowLeft className="h-4 w-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">返回合同列表</span>
+              <span className="sm:hidden">返回</span>
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold text-gray-900">合同详情</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-gray-900">合同详情</h1>
         </div>
       </div>
 
       {/* 主要内容区域 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
         {/* 左侧：合同信息和内容 */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-3 md:space-y-6">
           {/* 合同基本信息 */}
           <Card>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-xl mb-1">
+            <CardHeader className="!p-3 md:!p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-2 md:gap-3">
+                <div className="flex-1">
+                  <CardTitle className="text-lg md:text-xl mb-1">
                     {contract.contract_number}
                   </CardTitle>
-                  <p className="text-gray-600">
+                  <p className="text-sm md:text-base text-gray-600">
                     {contract.template?.name || '合同模板'}
                   </p>
                 </div>
@@ -406,26 +407,26 @@ export default function ContractDetailPage() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="!p-3 md:!p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4">
                 <div>
-                  <div className="text-sm text-gray-500 mb-1">创建时间</div>
-                  <div className="font-medium">
+                  <div className="text-xs md:text-sm text-gray-500 mb-1">创建时间</div>
+                  <div className="text-sm md:text-base font-medium">
                     {new Date(contract.created_at).toLocaleString('zh-CN')}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-500 mb-1">签署时间</div>
-                  <div className="font-medium">
+                  <div className="text-xs md:text-sm text-gray-500 mb-1">签署时间</div>
+                  <div className="text-sm md:text-base font-medium">
                     {contract.signed_at 
                       ? new Date(contract.signed_at).toLocaleString('zh-CN')
                       : <span className="text-gray-400">未签署</span>
                     }
                   </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">到期时间</div>
-                  <div className="font-medium">
+                <div className="sm:col-span-2">
+                  <div className="text-xs md:text-sm text-gray-500 mb-1">到期时间</div>
+                  <div className="text-sm md:text-base font-medium">
                     {contract.expires_at 
                       ? new Date(contract.expires_at).toLocaleString('zh-CN')
                       : <span className="text-green-600 font-medium">长期有效</span>
@@ -438,32 +439,30 @@ export default function ContractDetailPage() {
 
           {/* 合同内容 */}
           <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>合同内容预览</CardTitle>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm text-gray-500">
+            <CardHeader className="!p-3 md:!p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 md:gap-3">
+                <CardTitle className="text-base md:text-lg">合同内容预览</CardTitle>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+                  <div className="text-xs md:text-sm text-gray-500">
                     已填充会员信息的正式合同
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRegenerateContract}
-                      disabled={loading}
-                    >
-                      🔄 刷新预览
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRegenerateContract}
+                    disabled={loading}
+                    className="h-8 text-xs md:text-sm"
+                  >
+                    🔄 刷新预览
+                  </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="!p-3 md:!p-6">
               <div 
-                className="border rounded-lg bg-white overflow-y-auto shadow-inner"
-                style={{ height: '500px', maxHeight: '70vh' }}
+                className="border rounded-lg bg-white overflow-y-auto shadow-inner h-[400px] md:h-[500px] max-h-[60vh] md:max-h-[70vh]"
               >
-                <div className="p-6">
+                <div className="!p-2 md:!p-6">
                   {contract.content ? (
                     <div 
                       className="contract-preview"
@@ -471,9 +470,10 @@ export default function ContractDetailPage() {
                       style={{
                         fontFamily: '"Microsoft YaHei", Arial, sans-serif',
                         lineHeight: '1.6',
-                        fontSize: '14px',
+                        fontSize: '12px',
                         color: '#333'
                       }}
+                      className="text-xs md:text-sm"
                     />
                   ) : (
                     <div className="text-center text-gray-500 py-20">
@@ -489,19 +489,19 @@ export default function ContractDetailPage() {
         </div>
 
         {/* 右侧：会员信息和操作 */}
-        <div className="space-y-6">
+        <div className="space-y-3 md:space-y-6">
           {/* 会员信息 */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="!p-3 md:!p-6">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <span>👤</span>
                 会员信息
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-3 md:p-6 space-y-2 md:space-y-4">
               <div>
-                <div className="text-sm text-gray-500 mb-1">会员姓名</div>
-                <div className="font-medium">
+                <div className="text-xs md:text-sm text-gray-500 mb-1">会员姓名</div>
+                <div className="text-sm md:text-base font-medium">
                   {contract.member?.member_real_name || contract.member?.member_name || '未设置'}
                 </div>
                 {contract.member?.member_real_name && contract.member?.member_name && 
@@ -512,20 +512,20 @@ export default function ContractDetailPage() {
                 )}
               </div>
               <div>
-                <div className="text-sm text-gray-500 mb-1">会员编号</div>
-                <div className="font-medium">
+                <div className="text-xs md:text-sm text-gray-500 mb-1">会员编号</div>
+                <div className="text-sm md:text-base font-medium">
                   {contract.member?.member_no || '无'}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-500 mb-1">手机号</div>
-                <div className="font-medium">
+                <div className="text-xs md:text-sm text-gray-500 mb-1">手机号</div>
+                <div className="text-sm md:text-base font-medium">
                   {contract.member?.member_phone || '未设置'}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-500 mb-1">身份证号</div>
-                <div className="font-medium">
+                <div className="text-xs md:text-sm text-gray-500 mb-1">身份证号</div>
+                <div className="text-sm md:text-base font-medium">
                   {contract.member?.member_id_card ? 
                     `${contract.member.member_id_card.substring(0, 6)}****${contract.member.member_id_card.slice(-4)}` 
                     : '未设置'
@@ -537,24 +537,24 @@ export default function ContractDetailPage() {
 
           {/* 操作区域 */}
           <Card>
-            <CardHeader>
-              <CardTitle>操作</CardTitle>
+            <CardHeader className="!p-3 md:!p-6">
+              <CardTitle className="text-base md:text-lg">操作</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-3 md:p-6 space-y-2 md:space-y-4">
               {contract.status === 'PENDING' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-blue-700 font-medium mb-3">
-                    <Mail className="h-4 w-4" />
-                    发送给客户签署
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 md:p-4">
+                  <div className="flex items-center gap-2 text-blue-700 font-medium mb-2 md:mb-3">
+                    <Mail className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="text-xs md:text-sm">发送给客户签署</span>
                   </div>
                   <div className="flex gap-2 mb-2">
                     <Input 
                       value={signUrl} 
                       readOnly 
-                      className="text-xs"
+                      className="text-xs h-8 md:h-9"
                     />
-                    <Button size="sm" onClick={copySignUrl}>
-                      <Copy className="h-4 w-4" />
+                    <Button size="sm" onClick={copySignUrl} className="h-8 md:h-9 px-3">
+                      <Copy className="h-3 w-3 md:h-4 md:w-4" />
                     </Button>
                   </div>
                   <p className="text-xs text-blue-600">
@@ -565,22 +565,23 @@ export default function ContractDetailPage() {
               
               <Button 
                 variant="outline"
-                className="w-full"
+                className="w-full h-9 md:h-10 text-sm"
                 asChild
               >
                 <Link href={`/contracts/sign?id=${contractId}`} target="_blank">
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                  <ExternalLink className="h-3 w-3 md:h-4 md:w-4 mr-2" />
                   预览签署页面
                 </Link>
               </Button>
 
               {contract.status === 'SIGNED' && (
                 <Button 
-                  className="w-full"
+                  className="w-full h-9 md:h-10 text-sm"
                   onClick={handleDownloadPDF}
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  下载已签署PDF
+                  <Download className="h-3 w-3 md:h-4 md:w-4 mr-2" />
+                  <span className="md:hidden">下载</span>
+                  <span className="hidden md:inline">下载已签署PDF</span>
                 </Button>
               )}
             </CardContent>
@@ -588,13 +589,13 @@ export default function ContractDetailPage() {
 
           {/* 状态信息 */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="!p-3 md:!p-6">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <span>📊</span>
                 状态信息
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="!p-3 md:!p-6">
               <div className={`flex items-center gap-2 p-3 rounded-lg ${
                 contract.status === 'SIGNED' 
                   ? 'bg-green-50 border border-green-200' 

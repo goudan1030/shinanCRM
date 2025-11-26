@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 import ClientPerformanceMonitor from '@/components/utils/client-performance-monitor';
 import { Suspense } from 'react'
 import { LoadingOverlay } from '@/components/layout/loading-overlay';
+import { ClientErrorBoundary } from '@/components/layout/client-error-boundary';
 
 // 为视口和主题颜色添加单独的配置
 export const viewport: Viewport = {
@@ -48,17 +49,19 @@ export default function Layout({
         <link rel="preconnect" href="https://cdn.example.com" />
       </head>
       <body className="antialiased">
-        <RootLayout>
-          <AuthProvider>
-            <Suspense>
-              <LoadingOverlay />
-            </Suspense>
-            {children}
-          </AuthProvider>
-        </RootLayout>
-        <Toaster />
-        {/* 将性能监控改为通过客户端组件实现 */}
-        {process.env.NODE_ENV === 'development' && <ClientPerformanceMonitor />}
+        <ClientErrorBoundary>
+          <RootLayout>
+            <AuthProvider>
+              <Suspense>
+                <LoadingOverlay />
+              </Suspense>
+              {children}
+            </AuthProvider>
+          </RootLayout>
+          <Toaster />
+          {/* 将性能监控改为通过客户端组件实现 */}
+          {process.env.NODE_ENV === 'development' && <ClientPerformanceMonitor />}
+        </ClientErrorBoundary>
       </body>
     </html>
   );

@@ -62,17 +62,31 @@ export async function POST(request: Request) {
       return response;
 
     } catch (authError) {
-      console.error('✗ 用户验证过程出错:', authError);
+      // 正确提取错误信息，避免返回 [object Object]
+      const errorMessage = authError instanceof Error 
+        ? authError.message 
+        : (typeof authError === 'object' && authError !== null && 'message' in authError)
+          ? String((authError as any).message)
+          : String(authError || '验证过程发生错误');
+      
+      console.error('✗ 用户验证过程出错:', errorMessage, authError);
       return NextResponse.json(
-        { error: authError.message || '验证过程发生错误' },
+        { error: errorMessage },
         { status: 401 }
       );
     }
 
   } catch (error) {
-    console.error('✗ 登录请求处理失败:', error);
+    // 正确提取错误信息，避免返回 [object Object]
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : (typeof error === 'object' && error !== null && 'message' in error)
+        ? String((error as any).message)
+        : String(error || '登录失败，请重试');
+    
+    console.error('✗ 登录请求处理失败:', errorMessage, error);
     return NextResponse.json(
-      { error: '登录失败，请重试' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

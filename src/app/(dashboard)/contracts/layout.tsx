@@ -17,9 +17,9 @@ export default function ContractLayout({
       sidebarContent={<Sidebar />}
       className="bg-gray-50"
     >
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex min-h-screen">
         {/* 左侧导航菜单 - 固定位置，移动端隐藏 */}
-        <div className="hidden lg:block fixed inset-y-0 left-[57px] w-[240px] bg-white border-r z-[900]">
+        <div className="hidden lg:block fixed inset-y-0 left-[57px] w-[240px] bg-white border-r z-[900] h-screen">
           <div className="flex h-[48px] items-center px-6 border-b">
             <h1 className="text-2xl font-semibold text-gray-900">合同管理</h1>
           </div>
@@ -35,8 +35,8 @@ export default function ContractLayout({
           </div>
         </div>
 
-        {/* 主内容区域 - 修复PC端宽度计算问题 */}
-        <div className="w-full lg:w-[calc(100%-240px)] lg:ml-[240px] overflow-hidden">
+        {/* 主内容区域 - 移除 overflow-hidden，允许内容正常显示 */}
+        <div className="w-full lg:w-[calc(100%-240px)] lg:ml-[240px]">
           {children}
         </div>
       </div>

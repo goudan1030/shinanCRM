@@ -25,115 +25,123 @@ const initialState: Omit<AuthState, 'session'> & { session: SimpleSession | null
 const AuthContext = createContext<typeof initialState>(initialState);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState(initialState);
   const pathname = usePathname();
   const router = useRouter();
-
-  // 阻止不必要的重定向循环
   const isLoginPage = pathname === '/login';
 
+  const [state, setState] = useState(initialState);
+
+  // 如果是登录页面，立即设置为非加载状态（优先级最高）
   useEffect(() => {
+    if (isLoginPage) {
+      setState(prev => {
+        if (prev.isLoading) {
+          console.log('登录页面，立即设置为非加载状态');
+          return { ...prev, isLoading: false, session: null, operatorId: null };
+        }
+        return prev;
+      });
+    }
+  }, [isLoginPage]);
+
+  useEffect(() => {
+    // 如果是登录页面，直接返回，不执行会话检查
+    if (isLoginPage) {
+      return;
+    }
+
     let isMounted = true;
     const controller = new AbortController();
 
+    // 添加超时保护，避免无限等待
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        console.warn('会话检查超时，强制设置为非加载状态');
+        setState(prev => ({ 
+          ...prev, 
+          isLoading: false,
+          session: null,
+          operatorId: null
+        }));
+      }
+    }, 10000); // 10秒超时
+
     const checkSession = async () => {
       try {
-        // 如果已经在登录页面，标记为非加载状态但不立即重定向
-        if (isLoginPage) {
-          const response = await fetch('/api/auth/session', {
-            credentials: 'include',
-            signal: controller.signal,
-            headers: {
-              'Cache-Control': 'no-store, no-cache, must-revalidate',
-              'Pragma': 'no-cache'
-            }
-          });
-          
-          if (!isMounted) return;
-          
-          if (!response.ok) {
-            setState(prev => ({ ...prev, isLoading: false }));
-            return;
+        
+        // 非登录页面才需要检查会话
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include',
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache'
           }
-          
-          const data = await response.json() as SessionApiResponse;
-          
-          if (!isMounted) return;
-          
-          if (data.user) {
-            // 设置会话状态
-            setState(prev => ({
-              ...prev,
-              session: {
-                user: data.user
-              },
-              isLoading: false,
-              operatorId: String(data.user.id)
-            }));
-            
-            // 在登录页且有会话时，只有在直接访问登录页（没有重定向参数）时才重定向到仪表板
-            if (typeof window !== 'undefined') {
-              const searchParams = new URLSearchParams(window.location.search);
-              if (!searchParams.has('from')) {
-                console.log('有效会话，从登录页重定向到仪表板');
-                router.push('/dashboard');
-              }
-            }
-          } else {
-            // 如果没有会话，只需更新状态
-            setState(prev => ({ ...prev, session: null, operatorId: null, isLoading: false }));
-          }
+        });
+        
+        if (!isMounted) {
+          clearTimeout(timeoutId);
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error(`会话检查失败: ${response.status}`);
+        }
+        
+        const data = await response.json() as SessionApiResponse;
+        
+        if (!isMounted) {
+          clearTimeout(timeoutId);
+          return;
+        }
+        
+        if (data.user) {
+          setState(prev => ({
+            ...prev,
+            session: {
+              user: data.user!
+            },
+            isLoading: false,
+            operatorId: String(data.user.id)
+          }));
+          clearTimeout(timeoutId);
         } else {
-          // 非登录页面的会话检查
-          const response = await fetch('/api/auth/session', {
-            credentials: 'include',
-            signal: controller.signal,
-            headers: {
-              'Cache-Control': 'no-store, no-cache, must-revalidate',
-              'Pragma': 'no-cache'
-            }
-          });
+          setState(prev => ({ ...prev, session: null, operatorId: null, isLoading: false }));
+          clearTimeout(timeoutId);
           
-          if (!isMounted) return;
-          
-          if (!response.ok) {
-            throw new Error('会话检查失败');
-          }
-          
-          const data = await response.json() as SessionApiResponse;
-          
-          if (!isMounted) return;
-          
-          if (data.user) {
-            setState(prev => ({
-              ...prev,
-              session: {
-                user: data.user
-              },
-              isLoading: false,
-              operatorId: String(data.user.id)
-            }));
-          } else {
-            setState(prev => ({ ...prev, session: null, operatorId: null, isLoading: false }));
-            
-            // 仅当访问受保护的路径时重定向到登录页
-            if (!isPublicPath(pathname)) {
-              const returnPath = encodeURIComponent(pathname);
-              console.log('无效会话，从受保护页面重定向到登录页');
-              router.push(`/login?from=${returnPath}`);
-            }
+          // 仅当访问受保护的路径时重定向到登录页
+          if (!isPublicPath(pathname)) {
+            const returnPath = encodeURIComponent(pathname);
+            console.log('无效会话，从受保护页面重定向到登录页');
+            router.push(`/login?from=${returnPath}`);
           }
         }
       } catch (error) {
-        if (!isMounted) return;
+        if (!isMounted) {
+          clearTimeout(timeoutId);
+          return;
+        }
+        
+        // 如果是AbortError，说明请求被取消，不需要处理
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('请求被取消');
+          clearTimeout(timeoutId);
+          return;
+        }
+        
+        // 正确提取错误信息，避免显示 [object Object]
+        const errorMessage = error instanceof Error ? error.message : String(error || '未知错误');
+        console.error('会话检查失败:', errorMessage, error);
         
         setState(prev => ({ 
           ...prev, 
           session: null, 
           operatorId: null, 
           isLoading: false, 
-          error: error as Error 
+          error: new Error(errorMessage)
         }));
+        
+        clearTimeout(timeoutId);
         
         // 仅在非登录页面且访问受保护的路径时重定向
         if (!isLoginPage && !isPublicPath(pathname)) {
@@ -149,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
       controller.abort();
+      clearTimeout(timeoutId);
     };
   }, [pathname, router, isLoginPage]); 
 
