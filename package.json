@@ -52,7 +52,8 @@
     "fix:phpmyadmin:complete": "node scripts/fix-phpmyadmin-complete.js",
     "fix:database-backup": "node scripts/fix-database-backup.js",
     "setup:push-tables": "node scripts/setup-push-tables.js",
-    "test:push-api": "node scripts/test-push-api.js"
+    "test:push-api": "node scripts/test-push-api.js",
+    "alipay:sync": "node scripts/sync-alipay-transactions.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
