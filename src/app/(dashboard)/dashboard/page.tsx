@@ -44,81 +44,60 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        // 获取总会员数
-        const response = await fetch('/api/dashboard/members/count');
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error('Failed to fetch total members');
-        }
-        const totalMembers = data.count;
-
-        // 获取当月收入
-        const now = new Date();
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-        const incomeResponse = await fetch('/api/dashboard/income/monthly');
-        const incomeData = await incomeResponse.json();
-        if (!incomeResponse.ok) {
-          throw new Error('Failed to fetch monthly income');
-        }
-        const monthlyIncome = incomeData.amount;
-
-        // 获取当月支出 - 通过API从MySQL获取
-        const expenseResponse = await fetch('/api/dashboard/expense/monthly');
-        if (!expenseResponse.ok) {
-          throw new Error('Failed to fetch monthly expense');
-        }
-        const expenseData = await expenseResponse.json();
-        const monthlyExpense = expenseData.amount || 0;
+        setLoading(true);
         
-        console.log('从API获取的当月支出:', monthlyExpense);
+        // 并行请求所有数据，大幅提升加载速度
+        const [
+          membersResponse,
+          incomeResponse,
+          expenseResponse,
+          settlementResponse,
+          wechatZhangResponse,
+          trendsResponse
+        ] = await Promise.all([
+          fetch('/api/dashboard/members/count'),
+          fetch('/api/dashboard/income/monthly'),
+          fetch('/api/dashboard/expense/monthly'),
+          fetch('/api/dashboard/settlement/monthly'),
+          fetch('/api/dashboard/income/wechat-zhang'),
+          fetch('/api/dashboard/trends')
+        ]);
 
-        // 获取当月已结算金额 - 通过API从MySQL获取
-        const settlementResponse = await fetch('/api/dashboard/settlement/monthly');
-        if (!settlementResponse.ok) {
-          throw new Error('Failed to fetch monthly settlement amount');
-        }
-        const settlementData = await settlementResponse.json();
-        const settledAmount = settlementData.amount || 0;
-        
-        console.log('从API获取的已结算金额:', settledAmount);
+        // 并行解析所有响应
+        const [
+          membersData,
+          incomeData,
+          expenseData,
+          settlementData,
+          wechatZhangData,
+          trendsData
+        ] = await Promise.all([
+          membersResponse.json(),
+          incomeResponse.json(),
+          expenseResponse.json(),
+          settlementResponse.json(),
+          wechatZhangResponse.json(),
+          trendsResponse.json()
+        ]);
 
-        // 获取当月通过WECHAT_ZHANG支付的金额 - 通过API从MySQL获取
-        const wechatZhangResponse = await fetch('/api/dashboard/income/wechat-zhang');
-        if (!wechatZhangResponse.ok) {
-          throw new Error('Failed to fetch WECHAT_ZHANG payment amount');
-        }
-        const wechatZhangData = await wechatZhangResponse.json();
-        const wechatZhangAmount = wechatZhangData.amount || 0;
-        
-        console.log('从API获取的微信张支付金额:', wechatZhangAmount);
+        // 检查响应状态并提取数据
+        const totalMembers = membersResponse.ok && membersData.count ? membersData.count : 0;
+        const monthlyIncome = incomeResponse.ok && incomeData.amount ? incomeData.amount : 0;
+        const monthlyExpense = expenseResponse.ok && expenseData.amount ? expenseData.amount : 0;
+        const settledAmount = settlementResponse.ok && settlementData.amount ? settlementData.amount : 0;
+        const wechatZhangAmount = wechatZhangResponse.ok && wechatZhangData.amount ? wechatZhangData.amount : 0;
 
         // 计算待结算金额：当月总收入减去当月总支出之后，然后除以2，再减去当月已结算金额
         const unsettledAmount = (monthlyIncome - monthlyExpense) / 2 - settledAmount;
 
-        // 以更清晰的方式显示计算逻辑
-        console.log('当月收入:', monthlyIncome);
-        console.log('当月支出:', monthlyExpense);
-        console.log('当月营业额一半(预计可结算):', (monthlyIncome - monthlyExpense) / 2);
-        console.log('当月已结算金额:', settledAmount);
-        console.log('当月待结算金额:', unsettledAmount);
-
-        // 获取趋势数据
-        const trendsResponse = await fetch('/api/dashboard/trends');
-        const trendsData = await trendsResponse.json();
-        if (!trendsResponse.ok) {
-          throw new Error('Failed to fetch trends data');
-        }
-
         setDashboardData({
-          totalMembers: totalMembers || 0,
+          totalMembers,
           monthlyIncome,
           monthlyExpense,
           settledAmount,
           unsettledAmount,
-          memberTrend: trendsData.memberTrend,
-          incomeTrend: trendsData.incomeTrend
+          memberTrend: trendsResponse.ok && trendsData.memberTrend ? trendsData.memberTrend : [],
+          incomeTrend: trendsResponse.ok && trendsData.incomeTrend ? trendsData.incomeTrend : []
         });
       } catch (error) {
         console.error('获取仪表盘数据失败:', error);

@@ -118,10 +118,11 @@ const navigation: NavigationItem[] = [
     name: '系统设置',
     href: '/settings/profile',
     icon: Settings,
-    matchPaths: ['/settings', '/settings/profile', '/settings/security'],
+    matchPaths: ['/settings', '/settings/profile', '/settings/security', '/system', '/system/api-check'],
     children: [
       { name: '个人资料', href: '/settings/profile' },
-      { name: '安全设置', href: '/settings/security' }
+      { name: '安全设置', href: '/settings/security' },
+      { name: 'API检查', href: '/system/api-check' }
     ]
   },
 ];
@@ -189,30 +190,20 @@ export function Sidebar({ className, onMenuClick }: SidebarProps) {
   };
 
   const handleMenuClick = (href: string) => {
-    // 记录当前时间，用于调试性能问题
-    const startTime = performance.now();
-    
     // 如果是需要重定向的路径，则重定向到对应的子页面
     const targetPath = href in menuRedirectMap ? 
       menuRedirectMap[href as keyof typeof menuRedirectMap] : 
       href;
-      
-    // 立即触发路由预载
-    router.prefetch(targetPath);
     
-    // 在移动端点击菜单后关闭菜单
+    // 在移动端点击菜单后立即关闭菜单，提升响应速度
     if (onMenuClick) {
       onMenuClick();
     }
     
-    // 延迟很小的时间，让UI先做出响应，减轻卡顿感
-    setTimeout(() => {
+    // 使用startTransition优化路由切换，避免阻塞UI
+    startTransition(() => {
       router.push(targetPath);
-      
-      // 记录导航耗时（仅供调试）
-      const endTime = performance.now();
-      console.log(`菜单导航耗时: ${endTime - startTime}ms`, targetPath);
-    }, 10);
+    });
   };
 
 
@@ -246,10 +237,19 @@ export function Sidebar({ className, onMenuClick }: SidebarProps) {
               ? item.matchPaths.some(path => pathname.startsWith(path))
               : pathname.startsWith(item.href);
             
+            // 确定目标路径用于预取
+            const targetPath = item.href in menuRedirectMap ? 
+              menuRedirectMap[item.href as keyof typeof menuRedirectMap] : 
+              item.href;
+            
             return (
               <div key={item.href}>
                 <div
                   onClick={() => handleMenuClick(item.href)}
+                  onMouseEnter={() => {
+                    // 鼠标悬停时预取路由，提升点击响应速度
+                    router.prefetch(targetPath);
+                  }}
                   className={cn(
                     'flex items-center rounded-md cursor-pointer',
                     isActive
@@ -364,6 +364,10 @@ export function Sidebar({ className, onMenuClick }: SidebarProps) {
                         <div
                           key={child.href}
                           onClick={() => handleMenuClick(child.href)}
+                          onMouseEnter={() => {
+                            // 鼠标悬停时预取路由，提升点击响应速度
+                            router.prefetch(child.href);
+                          }}
                           className={cn(
                             'flex items-center px-4 py-2 text-sm rounded-lg cursor-pointer transition-colors',
                             isChildActive

@@ -6,6 +6,7 @@ import { ThreeColumnLayout } from '@/components/layout/three-column-layout';
 import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { PageTransition } from '@/components/layout/page-transition';
 
 interface TitleMap {
   [key: string]: string;
@@ -38,8 +39,8 @@ const titleMap: TitleMap = {
   '/miniapp/review': '审核发布',
   '/wecom/config': '企业微信配置',
   '/wecom/sync': '数据同步',
-  '/system': '缓存管理',
-  '/system/cache': '缓存管理'
+  '/system': '系统管理',
+  '/system/api-check': 'API接口检查'
 };
 
 export default function DashboardLayout({
@@ -146,10 +147,13 @@ export default function DashboardLayout({
         </div>
       </div>
       
+      {/* 页面切换加载指示器 */}
+      <PageTransition />
+      
       {/* 主内容区域 */}
-      <div className="pt-[48px] bg-background" style={{ height: 'auto', overflow: 'visible' }}>
-        <main className="w-full relative z-[1]" style={{ height: 'auto', overflow: 'visible' }}>
-          <div className="w-full" style={{ height: 'auto', overflow: 'visible' }}>{children}</div>
+      <div className="pt-[48px] bg-background h-auto overflow-visible">
+        <main className="w-full relative z-[1] h-auto overflow-visible">
+          <div className="w-full h-auto overflow-visible">{children}</div>
         </main>
       </div>
     </ThreeColumnLayout>
