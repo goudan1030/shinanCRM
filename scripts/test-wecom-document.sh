@@ -40,54 +40,56 @@ else
   echo -e "${GREEN}✓ 企业微信配置存在${NC}"
 fi
 
-# 测试创建通用文档
-echo -e "\n${YELLOW}步骤3: 测试创建通用文档...${NC}"
-DOC_NAME="测试文档-$(date +%Y%m%d-%H%M%S)"
-RESPONSE=$(curl -s -X POST "${BASE_URL}/api/wecom/document/create" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"doc_name\": \"${DOC_NAME}\",
-    \"doc_type\": \"doc\",
-    \"content\": \"# 测试文档\\n\\n创建时间：$(date)\\n\\n这是一个测试文档，用于验证企业微信文档对接功能。\\n\\n## 功能列表\\n\\n- 文档创建\\n- 内容格式化\\n- 文档分享\",
-    \"operator_id\": 1
-  }")
+# 提示用户输入文档ID
+echo -e "\n${YELLOW}步骤3: 测试更新企业微信文档...${NC}"
+echo -e "${YELLOW}提示: 需要先在企业微信中创建文档，然后获取文档ID${NC}"
+read -p "请输入企业微信文档ID（按Enter跳过）: " DOC_ID
 
-echo "$RESPONSE" | jq . 2>/dev/null || echo "$RESPONSE"
-
-SUCCESS=$(echo "$RESPONSE" | jq -r '.success' 2>/dev/null)
-if [ "$SUCCESS" = "true" ]; then
-  echo -e "${GREEN}✓ 通用文档创建成功${NC}"
-  DOC_URL=$(echo "$RESPONSE" | jq -r '.data.share_url' 2>/dev/null)
-  if [ -n "$DOC_URL" ] && [ "$DOC_URL" != "null" ]; then
-    echo -e "${GREEN}文档链接: ${DOC_URL}${NC}"
-  fi
+if [ -z "$DOC_ID" ]; then
+  echo -e "${YELLOW}⚠ 跳过文档更新测试（需要文档ID）${NC}"
+  echo -e "${YELLOW}提示: 在企业微信中创建文档后，从文档URL中获取文档ID${NC}"
 else
-  ERROR=$(echo "$RESPONSE" | jq -r '.error // .message' 2>/dev/null)
-  echo -e "${RED}❌ 创建失败: ${ERROR}${NC}"
-fi
+  # 测试更新文档内容
+  echo -e "\n${YELLOW}测试更新文档内容...${NC}"
+  RESPONSE=$(curl -s -X POST "${BASE_URL}/api/wecom/document/update" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"doc_id\": \"${DOC_ID}\",
+      \"content\": \"# 测试更新\\n\\n更新时间：$(date)\\n\\n这是一个测试更新，用于验证企业微信文档对接功能。\\n\\n## 功能列表\\n\\n- 文档内容更新\\n- 会员信息同步\\n- 内容格式化\",
+      \"append\": false
+    }")
 
-# 测试创建会员汇总文档
-echo -e "\n${YELLOW}步骤4: 测试创建会员汇总文档...${NC}"
-DATE=$(date +%Y-%m-%d)
-RESPONSE2=$(curl -s -X POST "${BASE_URL}/api/wecom/document/member-summary" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"date\": \"${DATE}\",
-    \"operator_id\": 1
-  }")
+  echo "$RESPONSE" | jq . 2>/dev/null || echo "$RESPONSE"
 
-echo "$RESPONSE2" | jq . 2>/dev/null || echo "$RESPONSE2"
-
-SUCCESS2=$(echo "$RESPONSE2" | jq -r '.success' 2>/dev/null)
-if [ "$SUCCESS2" = "true" ]; then
-  echo -e "${GREEN}✓ 会员汇总文档创建成功${NC}"
-  DOC_URL2=$(echo "$RESPONSE2" | jq -r '.data.share_url' 2>/dev/null)
-  if [ -n "$DOC_URL2" ] && [ "$DOC_URL2" != "null" ]; then
-    echo -e "${GREEN}文档链接: ${DOC_URL2}${NC}"
+  SUCCESS=$(echo "$RESPONSE" | jq -r '.success' 2>/dev/null)
+  if [ "$SUCCESS" = "true" ]; then
+    echo -e "${GREEN}✓ 文档更新成功${NC}"
+    echo -e "${GREEN}请在企业微信中查看文档内容是否已更新${NC}"
+  else
+    ERROR=$(echo "$RESPONSE" | jq -r '.error // .message' 2>/dev/null)
+    echo -e "${RED}❌ 更新失败: ${ERROR}${NC}"
   fi
-else
-  ERROR2=$(echo "$RESPONSE2" | jq -r '.error // .message' 2>/dev/null)
-  echo -e "${RED}❌ 创建失败: ${ERROR2}${NC}"
+
+  # 测试同步会员信息
+  echo -e "\n${YELLOW}测试同步会员信息到文档...${NC}"
+  RESPONSE2=$(curl -s -X POST "${BASE_URL}/api/wecom/document/sync-member" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"doc_id\": \"${DOC_ID}\",
+      \"append\": true
+    }")
+
+  echo "$RESPONSE2" | jq . 2>/dev/null || echo "$RESPONSE2"
+
+  SUCCESS2=$(echo "$RESPONSE2" | jq -r '.success' 2>/dev/null)
+  if [ "$SUCCESS2" = "true" ]; then
+    MEMBER_COUNT=$(echo "$RESPONSE2" | jq -r '.data.member_count' 2>/dev/null)
+    echo -e "${GREEN}✓ 会员信息同步成功（共 ${MEMBER_COUNT} 位会员）${NC}"
+    echo -e "${GREEN}请在企业微信中查看文档内容是否已更新${NC}"
+  else
+    ERROR2=$(echo "$RESPONSE2" | jq -r '.error // .message' 2>/dev/null)
+    echo -e "${RED}❌ 同步失败: ${ERROR2}${NC}"
+  fi
 fi
 
 # 检查数据库记录
