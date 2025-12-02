@@ -4,6 +4,7 @@ import { executeQuery } from '@/lib/database-netlify';
 import { getSession } from '@/lib/auth';
 import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
 import { createLogger } from '@/lib/logger';
+import { syncMemberToGoogleSheet } from '@/lib/google-sheets';
 
 const logger = createLogger('api/members/create');
 
@@ -126,6 +127,30 @@ export async function POST(request: Request) {
     logger.info('会员创建成功', { memberId });
     logger.debug('企业微信通知将由数据库触发器自动处理', { memberId });
 
+    // 同步到 Google 表格（失败不影响主流程）
+    if (memberId) {
+      try {
+        await syncMemberToGoogleSheet({
+          id: memberId,
+          member_no: data.member_no,
+          nickname: data.nickname || null,
+          phone: data.phone || null,
+          wechat: data.wechat || null,
+          gender: data.gender || null,
+          city: data.city || null,
+          type: data.type || 'NORMAL',
+          status: 'ACTIVE',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      } catch (syncError) {
+        logger.warn('同步会员到 Google 表格失败（忽略）', {
+          memberId,
+          error: syncError instanceof Error ? syncError.message : String(syncError),
+        });
+      }
+    }
+    
     return createSuccessResponse({
       id: memberId
     }, '创建成功');

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database-netlify';
+import { syncMemberToGoogleSheet } from '@/lib/google-sheets';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -85,7 +86,28 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       );
     }
 
-    return NextResponse.json(rows[0]);
+    const member = rows[0] as any;
+
+    // 同步到 Google 表格（失败不影响主流程）
+    try {
+      await syncMemberToGoogleSheet({
+        id: member.id,
+        member_no: member.member_no,
+        nickname: member.nickname,
+        phone: member.phone,
+        wechat: member.wechat,
+        gender: member.gender,
+        city: member.city,
+        type: member.type,
+        status: member.status,
+        created_at: member.created_at ? new Date(member.created_at).toISOString() : null,
+        updated_at: member.updated_at ? new Date(member.updated_at).toISOString() : null,
+      });
+    } catch (syncError) {
+      console.warn('同步会员到 Google 表格失败（忽略）', syncError);
+    }
+
+    return NextResponse.json(member);
   } catch (error) {
     console.error('更新会员信息失败:', error);
     return NextResponse.json(
