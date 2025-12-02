@@ -130,7 +130,15 @@ export default function GoogleSheetsPage() {
   };
 
   const togglePause = () => {
-    setIsPaused((prev) => !prev);
+    setIsPaused((prev) => {
+      const next = !prev;
+      // 从“暂停”切回“继续”时，如果任务还在同步模式下，则从上次的 lastId 继续分批执行
+      if (!next && syncLoading) {
+        // 不要阻塞当前 setState，同步调起后续批次
+        void runChunk(lastId);
+      }
+      return next;
+    });
   };
 
   return (
