@@ -118,11 +118,12 @@ const navigation: NavigationItem[] = [
     name: '系统设置',
     href: '/settings/profile',
     icon: Settings,
-    matchPaths: ['/settings', '/settings/profile', '/settings/security', '/system', '/system/api-check'],
+    matchPaths: ['/settings', '/settings/profile', '/settings/security', '/system', '/system/api-check', '/system/google-sheets'],
     children: [
       { name: '个人资料', href: '/settings/profile' },
       { name: '安全设置', href: '/settings/security' },
-      { name: 'API检查', href: '/system/api-check' }
+      { name: 'API检查', href: '/system/api-check' },
+      { name: '谷歌表格同步', href: '/system/google-sheets' }
     ]
   },
 ];

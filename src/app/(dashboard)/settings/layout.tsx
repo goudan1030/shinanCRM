@@ -42,6 +42,14 @@ export default function SettingsLayout({
         >
           <span className="text-[13px]">API检查</span>
         </Link>
+        <Link
+          href="/system/google-sheets"
+          className={`flex items-center rounded-md py-2 px-3 ${
+            pathname === '/system/google-sheets' ? 'bg-primary/10 text-primary' : 'hover:bg-primary/10 hover:text-primary'
+          }`}
+        >
+          <span className="text-[13px]">谷歌表格同步</span>
+        </Link>
       </div>
     </div>
   );

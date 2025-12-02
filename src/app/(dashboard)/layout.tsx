@@ -40,7 +40,8 @@ const titleMap: TitleMap = {
   '/wecom/config': '企业微信配置',
   '/wecom/sync': '数据同步',
   '/system': '系统管理',
-  '/system/api-check': 'API接口检查'
+  '/system/api-check': 'API接口检查',
+  '/system/google-sheets': '谷歌表格同步'
 };
 
 export default function DashboardLayout({

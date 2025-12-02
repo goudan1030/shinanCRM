@@ -36,12 +36,31 @@ export interface MemberSheetData {
   id: number | string;
   member_no: string;
   nickname?: string | null;
+  gender?: string | null;
+  birth_year?: number | string | null;
+  height?: number | string | null;
+  weight?: number | string | null;
   phone?: string | null;
   wechat?: string | null;
-  gender?: string | null;
+  wechat_qrcode?: string | null;
+  province?: string | null;
   city?: string | null;
+  district?: string | null;
+  target_area?: string | null;
+  house_car?: string | null;
+  hukou_province?: string | null;
+  hukou_city?: string | null;
+  children_plan?: string | null;
+  marriage_cert?: string | null;
+  marriage_history?: string | null;
+  sexual_orientation?: string | null;
+  self_description?: string | null;
+  partner_requirement?: string | null;
   type?: string | null;
   status?: string | null;
+  education?: string | null;
+  occupation?: string | null;
+  remaining_matches?: number | string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -75,34 +94,54 @@ export async function syncMemberToGoogleSheet(member: MemberSheetData) {
 
     let rows = idResult.data.values || [];
 
-    // 如果表格是空的，先自动写入表头
-    if (rows.length === 0) {
-      const headerValues = [
-        [
-          'id',
-          'member_no',
-          'nickname',
-          'phone',
-          'wechat',
-          'gender',
-          'city',
-          'type',
-          'status',
-          'created_at',
-          'updated_at',
-        ],
-      ];
+    // 标准表头定义
+    const headerRow = [
+      'id',
+      'member_no',
+      'nickname',
+      'gender',
+      'birth_year',
+      'height',
+      'weight',
+      'phone',
+      'wechat',
+      'wechat_qrcode',
+      'province',
+      'city',
+      'district',
+      'target_area',
+      'house_car',
+      'hukou_province',
+      'hukou_city',
+      'children_plan',
+      'marriage_cert',
+      'marriage_history',
+      'sexual_orientation',
+      'self_description',
+      'partner_requirement',
+      'type',
+      'status',
+      'education',
+      'occupation',
+      'remaining_matches',
+      'created_at',
+      'updated_at',
+    ];
+
+    // 如果表格是空的，或者首行列数不足，则自动写入/更新表头
+    if (rows.length === 0 || (rows[0] && rows[0].length < headerRow.length)) {
+      const headerValues = [headerRow];
 
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `${sheetName}!A1:K1`,
+        range: `${sheetName}!A1:AE1`,
         valueInputOption: 'RAW',
         requestBody: {
           values: headerValues,
         },
       });
 
-      rows = headerValues;
+      rows = headerValues.concat(rows.slice(1));
     }
     let targetRowIndex: number | null = null;
     const memberIdStr = String(member.id);
@@ -121,19 +160,38 @@ export async function syncMemberToGoogleSheet(member: MemberSheetData) {
       memberIdStr,
       member.member_no || '',
       member.nickname || '',
+      member.gender || '',
+      member.birth_year ?? '',
+      member.height ?? '',
+      member.weight ?? '',
       member.phone || '',
       member.wechat || '',
-      member.gender || '',
+      member.wechat_qrcode || '',
+      member.province || '',
       member.city || '',
+      member.district || '',
+      member.target_area || '',
+      member.house_car || '',
+      member.hukou_province || '',
+      member.hukou_city || '',
+      member.children_plan || '',
+      member.marriage_cert || '',
+      member.marriage_history || '',
+      member.sexual_orientation || '',
+      member.self_description || '',
+      member.partner_requirement || '',
       member.type || '',
       member.status || '',
+      member.education || '',
+      member.occupation || '',
+      member.remaining_matches ?? '',
       member.created_at || '',
       member.updated_at || '',
     ];
 
     if (targetRowIndex) {
       // 2. 找到了行，执行覆盖更新
-      const range = `${sheetName}!A${targetRowIndex}:K${targetRowIndex}`;
+      const range = `${sheetName}!A${targetRowIndex}:AE${targetRowIndex}`;
       await sheets.spreadsheets.values.update({
         spreadsheetId,
         range,
@@ -144,7 +202,7 @@ export async function syncMemberToGoogleSheet(member: MemberSheetData) {
       });
     } else {
       // 3. 找不到则在末尾追加
-      const range = `${sheetName}!A:K`;
+      const range = `${sheetName}!A:AE`;
       await sheets.spreadsheets.values.append({
         spreadsheetId,
         range,
