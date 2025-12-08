@@ -1,6 +1,56 @@
 # 新星CRM系统
 
-这是一个基于Next.js 14开发的客户关系管理(CRM)系统。
+这是一个基于Next.js 15开发的客户关系管理(CRM)系统。
+
+## 🔒 安全更新 (2025-01-XX)
+
+### CVE-2025-29927 漏洞修复
+
+**漏洞说明：**
+- **漏洞编号**：CVE-2025-29927
+- **漏洞类型**：Next.js 中间件权限绕过漏洞
+- **影响版本**：Next.js 15.0.0 - 15.2.2
+- **当前状态**：✅ 已修复
+
+**漏洞详情：**
+攻击者可以通过操纵 `x-middleware-subrequest` HTTP 头来绕过 Next.js 中间件的授权检查，从而未授权访问受保护的路由和资源。
+
+**修复措施：**
+1. ✅ **升级 Next.js**：从 15.1.6 升级到 15.2.3 或更高版本（主要修复）
+2. ✅ **Nginx 配置加固**：在反向代理配置中移除 `x-middleware-subrequest` 头（额外防护）
+
+**修复步骤：**
+```bash
+# 运行自动修复脚本
+./scripts/fix-cve-2025-29927.sh
+
+# 或手动修复
+npm install next@^15.2.3 eslint-config-next@^15.2.3 --save --save-exact
+npm run build
+```
+
+**Nginx 配置修复：**
+在 Nginx 配置的 `location /` 块中添加：
+```nginx
+# CVE-2025-29927 漏洞修复：移除可能被恶意利用的x-middleware-subrequest头
+proxy_set_header x-middleware-subrequest "";
+```
+
+然后重载 Nginx：
+```bash
+sudo nginx -t
+sudo nginx -s reload
+```
+
+**验证修复：**
+- 检查 Next.js 版本：`npm list next`（应显示 15.2.3 或更高）
+- 测试登录和权限控制功能是否正常
+- 检查应用是否正常运行
+
+**重要提醒：**
+- 建议在测试环境充分测试后再部署到生产环境
+- 建议创建服务器快照作为备份
+- 定期检查 Next.js 安全更新
 
 ## 系统修复历程
 
