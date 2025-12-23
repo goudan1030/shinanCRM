@@ -133,8 +133,17 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
   };
 
   const getSexualOrientationText = (sexualOrientation: string) => {
-    // 直接显示数据库中的值，不需要映射
-    return sexualOrientation || '未填写';
+    if (!sexualOrientation) return '未填写';
+    
+    const orientationMap: Record<string, string> = {
+      'STRAIGHT_MALE': '直男',
+      'STRAIGHT_FEMALE': '直女',
+      'LES': 'LES',
+      'GAY': 'GAY',
+      'ASEXUAL': '无性恋'
+    };
+    
+    return orientationMap[sexualOrientation] || sexualOrientation;
   };
   
   const fetchMember = useCallback(async () => {

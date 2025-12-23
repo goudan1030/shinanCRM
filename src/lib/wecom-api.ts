@@ -301,6 +301,16 @@ export function formatMemberNotificationText(memberData: any): string {
   };
   const marriageCertText = marriage_cert ? marriageCertMap[marriage_cert] || marriage_cert : '未填写';
   
+  // 格式化性取向
+  const sexualOrientationMap: {[key: string]: string} = {
+    'STRAIGHT_MALE': '直男',
+    'STRAIGHT_FEMALE': '直女',
+    'LES': 'LES',
+    'GAY': 'GAY',
+    'ASEXUAL': '无性恋'
+  };
+  const sexualOrientationText = sexual_orientation ? sexualOrientationMap[sexual_orientation] || sexual_orientation : '未填写';
+  
   // 格式化时间
   const timeStr = new Date(created_at).toLocaleString('zh-CN', {
     year: 'numeric',
@@ -327,7 +337,7 @@ export function formatMemberNotificationText(memberData: any): string {
 • 目标区域：${target_area || '未填写'}
 • 房车情况：${houseCarText}
 • 婚史：${marriage_history || '未填写'}
-• 性取向：${sexual_orientation || '未填写'}
+• 性取向：${sexualOrientationText}
 • 孩子需求：${childrenPlanText}
 • 领证需求：${marriageCertText}
 
@@ -385,6 +395,16 @@ export function formatMemberNotificationCard(memberData: any): { title: string; 
   };
   const houseCarText = house_car ? houseCarMap[house_car] || house_car : '未填写';
   
+  // 格式化性取向
+  const sexualOrientationMap: {[key: string]: string} = {
+    'STRAIGHT_MALE': '直男',
+    'STRAIGHT_FEMALE': '直女',
+    'LES': 'LES',
+    'GAY': 'GAY',
+    'ASEXUAL': '无性恋'
+  };
+  const sexualOrientationText = sexual_orientation ? sexualOrientationMap[sexual_orientation] || sexual_orientation : '未填写';
+  
   const timeStr = new Date(created_at).toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
@@ -401,7 +421,7 @@ export function formatMemberNotificationCard(memberData: any): { title: string; 
 身高：${height ? height + 'cm' : '未知'} | 体重：${weight ? weight + 'kg' : '未知'}
 学历：${educationText} | 职业：${occupation || '未填写'}
 所在地：${[province, city, district].filter(Boolean).join(' ') || '未填写'}
-房车情况：${houseCarText} | 性取向：${sexual_orientation || '未填写'}
+房车情况：${houseCarText} | 性取向：${sexualOrientationText}
 登记时间：${timeStr}`,
     url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://admin.xinghun.info'}/members/${memberData.id || member_no}`,
     btntxt: "查看详情"
@@ -476,6 +496,16 @@ export function formatMemberNotificationMarkdown(memberData: any): string {
   };
   const marriageCertText = marriage_cert ? marriageCertMap[marriage_cert] || marriage_cert : '未填写';
   
+  // 格式化性取向
+  const sexualOrientationMap: {[key: string]: string} = {
+    'STRAIGHT_MALE': '直男',
+    'STRAIGHT_FEMALE': '直女',
+    'LES': 'LES',
+    'GAY': 'GAY',
+    'ASEXUAL': '无性恋'
+  };
+  const sexualOrientationText = sexual_orientation ? sexualOrientationMap[sexual_orientation] || sexual_orientation : '未填写';
+  
   const timeStr = new Date(created_at).toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
@@ -506,7 +536,7 @@ export function formatMemberNotificationMarkdown(memberData: any): string {
 ## 💼 基本条件
 - **房车情况**：${houseCarText}
 - **婚史**：${marriage_history || '未填写'}
-- **性取向**：${sexual_orientation || '未填写'}
+- **性取向**：${sexualOrientationText}
 
 ## 👨‍👩‍👧‍👦 婚恋意向
 - **孩子需求**：${childrenPlanText}

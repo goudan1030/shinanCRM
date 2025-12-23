@@ -596,6 +596,15 @@ function formatMemberDetailsForReply(memberInfo: any): string {
   };
   const marriageCertText = marriage_cert ? marriageCertMap[marriage_cert] || marriage_cert : '未填写';
 
+  const sexualOrientationMap: {[key: string]: string} = {
+    'STRAIGHT_MALE': '直男',
+    'STRAIGHT_FEMALE': '直女',
+    'LES': 'LES',
+    'GAY': 'GAY',
+    'ASEXUAL': '无性恋'
+  };
+  const sexualOrientationText = sexual_orientation ? sexualOrientationMap[sexual_orientation] || sexual_orientation : '未填写';
+
   const statusMap: {[key: string]: string} = {
     'ACTIVE': '活跃',
     'INACTIVE': '非活跃', 
@@ -643,7 +652,7 @@ function formatMemberDetailsForReply(memberInfo: any): string {
 💼 基本条件
 • 房车情况：${houseCarText}
 • 婚史：${marriage_history || '未填写'}
-• 性取向：${sexual_orientation || '未填写'}
+• 性取向：${sexualOrientationText}
 
 👨‍👩‍👧‍👦 婚恋意向
 • 孩子需求：${childrenPlanText}
