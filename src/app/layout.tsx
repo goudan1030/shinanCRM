@@ -48,11 +48,7 @@ export default function Layout({
   return (
     <html lang="zh-CN" suppressHydrationWarning className={fontVariables}>
       <head>
-        {/* 预连接到Google Fonts */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* 预连接到第三方域名 */}
-        <link rel="preconnect" href="https://cdn.example.com" />
+        {/* 已移除 Google Fonts 预连接，使用系统字体以避免构建时网络请求失败 */}
       </head>
       <body className="antialiased">
         <ClientErrorBoundary>
