@@ -46,6 +46,7 @@ export default function DashboardPage() {
   
   // 每日任务相关状态
   const [currentMembers, setCurrentMembers] = useState<DailyTaskMember[]>([]);
+  const [publishedMemberIds, setPublishedMemberIds] = useState<Set<number>>(new Set()); // 已发布的会员ID集合
   const [copiedMemberId, setCopiedMemberId] = useState<number | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('default'); // 选择的平台
   const [taskStatus, setTaskStatus] = useState<{
@@ -92,6 +93,7 @@ export default function DashboardPage() {
       fetchDashboardData();
       fetchDailyTaskStatus();
       fetchNextMembers();
+      fetchPublishedMembers();
     }
   }, [session]);
 
@@ -380,6 +382,8 @@ export default function DashboardPage() {
           publishedCount: data.data.publishedCount,
           totalCount: data.data.totalCount
         } : null);
+        // 获取今日已发布的会员ID列表
+        await fetchPublishedMembers();
       } else {
         setCurrentMembers([]);
       }
@@ -387,6 +391,19 @@ export default function DashboardPage() {
       console.error('获取女生列表失败:', error);
     } finally {
       setTaskLoading(false);
+    }
+  };
+
+  // 获取今日已发布的会员ID列表
+  const fetchPublishedMembers = async () => {
+    try {
+      const response = await fetch('/api/dashboard/daily-task/published');
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setPublishedMemberIds(new Set(data.data.memberIds || []));
+      }
+    } catch (error) {
+      console.error('获取已发布列表失败:', error);
     }
   };
 
@@ -409,12 +426,8 @@ export default function DashboardPage() {
           description: `已标记 ${memberNo} 为已发布`,
         });
         await fetchDailyTaskStatus();
-        // 从列表中移除已发布的会员
-        setCurrentMembers(prev => prev.filter(m => m.id !== memberId));
-        // 如果列表为空，获取下一批
-        if (currentMembers.length <= 1) {
-          await fetchNextMembers();
-        }
+        // 更新已发布状态，但不从列表中删除
+        setPublishedMemberIds(prev => new Set([...prev, memberId]));
       } else {
         toast({
           variant: 'destructive',
@@ -548,8 +561,10 @@ export default function DashboardPage() {
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentMembers.map((member) => (
-                  <div key={member.id} className="bg-muted/50 rounded-lg p-4 space-y-2 border">
+                {currentMembers.map((member) => {
+                  const isPublished = publishedMemberIds.has(member.id);
+                  return (
+                  <div key={member.id} className={`bg-muted/50 rounded-lg p-4 space-y-2 border ${isPublished ? 'border-green-500 bg-green-50/50' : ''}`}>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">会员编号:</span>
                       <span className="text-sm">{member.member_no}</span>
@@ -598,6 +613,14 @@ export default function DashboardPage() {
                         <span className="text-sm">{member.occupation}</span>
                       </div>
                     )}
+                    {isPublished && (
+                      <div className="pt-2 border-t">
+                        <div className="flex items-center gap-2 text-sm text-green-600">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>已发布</span>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex gap-2 pt-2 border-t">
                       <Button 
                         onClick={() => copyMemberInfo(member)}
@@ -619,15 +642,26 @@ export default function DashboardPage() {
                       </Button>
                       <Button 
                         onClick={() => handlePublish(member.id, member.member_no)} 
-                        disabled={taskLoading}
+                        disabled={taskLoading || isPublished}
                         size="sm"
                         className="flex-1"
+                        variant={isPublished ? "outline" : "default"}
                       >
-                        {taskLoading ? '处理中...' : '已发布'}
+                        {isPublished ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            已发布
+                          </>
+                        ) : taskLoading ? (
+                          '处理中...'
+                        ) : (
+                          '标记已发布'
+                        )}
                       </Button>
                     </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
               <div className="flex justify-end pt-2">
                 <Button 
