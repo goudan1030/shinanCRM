@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Copy, CheckCircle2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface DailyTaskMember {
   id: number;
@@ -46,6 +47,7 @@ export default function DashboardPage() {
   // 每日任务相关状态
   const [currentMembers, setCurrentMembers] = useState<DailyTaskMember[]>([]);
   const [copiedMemberId, setCopiedMemberId] = useState<number | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('default'); // 选择的平台
   const [taskStatus, setTaskStatus] = useState<{
     isCompleted: boolean;
     publishedCount: number;
@@ -175,7 +177,141 @@ export default function DashboardPage() {
     }
   };
 
-  // 复制会员信息（与会员列表逻辑一致）
+  // 根据平台生成优化后的文本
+  const generatePlatformText = useCallback((fullMember: any, platform: string): string => {
+    const currentYear = new Date().getFullYear();
+    const age = fullMember.birth_year ? currentYear - fullMember.birth_year : null;
+    const location = `${fullMember.province || ''}${fullMember.city || ''}${fullMember.district || ''}`.trim();
+    
+    // 基础信息（优先保留）
+    const basicInfo: string[] = [];
+    
+    // 地区信息（最高优先级）
+    if (location) {
+      basicInfo.push(location);
+    }
+    
+    // 年龄、身高、体重（高优先级）
+    if (age) {
+      basicInfo.push(`${age}岁`);
+    }
+    if (fullMember.height) {
+      basicInfo.push(`${fullMember.height}cm`);
+    }
+    if (fullMember.weight) {
+      basicInfo.push(`${fullMember.weight}kg`);
+    }
+    
+    // 学历、职业（中优先级）
+    if (fullMember.education) {
+      basicInfo.push(getEducationText(fullMember.education));
+    }
+    if (fullMember.occupation) {
+      basicInfo.push(fullMember.occupation);
+    }
+    
+    // 根据平台生成不同格式
+    switch (platform) {
+      case 'twitter':
+      case 'x': {
+        // 推特/X：140字符限制，优先地区信息
+        let text = basicInfo.join(' ');
+        
+        // 如果还有空间，添加其他信息
+        const remaining = 140 - text.length;
+        if (remaining > 20) {
+          if (fullMember.house_car) {
+            const houseCar = getHouseCarText(fullMember.house_car);
+            if (text.length + houseCar.length + 1 <= 140) {
+              text += ` ${houseCar}`;
+            }
+          }
+        }
+        
+        // 如果还有空间，添加个人说明的摘要
+        if (fullMember.self_description && remaining > 30) {
+          const desc = fullMember.self_description.substring(0, remaining - 10);
+          if (text.length + desc.length + 1 <= 140) {
+            text += ` ${desc}`;
+          }
+        }
+        
+        // 确保不超过140字符
+        return text.substring(0, 140);
+      }
+      
+      case 'weibo': {
+        // 微博：280字符限制
+        let text = basicInfo.join(' ');
+        
+        if (fullMember.house_car) {
+          text += ` ${getHouseCarText(fullMember.house_car)}`;
+        }
+        
+        if (fullMember.self_description) {
+          const remaining = 280 - text.length;
+          if (remaining > 20) {
+            text += ` ${fullMember.self_description.substring(0, remaining - 5)}`;
+          }
+        }
+        
+        return text.substring(0, 280);
+      }
+      
+      case 'xiaohongshu': {
+        // 小红书：更详细的格式
+        const info = [
+          `📍${location}`,
+          `👤${age ? `${age}岁` : ''} ${fullMember.height ? `${fullMember.height}cm` : ''} ${fullMember.weight ? `${fullMember.weight}kg` : ''}`,
+          `🎓${getEducationText(fullMember.education)}`,
+          `💼${fullMember.occupation || ''}`,
+        ].filter(Boolean).join('\n');
+        
+        if (fullMember.self_description) {
+          return `${info}\n\n${fullMember.self_description}`;
+        }
+        return info;
+      }
+      
+      case 'douyin': {
+        // 抖音：简洁格式
+        return `${location} | ${age ? `${age}岁` : ''} ${fullMember.height ? `${fullMember.height}cm` : ''} ${fullMember.weight ? `${fullMember.weight}kg` : ''} | ${getEducationText(fullMember.education)} | ${fullMember.occupation || ''}`.trim();
+      }
+      
+      default: {
+        // 默认格式：完整信息
+        const info = [
+          `会员编号：${fullMember.member_no}`,
+          `性别：${fullMember.gender === 'male' ? '男' : '女'}`,
+          `出生年份：${fullMember.birth_year}年`,
+          `身高：${fullMember.height}cm`,
+          `体重：${fullMember.weight}kg`,
+          `学历：${getEducationText(fullMember.education)}`,
+          `职业：${fullMember.occupation || '-'}`,
+          `所在地：${location}`,
+          `户口所在地：${fullMember.hukou_province} ${fullMember.hukou_city}`,
+          `目标区域：${fullMember.target_area || '-'}`,
+          `房车情况：${getHouseCarText(fullMember.house_car)}`,
+          `婚史：${getMarriageHistoryText(fullMember.marriage_history)}`,
+          `性取向：${getSexualOrientationText(fullMember.sexual_orientation)}`,
+          `孩子需求：${getChildrenPlanText(fullMember.children_plan)}`,
+          `领证需求：${getMarriageCertText(fullMember.marriage_cert)}`,
+        ];
+        
+        if (fullMember.self_description) {
+          info.push(`个人说明：${fullMember.self_description}`);
+        }
+        
+        if (fullMember.partner_requirement) {
+          info.push(`择偶要求：${fullMember.partner_requirement}`);
+        }
+        
+        return info.join('\n');
+      }
+    }
+  }, [getEducationText, getHouseCarText, getMarriageHistoryText, getSexualOrientationText, getChildrenPlanText, getMarriageCertText]);
+
+  // 复制会员信息（根据平台优化）
   const copyMemberInfo = useCallback(async (member: DailyTaskMember) => {
     try {
       // 首先获取完整的会员详情，以确保获得所有字段
@@ -186,37 +322,8 @@ export default function DashboardPage() {
       
       const fullMember = await response.json();
       
-      // 构建固定格式的复制信息
-      const info = [
-        `会员编号：${fullMember.member_no}`,
-        `性别：${fullMember.gender === 'male' ? '男' : '女'}`,
-        `出生年份：${fullMember.birth_year}年`,
-        `身高：${fullMember.height}cm`,
-        `体重：${fullMember.weight}kg`,
-        `学历：${getEducationText(fullMember.education)}`,
-        `职业：${fullMember.occupation || '-'}`,
-        `所在地：${fullMember.province} ${fullMember.city} ${fullMember.district}`,
-        `户口所在地：${fullMember.hukou_province} ${fullMember.hukou_city}`,
-        `目标区域：${fullMember.target_area || '-'}`,
-        `房车情况：${getHouseCarText(fullMember.house_car)}`,
-        `婚史：${getMarriageHistoryText(fullMember.marriage_history)}`,
-        `性取向：${getSexualOrientationText(fullMember.sexual_orientation)}`,
-        `孩子需求：${getChildrenPlanText(fullMember.children_plan)}`,
-        `领证需求：${getMarriageCertText(fullMember.marriage_cert)}`,
-      ];
-      
-      // 添加个人说明
-      if (fullMember.self_description) {
-        info.push(`个人说明：${fullMember.self_description}`);
-      }
-      
-      // 添加择偶要求
-      if (fullMember.partner_requirement) {
-        info.push(`择偶要求：${fullMember.partner_requirement}`);
-      }
-      
-      // 复制到剪贴板
-      const text = info.join('\n');
+      // 根据选择的平台生成优化后的文本
+      const text = generatePlatformText(fullMember, selectedPlatform);
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(text);
         setCopiedMemberId(member.id);
@@ -251,7 +358,7 @@ export default function DashboardPage() {
         description: error instanceof Error ? error.message : "未知错误"
       });
     }
-  }, [toast]);
+  }, [toast, selectedPlatform, generatePlatformText]);
 
   // 获取要发布的女生列表（20个）
   const fetchNextMembers = async () => {
@@ -414,6 +521,25 @@ export default function DashboardPage() {
             </div>
           ) : currentMembers.length > 0 ? (
             <div className="space-y-4">
+              {/* 平台选择器 */}
+              <div className="flex items-center gap-2 pb-2 border-b">
+                <span className="text-sm font-medium">发布平台:</span>
+                <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="选择平台" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">默认格式</SelectItem>
+                    <SelectItem value="twitter">推特/X (140字符)</SelectItem>
+                    <SelectItem value="weibo">微博 (280字符)</SelectItem>
+                    <SelectItem value="xiaohongshu">小红书</SelectItem>
+                    <SelectItem value="douyin">抖音</SelectItem>
+                  </SelectContent>
+                </Select>
+                {selectedPlatform === 'twitter' && (
+                  <span className="text-xs text-muted-foreground">优先显示地区信息</span>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentMembers.map((member) => (
                   <div key={member.id} className="bg-muted/50 rounded-lg p-4 space-y-2 border">
