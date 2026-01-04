@@ -14,11 +14,66 @@ cp "$CONF_FILE" "${CONF_FILE}.bak.$(date +%Y%m%d_%H%M%S)"
 
 echo "📝 检查现有配置..."
 
-# 检查是否已有这些location
+# 检查并删除所有旧的location配置
+echo "📝 清理旧的location配置..."
+
+# 删除所有可能的旧配置
+sed -i '/# ========== Next.js静态资源配置/,/# ========== 静态资源配置结束 ==========/d' "$CONF_FILE"
+sed -i '/# ========== 修复MIME类型配置/,/# ========== 配置结束 ==========/d' "$CONF_FILE"
+
+# 删除单独的location块（如果存在）
+sed -i '/location \/_next\/static\/ {/,/^    }$/d' "$CONF_FILE"
+sed -i '/location ~\* \\.js\$ {/,/^    }$/d' "$CONF_FILE"
+sed -i '/location \/fonts\/ {/,/^    }$/d' "$CONF_FILE"
+
+# 再次检查，确保没有残留
 if grep -q "location /_next/static/" "$CONF_FILE"; then
-    echo "⚠️  已存在 location /_next/static/，先删除旧的..."
-    # 删除旧的配置块（从注释开始到配置结束）
-    sed -i '/# ========== Next.js静态资源配置/,/# ========== 静态资源配置结束 ==========/d' "$CONF_FILE"
+    echo "⚠️  仍有残留的 location /_next/static/，手动删除..."
+    # 使用更精确的删除
+    python3 << 'PYEOF'
+import re
+
+conf_file = "/www/server/panel/vhost/nginx/admin.xinghun.info.conf"
+
+with open(conf_file, 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+
+new_lines = []
+skip = False
+skip_until_brace = 0
+
+for i, line in enumerate(lines):
+    # 检测 location /_next/static/ 块
+    if 'location /_next/static/' in line:
+        skip = True
+        skip_until_brace = 0
+        continue
+    # 检测 location ~* \.js$ 块
+    elif 'location ~* \.js$' in line:
+        skip = True
+        skip_until_brace = 0
+        continue
+    # 检测 location /fonts/ 块
+    elif 'location /fonts/' in line:
+        skip = True
+        skip_until_brace = 0
+        continue
+    
+    if skip:
+        # 计算大括号
+        skip_until_brace += line.count('{') - line.count('}')
+        if skip_until_brace <= 0 and '}' in line:
+            skip = False
+            continue
+    
+    if not skip:
+        new_lines.append(line)
+
+with open(conf_file, 'w', encoding='utf-8') as f:
+    f.writelines(new_lines)
+
+print("✅ 已清理所有旧的location配置")
+PYEOF
 fi
 
 # 要添加的配置
