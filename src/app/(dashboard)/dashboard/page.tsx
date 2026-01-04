@@ -320,6 +320,47 @@ export default function DashboardPage() {
     }
   }, [getEducationText, getHouseCarText, getMarriageHistoryText, getSexualOrientationText, getChildrenPlanText, getMarriageCertText]);
 
+  // 移动端 Toast 显示函数
+  const showMobileToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    // 检测是否为移动端
+    if (typeof window === 'undefined') return false;
+    const isMobile = window.innerWidth < 1024; // lg断点
+    
+    if (isMobile) {
+      // 创建黑色toast元素
+      const toastElement = document.createElement('div');
+      toastElement.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] px-4 py-2 rounded-md text-white text-sm font-medium shadow-lg transition-all duration-300 ${
+        type === 'success' ? 'bg-black' : 'bg-red-600'
+      }`;
+      toastElement.textContent = message;
+      toastElement.style.opacity = '0';
+      toastElement.style.transform = 'translate(-50%, -20px)';
+      
+      document.body.appendChild(toastElement);
+      
+      // 动画显示
+      requestAnimationFrame(() => {
+        toastElement.style.opacity = '1';
+        toastElement.style.transform = 'translate(-50%, 0)';
+      });
+      
+      // 3秒后自动移除
+      setTimeout(() => {
+        toastElement.style.opacity = '0';
+        toastElement.style.transform = 'translate(-50%, -20px)';
+        setTimeout(() => {
+          if (toastElement.parentNode) {
+            document.body.removeChild(toastElement);
+          }
+        }, 300);
+      }, 3000);
+      
+      return true; // 表示已显示移动端toast
+    }
+    
+    return false; // 表示未显示移动端toast，需要使用默认toast
+  }, []);
+
   // 复制会员信息（根据平台优化）
   const copyMemberInfo = useCallback(async (member: DailyTaskMember) => {
     try {
@@ -333,41 +374,155 @@ export default function DashboardPage() {
       
       // 根据选择的平台生成优化后的文本
       const text = generatePlatformText(fullMember, selectedPlatform);
+      
+      // 复制到剪贴板
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
-        setCopiedMemberId(member.id);
-        setTimeout(() => setCopiedMemberId(null), 2000);
-        toast({
-          title: "复制成功",
-          description: "会员基本信息已复制到剪贴板"
-        });
+        try {
+          // 检查文档是否处于焦点状态
+          if (!document.hasFocus()) {
+            // 如果文档没有焦点，直接使用备用方案
+            throw new Error('Document is not focused');
+          }
+          
+          // 添加延时和更详细的错误处理
+          await Promise.race([
+            navigator.clipboard.writeText(text),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('复制超时，请重试')), 5000)
+            )
+          ]);
+          
+          setCopiedMemberId(member.id);
+          setTimeout(() => setCopiedMemberId(null), 2000);
+          
+          // 移动端显示黑色toast，PC端显示默认toast
+          if (!showMobileToast('会员信息已复制')) {
+            toast({
+              title: "复制成功",
+              description: "会员基本信息已复制到剪贴板"
+            });
+          }
+        } catch (clipboardError: any) {
+          console.error('Clipboard API 复制失败:', clipboardError);
+          
+          // 如果Clipboard API失败，尝试备用方案
+          try {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            textArea.style.opacity = '0';
+            textArea.style.pointerEvents = 'none';
+            textArea.setAttribute('readonly', '');
+            document.body.appendChild(textArea);
+            
+            // 尝试聚焦到textarea
+            textArea.focus();
+            textArea.select();
+            // 对于移动端，使用 setSelectionRange
+            if (textArea.setSelectionRange) {
+              textArea.setSelectionRange(0, text.length);
+            }
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+              setCopiedMemberId(member.id);
+              setTimeout(() => setCopiedMemberId(null), 2000);
+              
+              if (!showMobileToast('会员信息已复制')) {
+                toast({
+                  title: "复制成功",
+                  description: "会员基本信息已复制到剪贴板"
+                });
+              }
+            } else {
+              throw new Error('备用复制方案也失败');
+            }
+          } catch (fallbackError) {
+            console.error('备用复制方案失败:', fallbackError);
+            
+            // 根据错误类型提供不同的错误信息
+            let errorMessage = '复制失败，请手动选择文本复制';
+            if (clipboardError.message && clipboardError.message.includes('timeout')) {
+              errorMessage = '复制超时，请重试';
+            } else if (clipboardError.message && clipboardError.message.includes('Document is not focused')) {
+              errorMessage = '页面失去焦点，已使用备用方案复制';
+            } else if (clipboardError.message && clipboardError.message.includes('NotAllowedError')) {
+              errorMessage = '复制权限被拒绝，请检查浏览器权限设置';
+            } else if (clipboardError.message && clipboardError.message.includes('user agent')) {
+              errorMessage = '移动端复制受限，请长按文本手动复制';
+            }
+            
+            if (!showMobileToast(errorMessage, 'error')) {
+              toast({
+                variant: 'destructive',
+                title: "复制失败",
+                description: errorMessage
+              });
+            }
+          }
+        }
       } else {
-        // 备用方案
+        // 浏览器不支持clipboard API的备用方案
         const textArea = document.createElement('textarea');
         textArea.value = text;
         textArea.style.position = 'fixed';
         textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        textArea.setAttribute('readonly', '');
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        setCopiedMemberId(member.id);
-        setTimeout(() => setCopiedMemberId(null), 2000);
-        toast({
-          title: "复制成功",
-          description: "会员基本信息已复制到剪贴板"
-        });
+        
+        // 对于移动端，使用 setSelectionRange
+        if (textArea.setSelectionRange) {
+          textArea.setSelectionRange(0, text.length);
+        }
+        
+        try {
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          
+          if (successful) {
+            setCopiedMemberId(member.id);
+            setTimeout(() => setCopiedMemberId(null), 2000);
+            
+            if (!showMobileToast('会员信息已复制')) {
+              toast({
+                title: "复制成功",
+                description: "会员基本信息已复制到剪贴板"
+              });
+            }
+          } else {
+            throw new Error('execCommand复制失败');
+          }
+        } catch (error) {
+          console.error('execCommand复制失败:', error);
+          
+          if (!showMobileToast('复制失败，请手动选择文本复制', 'error')) {
+            toast({
+              variant: 'destructive',
+              title: "复制失败",
+              description: "请手动选择文本复制"
+            });
+          }
+        }
       }
     } catch (error) {
       console.error('复制会员信息失败:', error);
-      toast({
-        variant: 'destructive',
-        title: "复制失败",
-        description: error instanceof Error ? error.message : "未知错误"
-      });
+      
+      if (!showMobileToast('复制失败', 'error')) {
+        toast({
+          variant: 'destructive',
+          title: "复制失败",
+          description: error instanceof Error ? error.message : "未知错误"
+        });
+      }
     }
-  }, [toast, selectedPlatform, generatePlatformText]);
+  }, [toast, selectedPlatform, generatePlatformText, showMobileToast]);
 
   // 获取要发布的女生列表（20个）
   const fetchNextMembers = async () => {
