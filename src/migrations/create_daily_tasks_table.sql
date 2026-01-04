@@ -12,8 +12,30 @@ CREATE TABLE IF NOT EXISTS daily_tasks (
   UNIQUE KEY `uk_date_member` (`task_date`, `member_id`),
   INDEX `idx_task_date` (`task_date`),
   INDEX `idx_status` (`status`),
-  FOREIGN KEY (`member_id`) REFERENCES `members`(`id`) ON DELETE CASCADE
+  INDEX `idx_member_id` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每日任务表';
+
+-- 添加外键约束（如果members表存在且id字段类型匹配）
+-- 注意：如果外键创建失败，可以手动检查members表结构
+SET @foreign_key_exists = (
+  SELECT COUNT(*) 
+  FROM information_schema.TABLE_CONSTRAINTS 
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'daily_tasks'
+    AND CONSTRAINT_NAME = 'fk_daily_tasks_member_id'
+);
+
+SET @sql = IF(
+  @foreign_key_exists = 0,
+  'ALTER TABLE daily_tasks 
+   ADD CONSTRAINT fk_daily_tasks_member_id 
+   FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE',
+  'SELECT "外键约束已存在，跳过创建" AS message'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 创建每日任务完成记录表
 CREATE TABLE IF NOT EXISTS daily_task_completions (
