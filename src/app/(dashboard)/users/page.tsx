@@ -161,8 +161,8 @@ function UsersPageContent() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>(''); // 状态筛选：'', 'temporary', 'active', 'disabled'
-  const [registeredFilter, setRegisteredFilter] = useState<string>(''); // 资料完善筛选：'', '0', '1'
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // 状态筛选：'all', 'temporary', 'active', 'disabled'
+  const [registeredFilter, setRegisteredFilter] = useState<string>('all'); // 资料完善筛选：'all', '0', '1'
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>([
@@ -196,11 +196,11 @@ function UsersPageContent() {
         pageSize: size.toString()
       });
       
-      // 添加筛选参数
-      if (statusFilter) {
+      // 添加筛选参数（排除'all'值）
+      if (statusFilter && statusFilter !== 'all') {
         queryParams.set('status', statusFilter);
       }
-      if (registeredFilter) {
+      if (registeredFilter && registeredFilter !== 'all') {
         queryParams.set('registered', registeredFilter);
       }
       if (searchQuery) {
@@ -302,8 +302,8 @@ function UsersPageContent() {
   // 清除所有筛选
   const handleClearFilters = () => {
     setSearchQuery('');
-    setStatusFilter('');
-    setRegisteredFilter('');
+    setStatusFilter('all');
+    setRegisteredFilter('all');
     setCurrentPage(1);
     // 延迟执行，确保状态更新完成
     setTimeout(() => {
@@ -567,7 +567,7 @@ function UsersPageContent() {
               <SelectValue placeholder="全部状态" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">全部状态</SelectItem>
+              <SelectItem value="all">全部状态</SelectItem>
               <SelectItem value="temporary">临时</SelectItem>
               <SelectItem value="active">已激活</SelectItem>
               <SelectItem value="disabled">已禁用</SelectItem>
@@ -583,14 +583,14 @@ function UsersPageContent() {
               <SelectValue placeholder="资料完善" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">全部</SelectItem>
+              <SelectItem value="all">全部</SelectItem>
               <SelectItem value="1">已完善</SelectItem>
               <SelectItem value="0">未完善</SelectItem>
             </SelectContent>
           </Select>
           
           {/* 清除筛选按钮 */}
-          {(statusFilter || registeredFilter || searchQuery) && (
+          {(statusFilter !== 'all' || registeredFilter !== 'all' || searchQuery) && (
             <Button 
               variant="outline" 
               onClick={handleClearFilters}
