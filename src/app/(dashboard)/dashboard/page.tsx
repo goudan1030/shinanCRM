@@ -50,7 +50,6 @@ export default function DashboardPage() {
   const [copiedMemberId, setCopiedMemberId] = useState<number | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('default'); // 选择的平台
   const [taskStatus, setTaskStatus] = useState<{
-    isCompleted: boolean;
     publishedCount: number;
     totalCount: number;
   } | null>(null);
@@ -602,40 +601,6 @@ export default function DashboardPage() {
     }
   };
 
-  // 完成今日任务
-  const handleComplete = async () => {
-    try {
-      setTaskLoading(true);
-      const response = await fetch('/api/dashboard/daily-task/complete', {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-      if (response.ok && data.success) {
-        toast({
-          title: '任务完成',
-          description: `今日已发布 ${data.data.totalPublished} 个女生信息`,
-        });
-        await fetchDailyTaskStatus();
-        setCurrentMembers([]);
-      } else {
-        toast({
-          variant: 'destructive',
-          title: '完成失败',
-          description: data.error || '标记完成失败',
-        });
-      }
-    } catch (error) {
-      console.error('标记完成失败:', error);
-      toast({
-        variant: 'destructive',
-        title: '完成失败',
-        description: '网络错误，请重试',
-      });
-    } finally {
-      setTaskLoading(false);
-    }
-  };
 
   if (isLoading || loading) {
     return (
@@ -678,23 +643,13 @@ export default function DashboardPage() {
           <CardDescription>
             {taskStatus && (
               <span>
-                今日已发布: {taskStatus.publishedCount} / {taskStatus.totalCount}
-                {taskStatus.isCompleted && (
-                  <span className="ml-2 text-green-600 font-medium">✓ 已完成</span>
-                )}
+                今日已发布: {taskStatus.publishedCount} / {currentMembers.length}
               </span>
             )}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
-          {taskStatus?.isCompleted ? (
-            <div className="text-center py-8">
-              <p className="text-lg text-muted-foreground mb-4">今日任务已完成！</p>
-              <p className="text-sm text-muted-foreground">
-                今日共发布 {taskStatus.publishedCount} 个女生信息
-              </p>
-            </div>
-          ) : currentMembers.length > 0 ? (
+          {currentMembers.length > 0 ? (
             <div className="space-y-4">
               {/* 平台选择器 */}
               <div className="flex items-center gap-2 pb-2 border-b">
@@ -817,15 +772,6 @@ export default function DashboardPage() {
                   </div>
                 );
                 })}
-              </div>
-              <div className="flex justify-end pt-2">
-                <Button 
-                  onClick={handleComplete} 
-                  disabled={taskLoading || (taskStatus && taskStatus.publishedCount === 0)}
-                  variant="outline"
-                >
-                  完成今日任务
-                </Button>
               </div>
             </div>
           ) : (

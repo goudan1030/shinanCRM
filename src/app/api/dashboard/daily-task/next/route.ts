@@ -10,10 +10,100 @@ export async function GET() {
   try {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-    // 1. 获取今日已发布的会员ID列表
+    // 1. 首先检查今天是否已经有任务记录（pending或published状态的）
+    const [existingTasksResult] = await executeQuery(
+      `SELECT member_id FROM daily_tasks 
+       WHERE task_date = ? AND status IN ('pending', 'published')
+       ORDER BY id ASC`,
+      [today]
+    );
+
+    let memberIds: number[] = [];
+    if (Array.isArray(existingTasksResult) && existingTasksResult.length > 0) {
+      // 如果今天已经有任务记录，直接使用这些会员ID
+      memberIds = existingTasksResult.map((row: any) => Number(row.member_id));
+    } else {
+      // 如果今天还没有任务记录，随机选择20个女性会员
+      const [allMembersResult] = await executeQuery(
+        `SELECT COUNT(*) as total FROM members 
+         WHERE gender = 'female' AND status = 'ACTIVE' 
+         AND (deleted IS NULL OR deleted = FALSE)`
+      );
+
+      const totalFemaleMembers = Array.isArray(allMembersResult) && allMembersResult[0] 
+        ? Number(allMembersResult[0].total) || 0 
+        : 0;
+
+      if (totalFemaleMembers === 0) {
+        return createSuccessResponse({
+          members: [],
+          publishedCount: 0,
+          totalCount: 0
+        }, '没有可发布的女性会员');
+      }
+
+      // 随机选择20个女性会员
+      const [randomMembersResult] = await executeQuery(
+        `SELECT id, member_no, nickname, wechat, phone, 
+                birth_year, height, weight, education, occupation,
+                province, city, district, target_area, house_car,
+                hukou_province, hukou_city, children_plan, marriage_cert,
+                marriage_history, sexual_orientation, self_description,
+                partner_requirement
+         FROM members 
+         WHERE gender = 'female' 
+           AND status = 'ACTIVE'
+           AND (deleted IS NULL OR deleted = FALSE)
+         ORDER BY RAND() LIMIT 20`
+      );
+
+      if (!Array.isArray(randomMembersResult) || randomMembersResult.length === 0) {
+        return createSuccessResponse({
+          members: [],
+          publishedCount: 0,
+          totalCount: totalFemaleMembers
+        }, '没有可发布的女性会员');
+      }
+
+      // 为每个会员创建任务记录
+      for (const member of randomMembersResult) {
+        await executeQuery(
+          `INSERT INTO daily_tasks (task_date, member_id, member_no, status)
+           VALUES (?, ?, ?, 'pending')
+           ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+          [today, member.id, member.member_no]
+        );
+        memberIds.push(Number(member.id));
+      }
+    }
+
+    // 2. 根据会员ID获取完整的会员信息
+    if (memberIds.length === 0) {
+      return createSuccessResponse({
+        members: [],
+        publishedCount: 0,
+        totalCount: 0
+      }, '没有可发布的女性会员');
+    }
+
+    const placeholders = memberIds.map(() => '?').join(',');
+    const [result] = await executeQuery(
+      `SELECT id, member_no, nickname, wechat, phone, 
+              birth_year, height, weight, education, occupation,
+              province, city, district, target_area, house_car,
+              hukou_province, hukou_city, children_plan, marriage_cert,
+              marriage_history, sexual_orientation, self_description,
+              partner_requirement
+       FROM members 
+       WHERE id IN (${placeholders})
+       ORDER BY FIELD(id, ${placeholders})`,
+      [...memberIds, ...memberIds]
+    );
+
+    // 3. 获取今日已发布的会员ID列表（用于统计）
     const [publishedResult] = await executeQuery(
       `SELECT DISTINCT member_id FROM daily_tasks 
-       WHERE task_date = ? AND status IN ('published', 'completed')`,
+       WHERE task_date = ? AND status = 'published'`,
       [today]
     );
 
@@ -24,71 +114,6 @@ export async function GET() {
           publishedMemberIds.push(Number(row.member_id));
         }
       });
-    }
-
-    // 2. 获取所有女性会员（状态为ACTIVE）
-    let query = `
-      SELECT id, member_no, nickname, wechat, phone, 
-             birth_year, height, weight, education, occupation,
-             province, city, district, target_area, house_car,
-             hukou_province, hukou_city, children_plan, marriage_cert,
-             marriage_history, sexual_orientation, self_description,
-             partner_requirement
-      FROM members 
-      WHERE gender = 'female' 
-        AND status = 'ACTIVE'
-        AND (deleted IS NULL OR deleted = FALSE)
-    `;
-
-    const queryParams: any[] = [];
-
-    // 3. 如果今日已发布过，排除已发布的会员
-    if (publishedMemberIds.length > 0) {
-      query += ` AND id NOT IN (${publishedMemberIds.map(() => '?').join(',')})`;
-      queryParams.push(...publishedMemberIds);
-    }
-
-    // 4. 如果所有女性会员都已发布，则重新开始循环（清空今日记录，重新开始）
-    const [allMembersResult] = await executeQuery(
-      `SELECT COUNT(*) as total FROM members 
-       WHERE gender = 'female' AND status = 'ACTIVE' 
-       AND (deleted IS NULL OR deleted = FALSE)`
-    );
-
-    const totalFemaleMembers = Array.isArray(allMembersResult) && allMembersResult[0] 
-      ? Number(allMembersResult[0].total) || 0 
-      : 0;
-
-    // 如果所有会员都已发布，重置今日任务
-    if (publishedMemberIds.length > 0 && publishedMemberIds.length >= totalFemaleMembers) {
-      // 删除今日所有任务记录，重新开始
-      await executeQuery(
-        `DELETE FROM daily_tasks WHERE task_date = ?`,
-        [today]
-      );
-    }
-
-    // 5. 随机选择20个未发布的女性会员
-    query += ` ORDER BY RAND() LIMIT 20`;
-
-    const [result] = await executeQuery(query, queryParams);
-
-    if (!Array.isArray(result) || result.length === 0) {
-      return createSuccessResponse({
-        members: [],
-        publishedCount: publishedMemberIds.length,
-        totalCount: totalFemaleMembers
-      }, '没有可发布的女性会员');
-    }
-
-    // 6. 为每个会员创建任务记录（如果不存在）
-    for (const member of result) {
-      await executeQuery(
-        `INSERT INTO daily_tasks (task_date, member_id, member_no, status)
-         VALUES (?, ?, ?, 'pending')
-         ON DUPLICATE KEY UPDATE updated_at = NOW()`,
-        [today, member.id, member.member_no]
-      );
     }
 
     // 7. 格式化返回数据
@@ -121,7 +146,7 @@ export async function GET() {
     return createSuccessResponse({
       members,
       publishedCount: publishedMemberIds.length,
-      totalCount: totalFemaleMembers
+      totalCount: members.length
     }, '获取要发布的女生列表成功');
 
   } catch (error) {
