@@ -33,10 +33,36 @@ echo "📝 找到配置文件: $CONF_FILE"
 cp "$CONF_FILE" "${CONF_FILE}.bak.$(date +%Y%m%d_%H%M%S)"
 echo "✅ 已备份原配置"
 
+# 查找mime.types文件
+MIME_TYPES=""
+if [ -f "/www/server/nginx/conf/mime.types" ]; then
+    MIME_TYPES="/www/server/nginx/conf/mime.types"
+elif [ -f "/etc/nginx/mime.types" ]; then
+    MIME_TYPES="/etc/nginx/mime.types"
+elif [ -f "/usr/local/nginx/conf/mime.types" ]; then
+    MIME_TYPES="/usr/local/nginx/conf/mime.types"
+else
+    MIME_TYPES=$(find /www/server/nginx /etc/nginx /usr/local/nginx -name "mime.types" -type f 2>/dev/null | head -1)
+fi
+
+if [ -z "$MIME_TYPES" ] || [ ! -f "$MIME_TYPES" ]; then
+    echo "⚠️  未找到mime.types文件，将跳过include，直接设置MIME类型"
+    USE_MIME_TYPES=0
+else
+    echo "✅ 找到mime.types: $MIME_TYPES"
+    USE_MIME_TYPES=1
+fi
+
 # 创建修复后的配置
-cat > /tmp/nginx_fix.conf << 'EOF'
+cat > /tmp/nginx_fix.conf << EOF
     # 修复MIME类型 - 必须在server块的最前面
-    include /etc/nginx/mime.types;
+EOF
+
+if [ "$USE_MIME_TYPES" = "1" ]; then
+    echo "    include $MIME_TYPES;" >> /tmp/nginx_fix.conf
+fi
+
+cat >> /tmp/nginx_fix.conf << 'EOF'
     default_type application/octet-stream;
     
     # 确保JS文件有正确的MIME类型
@@ -125,11 +151,50 @@ fi
 
 # 在server块中添加配置（在location /之前）
 if grep -q "location / {" "$CONF_FILE"; then
+    # 准备插入的配置
+    INSERT_CONFIG="# ========== 修复MIME类型配置 - 自动添加 =========="
+    if [ "$USE_MIME_TYPES" = "1" ]; then
+        INSERT_CONFIG="$INSERT_CONFIG
+    include $MIME_TYPES;"
+    fi
+    INSERT_CONFIG="$INSERT_CONFIG
+    default_type application/octet-stream;
+    
+    # Next.js静态资源 - 优先匹配
+    location /_next/static/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_buffering off;
+        expires 365d;
+        add_header Cache-Control \"public, max-age=31536000, immutable\" always;
+        add_header Content-Type \"application/javascript; charset=utf-8\" always;
+    }
+    
+    # 字体文件
+    location /fonts/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        expires 365d;
+        add_header Cache-Control \"public, max-age=31536000, immutable\" always;
+    }
+    
+    # JS文件强制MIME类型
+    location ~* \\.js\$ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_buffering off;
+        add_header Content-Type \"application/javascript; charset=utf-8\" always;
+    }
+    # ========== 配置结束 =========="
+    
     # 在 location / 之前插入新配置
-    sed -i '/location \/ {/i\
-    # ========== 修复MIME类型配置 - 自动添加 ==========\
-    include /etc/nginx/mime.types;\
-    default_type application/octet-stream;\
+    echo "$INSERT_CONFIG" | sed -i '/location \/ {/r /dev/stdin' "$CONF_FILE"
     \
     # Next.js静态资源 - 优先匹配\
     location /_next/static/ {\
