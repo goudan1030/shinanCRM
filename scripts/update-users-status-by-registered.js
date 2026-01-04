@@ -14,14 +14,14 @@ async function updateUsersStatusByRegistered() {
       'SELECT COUNT(*) as count FROM users WHERE registered = 1 AND status = "temporary"'
     );
     const count1 = Array.isArray(countResult1) && countResult1[0] && typeof countResult1[0] === 'object' && 'count' in countResult1[0]
-      ? Number((countResult1[0] as any).count) || 0
+      ? Number(countResult1[0].count) || 0
       : 0;
     
     const [countResult2] = await executeQuery(
       'SELECT COUNT(*) as count FROM users WHERE registered = 0 AND status = "active"'
     );
     const count2 = Array.isArray(countResult2) && countResult2[0] && typeof countResult2[0] === 'object' && 'count' in countResult2[0]
-      ? Number((countResult2[0] as any).count) || 0
+      ? Number(countResult2[0].count) || 0
       : 0;
     
     console.log(`📊 找到 ${count1} 个已完善资料但状态为temporary的用户`);
@@ -44,7 +44,10 @@ async function updateUsersStatusByRegistered() {
       const [updateResult1] = await executeQuery(
         'UPDATE users SET status = "active", updated_at = NOW() WHERE registered = 1 AND status = "temporary"'
       );
-      console.log(`✅ 成功更新了 ${(updateResult1 as any).affectedRows || 0} 个用户的状态为 active`);
+      const affectedRows1 = updateResult1 && typeof updateResult1 === 'object' && 'affectedRows' in updateResult1
+        ? updateResult1.affectedRows || 0
+        : 0;
+      console.log(`✅ 成功更新了 ${affectedRows1} 个用户的状态为 active`);
     }
     
     // 4. 执行更新：未完善资料的用户更新为temporary（但disabled状态保持不变）
@@ -52,7 +55,10 @@ async function updateUsersStatusByRegistered() {
       const [updateResult2] = await executeQuery(
         'UPDATE users SET status = "temporary", updated_at = NOW() WHERE registered = 0 AND status = "active"'
       );
-      console.log(`✅ 成功更新了 ${(updateResult2 as any).affectedRows || 0} 个用户的状态为 temporary`);
+      const affectedRows2 = updateResult2 && typeof updateResult2 === 'object' && 'affectedRows' in updateResult2
+        ? updateResult2.affectedRows || 0
+        : 0;
+      console.log(`✅ 成功更新了 ${affectedRows2} 个用户的状态为 temporary`);
     }
     
     // 5. 显示更新后的状态统计
@@ -69,8 +75,14 @@ async function updateUsersStatusByRegistered() {
     const [verifyResult2] = await executeQuery(
       'SELECT COUNT(*) as count FROM users WHERE registered = 0 AND status = "temporary"'
     );
-    console.log(`🔍 验证结果: ${(verifyResult1 as any[])[0]?.count || 0} 个 registered=1 的用户现在是 active 状态`);
-    console.log(`🔍 验证结果: ${(verifyResult2 as any[])[0]?.count || 0} 个 registered=0 的用户现在是 temporary 状态`);
+    const verifyCount1 = Array.isArray(verifyResult1) && verifyResult1[0] && typeof verifyResult1[0] === 'object' && 'count' in verifyResult1[0]
+      ? Number(verifyResult1[0].count) || 0
+      : 0;
+    const verifyCount2 = Array.isArray(verifyResult2) && verifyResult2[0] && typeof verifyResult2[0] === 'object' && 'count' in verifyResult2[0]
+      ? Number(verifyResult2[0].count) || 0
+      : 0;
+    console.log(`🔍 验证结果: ${verifyCount1} 个 registered=1 的用户现在是 active 状态`);
+    console.log(`🔍 验证结果: ${verifyCount2} 个 registered=0 的用户现在是 temporary 状态`);
     
     console.log('✅ 批量更新完成！');
   } catch (error) {
