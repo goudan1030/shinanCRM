@@ -8,16 +8,44 @@ const logger = createLogger('api/users');
 // 获取所有用户
 export async function GET(request: Request) {
   try {
-    // 从URL参数中获取分页信息
+    // 从URL参数中获取分页信息和筛选条件
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('pageSize') || '25');
+    const statusFilter = url.searchParams.get('status'); // 状态筛选：temporary, active, disabled
+    const registeredFilter = url.searchParams.get('registered'); // 资料完善筛选：0, 1
+    const searchQuery = url.searchParams.get('search'); // 搜索关键词
+    
+    // 构建WHERE条件
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
+    
+    if (statusFilter) {
+      whereConditions.push('u.status = ?');
+      queryParams.push(statusFilter);
+    }
+    
+    if (registeredFilter !== null) {
+      whereConditions.push('u.registered = ?');
+      queryParams.push(parseInt(registeredFilter));
+    }
+    
+    if (searchQuery) {
+      whereConditions.push('(u.phone LIKE ? OR u.nickname LIKE ?)');
+      const searchTerm = `%${searchQuery}%`;
+      queryParams.push(searchTerm, searchTerm);
+    }
+    
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(' AND ')}`
+      : '';
     
     // 计算偏移量
     const offset = (page - 1) * pageSize;
     
     // 查询总记录数
-    const [countResult] = await executeQuery('SELECT COUNT(*) as total FROM users');
+    const countQuery = `SELECT COUNT(*) as total FROM users u ${whereClause}`;
+    const [countResult] = await executeQuery(countQuery, queryParams);
     interface CountResult {
       total: number;
     }
@@ -26,12 +54,15 @@ export async function GET(request: Request) {
       : 0;
     
     // 分页查询用户并关联会员信息，包含view_count字段
-    const [users] = await executeQuery(
-      `SELECT u.*, vm.member_id 
+    const usersQuery = `SELECT u.*, vm.member_id 
        FROM users u
        LEFT JOIN view_user_members vm ON u.id = vm.user_id
-       ORDER BY u.created_at DESC LIMIT ? OFFSET ?`,
-      [pageSize, offset]
+       ${whereClause}
+       ORDER BY u.created_at DESC LIMIT ? OFFSET ?`;
+    
+    const [users] = await executeQuery(
+      usersQuery,
+      [...queryParams, pageSize, offset]
     );
     
     return createSuccessResponse({

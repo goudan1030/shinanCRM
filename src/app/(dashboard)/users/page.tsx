@@ -161,6 +161,8 @@ function UsersPageContent() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>(''); // 状态筛选：'', 'temporary', 'active', 'disabled'
+  const [registeredFilter, setRegisteredFilter] = useState<string>(''); // 资料完善筛选：'', '0', '1'
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>([
@@ -193,6 +195,17 @@ function UsersPageContent() {
         page: page.toString(),
         pageSize: size.toString()
       });
+      
+      // 添加筛选参数
+      if (statusFilter) {
+        queryParams.set('status', statusFilter);
+      }
+      if (registeredFilter) {
+        queryParams.set('registered', registeredFilter);
+      }
+      if (searchQuery) {
+        queryParams.set('search', searchQuery);
+      }
       
       const response = await fetch(`/api/users?${queryParams}`);
       
@@ -239,7 +252,7 @@ function UsersPageContent() {
       });
       setLoading(false);
     }
-  }, [toast, pageSize]);
+  }, [toast, pageSize, statusFilter, registeredFilter, searchQuery]);
 
   // 从本地存储加载列配置
   useEffect(() => {
@@ -276,7 +289,26 @@ function UsersPageContent() {
 
   // 处理搜索
   const handleSearch = () => {
-    fetchUsers();
+    setCurrentPage(1);
+    fetchUsers(1, pageSize);
+  };
+  
+  // 处理筛选变更
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+    fetchUsers(1, pageSize);
+  };
+  
+  // 清除所有筛选
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('');
+    setRegisteredFilter('');
+    setCurrentPage(1);
+    // 延迟执行，确保状态更新完成
+    setTimeout(() => {
+      fetchUsers(1, pageSize);
+    }, 0);
   };
 
   // 处理用户删除
@@ -490,21 +522,8 @@ function UsersPageContent() {
     }
   };
 
-  // 根据筛选条件构建显示的用户列表
-  const filteredUsers = users.filter(user => {
-    // 搜索条件过滤
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
-      !searchQuery || 
-      (user.phone && user.phone.toLowerCase().includes(searchLower)) || 
-      (user.nickname && user.nickname.toLowerCase().includes(searchLower));
-    
-    // 会员类型过滤
-    const matchesMemberType = 
-      true; // 移除memberType过滤，因为member_type字段已移除
-    
-    return matchesSearch && matchesMemberType;
-  });
+  // 注意：筛选现在在服务端完成，这里不再需要客户端筛选
+  const filteredUsers = users;
 
   // 处理页码变更
   const handlePageChange = (page: number) => {
@@ -539,7 +558,47 @@ function UsersPageContent() {
         </div>
         
         <div className="flex gap-2 w-full md:w-auto">
-          {/* 移除会员类型过滤，因为member_type字段不存在 */}
+          {/* 状态筛选 */}
+          <Select value={statusFilter} onValueChange={(value) => {
+            setStatusFilter(value);
+            handleFilterChange();
+          }}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">全部状态</SelectItem>
+              <SelectItem value="temporary">临时</SelectItem>
+              <SelectItem value="active">已激活</SelectItem>
+              <SelectItem value="disabled">已禁用</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {/* 资料完善筛选 */}
+          <Select value={registeredFilter} onValueChange={(value) => {
+            setRegisteredFilter(value);
+            handleFilterChange();
+          }}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="资料完善" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">全部</SelectItem>
+              <SelectItem value="1">已完善</SelectItem>
+              <SelectItem value="0">未完善</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {/* 清除筛选按钮 */}
+          {(statusFilter || registeredFilter || searchQuery) && (
+            <Button 
+              variant="outline" 
+              onClick={handleClearFilters}
+              className="shrink-0"
+            >
+              清除筛选
+            </Button>
+          )}
         </div>
         
         <div className="flex-1" />

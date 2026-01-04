@@ -121,13 +121,39 @@ export async function PUT(
       });
     }
     
+    // 自动更新状态逻辑：如果资料已完善（registered=1），状态应该为active
+    const existingUser = (existingUsers as any[])[0];
+    const newRegistered = data.registered !== undefined ? data.registered : existingUser.registered;
+    const currentStatus = existingUser.status;
+    const isStatusManuallyUpdated = data.status !== undefined;
+    
+    // 只有在registered字段被更新且status未被手动更新时，才自动更新status
+    if (data.registered !== undefined && !isStatusManuallyUpdated) {
+      if (newRegistered === 1 && currentStatus === 'temporary') {
+        // 如果status不在更新列表中，添加它
+        if (!updateFields.some(f => f.includes('status'))) {
+          updateFields.push('status = ?');
+          values.push('active');
+          console.log('自动更新状态：资料已完善，状态从temporary更新为active');
+        }
+      }
+      // 如果资料未完善且当前状态是active，自动更新为temporary（但disabled状态保持不变）
+      else if (newRegistered === 0 && currentStatus === 'active') {
+        if (!updateFields.some(f => f.includes('status'))) {
+          updateFields.push('status = ?');
+          values.push('temporary');
+          console.log('自动更新状态：资料未完善，状态从active更新为temporary');
+        }
+      }
+    }
+    
     // 添加用户ID到参数列表
     values.push(userId);
     
     // 执行更新
     console.log('执行更新操作...');
     await executeQuery(
-      `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`,
+      `UPDATE users SET ${updateFields.join(', ')}, updated_at = NOW() WHERE id = ?`,
       values
     );
     
