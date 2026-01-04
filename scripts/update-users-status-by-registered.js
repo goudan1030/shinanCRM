@@ -1,4 +1,13 @@
-const { executeQuery } = require('../src/lib/database-netlify');
+const mysql = require('mysql2/promise');
+
+// 数据库配置
+const dbConfig = {
+  host: process.env.DB_HOST || '121.41.65.220',
+  user: process.env.DB_USER || 'h5_cloud_user',
+  password: process.env.DB_PASSWORD || 'mc72TNcMmy6HCybH',
+  database: process.env.DB_NAME || 'h5_cloud_db',
+  port: parseInt(process.env.DB_PORT || '3306')
+};
 
 /**
  * 批量更新用户状态：根据资料完善情况自动更新状态
@@ -6,23 +15,21 @@ const { executeQuery } = require('../src/lib/database-netlify');
  * - registered = 0 且 status = active → 更新为 temporary（但disabled状态保持不变）
  */
 async function updateUsersStatusByRegistered() {
+  const pool = mysql.createPool(dbConfig);
+  
   try {
     console.log('🚀 开始批量更新用户状态...');
     
     // 1. 统计需要更新的用户
-    const [countResult1] = await executeQuery(
+    const [countResult1] = await pool.execute(
       'SELECT COUNT(*) as count FROM users WHERE registered = 1 AND status = "temporary"'
     );
-    const count1 = Array.isArray(countResult1) && countResult1[0] && typeof countResult1[0] === 'object' && 'count' in countResult1[0]
-      ? Number(countResult1[0].count) || 0
-      : 0;
+    const count1 = countResult1[0].count || 0;
     
-    const [countResult2] = await executeQuery(
+    const [countResult2] = await pool.execute(
       'SELECT COUNT(*) as count FROM users WHERE registered = 0 AND status = "active"'
     );
-    const count2 = Array.isArray(countResult2) && countResult2[0] && typeof countResult2[0] === 'object' && 'count' in countResult2[0]
-      ? Number(countResult2[0].count) || 0
-      : 0;
+    const count2 = countResult2[0].count || 0;
     
     console.log(`📊 找到 ${count1} 个已完善资料但状态为temporary的用户`);
     console.log(`📊 找到 ${count2} 个未完善资料但状态为active的用户`);
@@ -33,7 +40,7 @@ async function updateUsersStatusByRegistered() {
     }
     
     // 2. 显示更新前的状态统计
-    const [beforeStats] = await executeQuery(
+    const [beforeStats] = await pool.execute(
       'SELECT status, COUNT(*) as count FROM users GROUP BY status'
     );
     console.log('📈 更新前的状态统计:');
@@ -41,53 +48,43 @@ async function updateUsersStatusByRegistered() {
     
     // 3. 执行更新：已完善资料的用户更新为active
     if (count1 > 0) {
-      const [updateResult1] = await executeQuery(
+      const [updateResult1] = await pool.execute(
         'UPDATE users SET status = "active", updated_at = NOW() WHERE registered = 1 AND status = "temporary"'
       );
-      const affectedRows1 = updateResult1 && typeof updateResult1 === 'object' && 'affectedRows' in updateResult1
-        ? updateResult1.affectedRows || 0
-        : 0;
-      console.log(`✅ 成功更新了 ${affectedRows1} 个用户的状态为 active`);
+      console.log(`✅ 成功更新了 ${updateResult1.affectedRows} 个用户的状态为 active`);
     }
     
     // 4. 执行更新：未完善资料的用户更新为temporary（但disabled状态保持不变）
     if (count2 > 0) {
-      const [updateResult2] = await executeQuery(
+      const [updateResult2] = await pool.execute(
         'UPDATE users SET status = "temporary", updated_at = NOW() WHERE registered = 0 AND status = "active"'
       );
-      const affectedRows2 = updateResult2 && typeof updateResult2 === 'object' && 'affectedRows' in updateResult2
-        ? updateResult2.affectedRows || 0
-        : 0;
-      console.log(`✅ 成功更新了 ${affectedRows2} 个用户的状态为 temporary`);
+      console.log(`✅ 成功更新了 ${updateResult2.affectedRows} 个用户的状态为 temporary`);
     }
     
     // 5. 显示更新后的状态统计
-    const [afterStats] = await executeQuery(
+    const [afterStats] = await pool.execute(
       'SELECT status, COUNT(*) as count FROM users GROUP BY status'
     );
     console.log('📈 更新后的状态统计:');
     console.table(afterStats);
     
     // 6. 验证更新结果
-    const [verifyResult1] = await executeQuery(
+    const [verifyResult1] = await pool.execute(
       'SELECT COUNT(*) as count FROM users WHERE registered = 1 AND status = "active"'
     );
-    const [verifyResult2] = await executeQuery(
+    const [verifyResult2] = await pool.execute(
       'SELECT COUNT(*) as count FROM users WHERE registered = 0 AND status = "temporary"'
     );
-    const verifyCount1 = Array.isArray(verifyResult1) && verifyResult1[0] && typeof verifyResult1[0] === 'object' && 'count' in verifyResult1[0]
-      ? Number(verifyResult1[0].count) || 0
-      : 0;
-    const verifyCount2 = Array.isArray(verifyResult2) && verifyResult2[0] && typeof verifyResult2[0] === 'object' && 'count' in verifyResult2[0]
-      ? Number(verifyResult2[0].count) || 0
-      : 0;
-    console.log(`🔍 验证结果: ${verifyCount1} 个 registered=1 的用户现在是 active 状态`);
-    console.log(`🔍 验证结果: ${verifyCount2} 个 registered=0 的用户现在是 temporary 状态`);
+    console.log(`🔍 验证结果: ${verifyResult1[0].count} 个 registered=1 的用户现在是 active 状态`);
+    console.log(`🔍 验证结果: ${verifyResult2[0].count} 个 registered=0 的用户现在是 temporary 状态`);
     
     console.log('✅ 批量更新完成！');
   } catch (error) {
     console.error('❌ 批量更新失败:', error);
     throw error;
+  } finally {
+    await pool.end();
   }
 }
 
