@@ -316,6 +316,15 @@ export default function CreateContractPage() {
         })
       });
 
+      // 检查响应内容类型，确保是JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        // 如果不是JSON，尝试读取文本以获取错误信息
+        const text = await response.text();
+        console.error('收到非JSON响应:', text.substring(0, 200));
+        throw new Error(`服务器返回了非JSON响应: ${response.status} ${response.statusText}`);
+      }
+
       const apiResponse = await response.json();
 
       if (response.ok && apiResponse.success) {
@@ -345,11 +354,39 @@ export default function CreateContractPage() {
       }
     } catch (error) {
       console.error('创建合同失败:', error);
+      
+      // 提供更详细的错误信息
+      let errorMessage = '网络错误，请稍后重试';
+      if (error instanceof Error) {
+        if (error.message.includes('非JSON响应')) {
+          errorMessage = '服务器响应格式错误，但合同可能已创建成功，请刷新合同列表查看';
+        } else if (error.message.includes('JSON')) {
+          errorMessage = '服务器响应解析失败，但合同可能已创建成功，请刷新合同列表查看';
+        } else {
+          errorMessage = error.message || errorMessage;
+        }
+      }
+      
       toast({
         title: '创建合同失败',
-        description: '网络错误，请稍后重试',
+        description: errorMessage,
         variant: 'destructive'
       });
+      
+      // 如果可能是服务器错误但合同已创建，提示用户刷新列表
+      if (error instanceof Error && (
+        error.message.includes('非JSON响应') || 
+        error.message.includes('JSON')
+      )) {
+        // 延迟提示，让用户看到错误消息
+        setTimeout(() => {
+          toast({
+            title: '提示',
+            description: '如果合同已创建，您可以在合同列表中查看',
+            duration: 5000
+          });
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }

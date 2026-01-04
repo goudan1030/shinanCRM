@@ -243,7 +243,14 @@ export async function GET(request: NextRequest) {
 // 生成新合同
 export async function POST(request: NextRequest) {
   try {
-    const body: GenerateContractRequest = await request.json();
+    // 确保请求体解析失败时也返回JSON错误
+    let body: GenerateContractRequest;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      logger.error('请求体解析失败', parseError instanceof Error ? parseError : new Error(String(parseError)));
+      return createErrorResponse('请求体格式错误，请检查JSON格式', 400);
+    }
     const { memberId, contractType, templateId, variables = {} } = body;
 
     // 验证必需参数
@@ -698,7 +705,22 @@ export async function POST(request: NextRequest) {
 
     return createSuccessResponse(response, '合同创建成功');
   } catch (error) {
+    // 确保所有错误都返回JSON格式，而不是HTML
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
     logger.error('生成合同失败', error instanceof Error ? error : new Error(String(error)));
-    return createErrorResponse('生成合同失败', 500);
+    logger.error('错误详情', { errorMessage, errorStack });
+    
+    // 返回JSON格式的错误响应，确保Content-Type正确
+    return createErrorResponse(
+      `生成合同失败: ${errorMessage}`,
+      500,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   }
 }
