@@ -164,11 +164,6 @@ const nextConfig = {
             key: 'Expires',
             value: '0',
           },
-          // 预加载字体资源
-          {
-            key: 'Link',
-            value: '</fonts/geist.woff2>; rel=preload; as=font; crossorigin=anonymous, </fonts/geist-mono.woff2>; rel=preload; as=font; crossorigin=anonymous',
-          },
         ],
       },
     ];
