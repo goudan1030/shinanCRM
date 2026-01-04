@@ -10,18 +10,24 @@ export async function GET() {
   try {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-    // 1. 首先检查今天是否已经有任务记录（pending或published状态的）
+    // 1. 首先检查今天是否已经有任务记录（pending或published状态的），最多20个
     const [existingTasksResult] = await executeQuery(
       `SELECT member_id FROM daily_tasks 
        WHERE task_date = ? AND status IN ('pending', 'published')
-       ORDER BY id ASC`,
+       ORDER BY id ASC
+       LIMIT 20`,
       [today]
     );
 
     let memberIds: number[] = [];
     if (Array.isArray(existingTasksResult) && existingTasksResult.length > 0) {
-      // 如果今天已经有任务记录，直接使用这些会员ID
+      // 如果今天已经有任务记录，直接使用这些会员ID（最多20个）
       memberIds = existingTasksResult.map((row: any) => Number(row.member_id));
+      
+      // 确保只返回20个，如果超过20个，只取前20个
+      if (memberIds.length > 20) {
+        memberIds = memberIds.slice(0, 20);
+      }
     } else {
       // 如果今天还没有任务记录，随机选择20个女性会员
       const [allMembersResult] = await executeQuery(
@@ -86,6 +92,11 @@ export async function GET() {
       }, '没有可发布的女性会员');
     }
 
+    // 确保memberIds不超过20个
+    if (memberIds.length > 20) {
+      memberIds = memberIds.slice(0, 20);
+    }
+
     const placeholders = memberIds.map(() => '?').join(',');
     const [result] = await executeQuery(
       `SELECT id, member_no, nickname, wechat, phone, 
@@ -96,7 +107,8 @@ export async function GET() {
               partner_requirement
        FROM members 
        WHERE id IN (${placeholders})
-       ORDER BY FIELD(id, ${placeholders})`,
+       ORDER BY FIELD(id, ${placeholders})
+       LIMIT 20`,
       [...memberIds, ...memberIds]
     );
 
@@ -116,8 +128,16 @@ export async function GET() {
       });
     }
 
-    // 7. 格式化返回数据
-    const members = result.map((member: any) => ({
+    // 4. 格式化返回数据，确保只返回20个
+    if (!Array.isArray(result) || result.length === 0) {
+      return createSuccessResponse({
+        members: [],
+        publishedCount: 0,
+        totalCount: 0
+      }, '没有可发布的女性会员');
+    }
+
+    const members = result.slice(0, 20).map((member: any) => ({
       id: member.id,
       member_no: member.member_no,
       nickname: member.nickname || '',
