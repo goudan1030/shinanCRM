@@ -2,10 +2,11 @@
 
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { Copy, CheckCircle2 } from 'lucide-react';
 
 interface DailyTaskMember {
   id: number;
@@ -43,7 +44,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   
   // 每日任务相关状态
-  const [currentMember, setCurrentMember] = useState<DailyTaskMember | null>(null);
+  const [currentMembers, setCurrentMembers] = useState<DailyTaskMember[]>([]);
+  const [copiedMemberId, setCopiedMemberId] = useState<number | null>(null);
   const [taskStatus, setTaskStatus] = useState<{
     isCompleted: boolean;
     publishedCount: number;
@@ -87,7 +89,7 @@ export default function DashboardPage() {
     if (session) {
       fetchDashboardData();
       fetchDailyTaskStatus();
-      fetchNextMember();
+      fetchNextMembers();
     }
   }, [session]);
 
@@ -104,33 +106,178 @@ export default function DashboardPage() {
     }
   };
 
-  // 获取下一个要发布的女生
-  const fetchNextMember = async () => {
+  // 辅助函数：格式化文本
+  const getEducationText = (education: string) => {
+    if (!education) return '未填写';
+    switch (education) {
+      case 'PRIMARY_SCHOOL': return '小学';
+      case 'MIDDLE_SCHOOL': return '初中';
+      case 'HIGH_SCHOOL': return '高中';
+      case 'JUNIOR_COLLEGE': return '专科';
+      case 'COLLEGE': return '大专';
+      case 'BACHELOR': return '本科';
+      case 'MASTER': return '硕士';
+      case 'DOCTOR': return '博士';
+      case 'PHD': return '博士';
+      default: return education;
+    }
+  };
+
+  const getHouseCarText = (houseCar: string) => {
+    switch (houseCar) {
+      case 'NEITHER': return '无房无车';
+      case 'HOUSE_ONLY': return '有房无车';
+      case 'CAR_ONLY': return '有车无房';
+      case 'BOTH': return '有房有车';
+      default: return houseCar || '未填写';
+    }
+  };
+
+  const getMarriageHistoryText = (marriageHistory: string) => {
+    if (!marriageHistory) return '未填写';
+    switch (marriageHistory) {
+      case 'YES': return '有婚史';
+      case 'NO': return '无婚史';
+      case 'HAS_HISTORY': return '有婚史';
+      case 'NO_HISTORY': return '无婚史';
+      default: return marriageHistory;
+    }
+  };
+
+  const getSexualOrientationText = (sexualOrientation: string) => {
+    if (!sexualOrientation) return '未填写';
+    const orientationMap: Record<string, string> = {
+      'STRAIGHT_MALE': '直男',
+      'STRAIGHT_FEMALE': '直女',
+      'LES': 'LES',
+      'GAY': 'GAY',
+      'ASEXUAL': '无性恋'
+    };
+    return orientationMap[sexualOrientation] || sexualOrientation;
+  };
+
+  const getChildrenPlanText = (childrenPlan: string) => {
+    switch (childrenPlan) {
+      case 'BOTH': return '一起要';
+      case 'SEPARATE': return '各自要';
+      case 'NEGOTIATE': return '互相协商';
+      case 'NONE': return '不要孩子';
+      default: return '未知';
+    }
+  };
+
+  const getMarriageCertText = (marriageCert: string) => {
+    switch (marriageCert) {
+      case 'WANT': return '要';
+      case 'DONT_WANT': return '不要';
+      case 'NEGOTIABLE': return '互相协商';
+      default: return '未知';
+    }
+  };
+
+  // 复制会员信息（与会员列表逻辑一致）
+  const copyMemberInfo = useCallback(async (member: DailyTaskMember) => {
+    try {
+      // 首先获取完整的会员详情，以确保获得所有字段
+      const response = await fetch(`/api/members/${member.id}`);
+      if (!response.ok) {
+        throw new Error('获取会员详细信息失败');
+      }
+      
+      const fullMember = await response.json();
+      
+      // 构建固定格式的复制信息
+      const info = [
+        `会员编号：${fullMember.member_no}`,
+        `性别：${fullMember.gender === 'male' ? '男' : '女'}`,
+        `出生年份：${fullMember.birth_year}年`,
+        `身高：${fullMember.height}cm`,
+        `体重：${fullMember.weight}kg`,
+        `学历：${getEducationText(fullMember.education)}`,
+        `职业：${fullMember.occupation || '-'}`,
+        `所在地：${fullMember.province} ${fullMember.city} ${fullMember.district}`,
+        `户口所在地：${fullMember.hukou_province} ${fullMember.hukou_city}`,
+        `目标区域：${fullMember.target_area || '-'}`,
+        `房车情况：${getHouseCarText(fullMember.house_car)}`,
+        `婚史：${getMarriageHistoryText(fullMember.marriage_history)}`,
+        `性取向：${getSexualOrientationText(fullMember.sexual_orientation)}`,
+        `孩子需求：${getChildrenPlanText(fullMember.children_plan)}`,
+        `领证需求：${getMarriageCertText(fullMember.marriage_cert)}`,
+      ];
+      
+      // 添加个人说明
+      if (fullMember.self_description) {
+        info.push(`个人说明：${fullMember.self_description}`);
+      }
+      
+      // 添加择偶要求
+      if (fullMember.partner_requirement) {
+        info.push(`择偶要求：${fullMember.partner_requirement}`);
+      }
+      
+      // 复制到剪贴板
+      const text = info.join('\n');
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        setCopiedMemberId(member.id);
+        setTimeout(() => setCopiedMemberId(null), 2000);
+        toast({
+          title: "复制成功",
+          description: "会员基本信息已复制到剪贴板"
+        });
+      } else {
+        // 备用方案
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCopiedMemberId(member.id);
+        setTimeout(() => setCopiedMemberId(null), 2000);
+        toast({
+          title: "复制成功",
+          description: "会员基本信息已复制到剪贴板"
+        });
+      }
+    } catch (error) {
+      console.error('复制会员信息失败:', error);
+      toast({
+        variant: 'destructive',
+        title: "复制失败",
+        description: error instanceof Error ? error.message : "未知错误"
+      });
+    }
+  }, [toast]);
+
+  // 获取要发布的女生列表（20个）
+  const fetchNextMembers = async () => {
     try {
       setTaskLoading(true);
       const response = await fetch('/api/dashboard/daily-task/next');
       const data = await response.json();
       if (response.ok && data.success) {
-        setCurrentMember(data.data.member);
+        setCurrentMembers(data.data.members || []);
         setTaskStatus(prev => prev ? {
           ...prev,
           publishedCount: data.data.publishedCount,
           totalCount: data.data.totalCount
         } : null);
       } else {
-        setCurrentMember(null);
+        setCurrentMembers([]);
       }
     } catch (error) {
-      console.error('获取下一个女生失败:', error);
+      console.error('获取女生列表失败:', error);
     } finally {
       setTaskLoading(false);
     }
   };
 
-  // 标记已发布
-  const handlePublish = async () => {
-    if (!currentMember) return;
-
+  // 标记单个会员已发布
+  const handlePublish = async (memberId: number, memberNo: string) => {
     try {
       setTaskLoading(true);
       const response = await fetch('/api/dashboard/daily-task/publish', {
@@ -138,17 +285,22 @@ export default function DashboardPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ memberId: currentMember.id }),
+        body: JSON.stringify({ memberId }),
       });
 
       const data = await response.json();
       if (response.ok && data.success) {
         toast({
           title: '发布成功',
-          description: `已标记 ${currentMember.member_no} 为已发布`,
+          description: `已标记 ${memberNo} 为已发布`,
         });
         await fetchDailyTaskStatus();
-        await fetchNextMember();
+        // 从列表中移除已发布的会员
+        setCurrentMembers(prev => prev.filter(m => m.id !== memberId));
+        // 如果列表为空，获取下一批
+        if (currentMembers.length <= 1) {
+          await fetchNextMembers();
+        }
       } else {
         toast({
           variant: 'destructive',
@@ -183,7 +335,7 @@ export default function DashboardPage() {
           description: `今日已发布 ${data.data.totalPublished} 个女生信息`,
         });
         await fetchDailyTaskStatus();
-        setCurrentMember(null);
+        setCurrentMembers([]);
       } else {
         toast({
           variant: 'destructive',
@@ -260,71 +412,95 @@ export default function DashboardPage() {
                 今日共发布 {taskStatus.publishedCount} 个女生信息
               </p>
             </div>
-          ) : currentMember ? (
+          ) : currentMembers.length > 0 ? (
             <div className="space-y-4">
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">会员编号:</span>
-                  <span className="text-sm">{currentMember.member_no}</span>
-                </div>
-                {currentMember.nickname && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">昵称:</span>
-                    <span className="text-sm">{currentMember.nickname}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {currentMembers.map((member) => (
+                  <div key={member.id} className="bg-muted/50 rounded-lg p-4 space-y-2 border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">会员编号:</span>
+                      <span className="text-sm">{member.member_no}</span>
+                    </div>
+                    {member.nickname && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">昵称:</span>
+                        <span className="text-sm">{member.nickname}</span>
+                      </div>
+                    )}
+                    {member.birth_year && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">出生年份:</span>
+                        <span className="text-sm">{member.birth_year}年</span>
+                      </div>
+                    )}
+                    {member.height && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">身高:</span>
+                        <span className="text-sm">{member.height}cm</span>
+                      </div>
+                    )}
+                    {member.weight && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">体重:</span>
+                        <span className="text-sm">{member.weight}kg</span>
+                      </div>
+                    )}
+                    {member.city && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">所在地:</span>
+                        <span className="text-sm">
+                          {member.province || ''}{member.city || ''}{member.district || ''}
+                        </span>
+                      </div>
+                    )}
+                    {member.education && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">学历:</span>
+                        <span className="text-sm">{getEducationText(member.education)}</span>
+                      </div>
+                    )}
+                    {member.occupation && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">职业:</span>
+                        <span className="text-sm">{member.occupation}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button 
+                        onClick={() => copyMemberInfo(member)}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        {copiedMemberId === member.id ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            已复制
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4 mr-1" />
+                            复制
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        onClick={() => handlePublish(member.id, member.member_no)} 
+                        disabled={taskLoading}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        {taskLoading ? '处理中...' : '已发布'}
+                      </Button>
+                    </div>
                   </div>
-                )}
-                {currentMember.birth_year && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">出生年份:</span>
-                    <span className="text-sm">{currentMember.birth_year}年</span>
-                  </div>
-                )}
-                {currentMember.height && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">身高:</span>
-                    <span className="text-sm">{currentMember.height}cm</span>
-                  </div>
-                )}
-                {currentMember.weight && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">体重:</span>
-                    <span className="text-sm">{currentMember.weight}kg</span>
-                  </div>
-                )}
-                {currentMember.city && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">所在地:</span>
-                    <span className="text-sm">
-                      {currentMember.province || ''}{currentMember.city || ''}{currentMember.district || ''}
-                    </span>
-                  </div>
-                )}
-                {currentMember.education && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">学历:</span>
-                    <span className="text-sm">{currentMember.education}</span>
-                  </div>
-                )}
-                {currentMember.occupation && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">职业:</span>
-                    <span className="text-sm">{currentMember.occupation}</span>
-                  </div>
-                )}
+                ))}
               </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handlePublish} 
-                  disabled={taskLoading}
-                  className="flex-1"
-                >
-                  {taskLoading ? '处理中...' : '已发布'}
-                </Button>
+              <div className="flex justify-end pt-2">
                 <Button 
                   onClick={handleComplete} 
                   disabled={taskLoading || (taskStatus && taskStatus.publishedCount === 0)}
                   variant="outline"
-                  className="flex-1"
                 >
                   完成今日任务
                 </Button>

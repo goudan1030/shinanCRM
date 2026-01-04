@@ -68,54 +68,61 @@ export async function GET() {
       );
     }
 
-    // 5. 随机选择一个未发布的女性会员
-    query += ` ORDER BY RAND() LIMIT 1`;
+    // 5. 随机选择20个未发布的女性会员
+    query += ` ORDER BY RAND() LIMIT 20`;
 
     const [result] = await executeQuery(query, queryParams);
 
     if (!Array.isArray(result) || result.length === 0) {
-      return createErrorResponse('没有可发布的女性会员', 404);
+      return createSuccessResponse({
+        members: [],
+        publishedCount: publishedMemberIds.length,
+        totalCount: totalFemaleMembers
+      }, '没有可发布的女性会员');
     }
 
-    const member = result[0];
+    // 6. 为每个会员创建任务记录（如果不存在）
+    for (const member of result) {
+      await executeQuery(
+        `INSERT INTO daily_tasks (task_date, member_id, member_no, status)
+         VALUES (?, ?, ?, 'pending')
+         ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+        [today, member.id, member.member_no]
+      );
+    }
 
-    // 6. 创建任务记录（如果不存在）
-    await executeQuery(
-      `INSERT INTO daily_tasks (task_date, member_id, member_no, status)
-       VALUES (?, ?, ?, 'pending')
-       ON DUPLICATE KEY UPDATE updated_at = NOW()`,
-      [today, member.id, member.member_no]
-    );
+    // 7. 格式化返回数据
+    const members = result.map((member: any) => ({
+      id: member.id,
+      member_no: member.member_no,
+      nickname: member.nickname || '',
+      wechat: member.wechat || '',
+      phone: member.phone || '',
+      birth_year: member.birth_year,
+      height: member.height,
+      weight: member.weight,
+      education: member.education || '',
+      occupation: member.occupation || '',
+      province: member.province || '',
+      city: member.city || '',
+      district: member.district || '',
+      target_area: member.target_area || '',
+      house_car: member.house_car || '',
+      hukou_province: member.hukou_province || '',
+      hukou_city: member.hukou_city || '',
+      children_plan: member.children_plan || '',
+      marriage_cert: member.marriage_cert || '',
+      marriage_history: member.marriage_history || '',
+      sexual_orientation: member.sexual_orientation || '',
+      self_description: member.self_description || '',
+      partner_requirement: member.partner_requirement || ''
+    }));
 
     return createSuccessResponse({
-      member: {
-        id: member.id,
-        member_no: member.member_no,
-        nickname: member.nickname || '',
-        wechat: member.wechat || '',
-        phone: member.phone || '',
-        birth_year: member.birth_year,
-        height: member.height,
-        weight: member.weight,
-        education: member.education || '',
-        occupation: member.occupation || '',
-        province: member.province || '',
-        city: member.city || '',
-        district: member.district || '',
-        target_area: member.target_area || '',
-        house_car: member.house_car || '',
-        hukou_province: member.hukou_province || '',
-        hukou_city: member.hukou_city || '',
-        children_plan: member.children_plan || '',
-        marriage_cert: member.marriage_cert || '',
-        marriage_history: member.marriage_history || '',
-        sexual_orientation: member.sexual_orientation || '',
-        self_description: member.self_description || '',
-        partner_requirement: member.partner_requirement || ''
-      },
+      members,
       publishedCount: publishedMemberIds.length,
       totalCount: totalFemaleMembers
-    }, '获取下一个要发布的女生成功');
+    }, '获取要发布的女生列表成功');
 
   } catch (error) {
     console.error('获取下一个要发布的女生失败:', error);
