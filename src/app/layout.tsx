@@ -9,6 +9,7 @@ import { Suspense } from 'react'
 import { LoadingOverlay } from '@/components/layout/loading-overlay';
 import { ClientErrorBoundary } from '@/components/layout/client-error-boundary';
 import { validateEnvOnStartup } from '@/lib/env-validator';
+import { ChunkErrorHandlerInit } from '@/components/utils/chunk-error-handler-init';
 
 // 在服务器端验证环境变量
 if (typeof window === 'undefined') {
@@ -51,6 +52,7 @@ export default function Layout({
         {/* 已移除 Google Fonts 预连接，使用系统字体以避免构建时网络请求失败 */}
       </head>
       <body className="antialiased">
+        <ChunkErrorHandlerInit />
         <ClientErrorBoundary>
           <RootLayout>
             <AuthProvider>
