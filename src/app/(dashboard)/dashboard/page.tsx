@@ -182,9 +182,15 @@ export default function DashboardPage() {
     const currentYear = new Date().getFullYear();
     const age = fullMember.birth_year ? currentYear - fullMember.birth_year : null;
     const location = `${fullMember.province || ''}${fullMember.city || ''}${fullMember.district || ''}`.trim();
+    const memberNo = fullMember.member_no || '';
     
     // 基础信息（优先保留）
     const basicInfo: string[] = [];
+    
+    // 用户编号（最高优先级）
+    if (memberNo) {
+      basicInfo.push(memberNo);
+    }
     
     // 地区信息（最高优先级）
     if (location) {
@@ -214,7 +220,7 @@ export default function DashboardPage() {
     switch (platform) {
       case 'twitter':
       case 'x': {
-        // 推特/X：140字符限制，优先地区信息
+        // 推特/X：140字符限制，优先用户编号和地区信息
         let text = basicInfo.join(' ');
         
         // 如果还有空间，添加其他信息
@@ -261,6 +267,7 @@ export default function DashboardPage() {
       case 'xiaohongshu': {
         // 小红书：更详细的格式
         const info = [
+          memberNo ? `🔢${memberNo}` : '',
           `📍${location}`,
           `👤${age ? `${age}岁` : ''} ${fullMember.height ? `${fullMember.height}cm` : ''} ${fullMember.weight ? `${fullMember.weight}kg` : ''}`,
           `🎓${getEducationText(fullMember.education)}`,
@@ -275,7 +282,7 @@ export default function DashboardPage() {
       
       case 'douyin': {
         // 抖音：简洁格式
-        return `${location} | ${age ? `${age}岁` : ''} ${fullMember.height ? `${fullMember.height}cm` : ''} ${fullMember.weight ? `${fullMember.weight}kg` : ''} | ${getEducationText(fullMember.education)} | ${fullMember.occupation || ''}`.trim();
+        return `${memberNo} ${location} | ${age ? `${age}岁` : ''} ${fullMember.height ? `${fullMember.height}cm` : ''} ${fullMember.weight ? `${fullMember.weight}kg` : ''} | ${getEducationText(fullMember.education)} | ${fullMember.occupation || ''}`.trim();
       }
       
       default: {
