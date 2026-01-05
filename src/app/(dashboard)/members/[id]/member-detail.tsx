@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Copy, CheckCircle2, Edit } from 'lucide-react';
 import Link from 'next/link';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface Member {
   id: string;
@@ -94,6 +97,9 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [revokeReason, setRevokeReason] = useState('');
+  const [revokeLoading, setRevokeLoading] = useState(false);
 
   const getEducationText = (education: string) => {
     const educationMap: Record<string, string> = {
@@ -262,6 +268,59 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
     }
   };
 
+  // 撤销会员处理函数
+  const handleRevoke = async () => {
+    if (!revokeReason.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '撤销失败',
+        description: '请输入撤销原因'
+      });
+      return;
+    }
+
+    setRevokeLoading(true);
+    try {
+      const response = await fetch(`/api/members/${memberId}/revoke`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': session?.user?.id || '',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({ reason: revokeReason })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '会员撤销失败');
+      }
+
+      toast({
+        title: '会员撤销成功',
+        description: '已将会员状态更新为撤销'
+      });
+
+      // 先关闭对话框和清理状态
+      setRevokeDialogOpen(false);
+      setRevokeReason('');
+      
+      // 刷新会员数据
+      await fetchMember();
+    } catch (error) {
+      console.error('会员撤销失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '会员撤销失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
+    } finally {
+      setRevokeLoading(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center">加载中...</div>;
   }
@@ -282,6 +341,14 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
         
         {/* 按钮组 */}
         <div className="flex gap-2">
+          {member.status === 'ACTIVE' && (
+            <button
+              onClick={() => setRevokeDialogOpen(true)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors"
+            >
+              <span className="text-sm">撤销信息</span>
+            </button>
+          )}
           <button
             onClick={copyMemberInfo}
             className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
@@ -307,6 +374,35 @@ export default function MemberDetail({ memberId }: MemberDetailProps) {
             <span className="text-sm">编辑会员</span>
           </Link>
         </div>
+        
+        {/* 撤销对话框 */}
+        <Dialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
+          <DialogContent className="w-[95%] max-w-lg mx-auto">
+            <DialogHeader>
+              <DialogTitle>撤销会员</DialogTitle>
+              <DialogDescription>
+                请输入撤销原因
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">撤销原因</label>
+                <Input
+                  value={revokeReason}
+                  onChange={(e) => setRevokeReason(e.target.value)}
+                  placeholder="请输入撤销原因"
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRevokeDialogOpen(false)}>取消</Button>
+              <Button onClick={handleRevoke} disabled={revokeLoading}>
+                {revokeLoading ? '撤销中...' : '确认撤销'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       
       {/* 基本信息表格 */}

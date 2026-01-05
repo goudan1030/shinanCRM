@@ -2454,18 +2454,6 @@ function MembersPageContent() {
                         >
                           匹配
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-3 text-xs text-red-600"
-                          onClick={() => {
-                            setSelectedMemberId(member.id);
-                            setRevokeReason('');
-                            setRevokeDialogOpen(true);
-                          }}
-                        >
-                          撤销
-                        </Button>
                       </>
                     )}
                     {member.status === 'REVOKED' && (
@@ -2760,19 +2748,6 @@ function MembersPageContent() {
                                     disabled={loading || member.status !== 'ACTIVE'}
                                   >
                                     匹配
-                                  </Button>
-                                  <div className="h-4 border-r border-gray-300"></div>
-                                  <Button
-                                    variant="outline"
-                                    size="xs"
-                                    className="h-7 px-2 py-0 text-xs border border-gray-300 text-red-500 hover:bg-red-50 shadow-sm"
-                                    onClick={() => {
-                                      setSelectedMemberId(member.id);
-                                      setRevokeReason('');
-                                      setRevokeDialogOpen(true);
-                                    }}
-                                  >
-                                    撤销
                                   </Button>
                                 </>
                               )}
