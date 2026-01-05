@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const memberType = searchParams.get('memberType') || '';
     const status = searchParams.get('status') || '';
     const city = searchParams.get('city') || '';
+    const isSuccess = searchParams.get('isSuccess') || '';
 
     const offset = (page - 1) * pageSize;
 
@@ -47,6 +48,11 @@ export async function GET(request: NextRequest) {
     if (city) {
       whereClause += ' AND city = ?';
       queryParams.push(city);
+    }
+
+    if (isSuccess !== '') {
+      whereClause += ' AND is_success = ?';
+      queryParams.push(parseInt(isSuccess));
     }
 
     // 获取总数
@@ -92,6 +98,7 @@ export async function GET(request: NextRequest) {
         education,
         occupation,
         remaining_matches,
+        is_success,
         created_at, 
         updated_at
        FROM members 

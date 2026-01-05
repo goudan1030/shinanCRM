@@ -73,6 +73,7 @@ interface Member {
   sexual_orientation: string;
   self_description: string;
   wechat_qrcode: string | null;
+  is_success?: number; // 是否找到：1为找到了，0为未找到
   [key: string]: string | number | null | undefined;
 }
 
@@ -81,7 +82,7 @@ type ColumnKey = 'member_no' | 'wechat' | 'phone' | 'type' | 'status' | 'gender'
   'height' | 'weight' | 'education' | 'occupation' | 'province' | 'city' | 'district' | 
   'target_area' | 'house_car' | 'hukou_province' | 'hukou_city' | 'children_plan' | 
   'marriage_cert' | 'marriage_history' | 'sexual_orientation' | 'remaining_matches' | 
-  'created_at' | 'actions' | 'self_description' | 'partner_requirement' | 'wechat_qrcode';
+  'created_at' | 'actions' | 'self_description' | 'partner_requirement' | 'wechat_qrcode' | 'is_success';
 
 // 修改 availableColumns 的类型
 const availableColumns: { key: ColumnKey; label: string }[] = [
@@ -110,6 +111,7 @@ const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'sexual_orientation', label: '性取向' },
   { key: 'remaining_matches', label: '剩余匹配次数' },
   { key: 'created_at', label: '创建时间' },
+  { key: 'is_success', label: '是否找到' },
   { key: 'self_description', label: '个人说明' },
   { key: 'partner_requirement', label: '择偶要求' },
   { key: 'actions', label: '操作' }  // 将actions列固定在最后
@@ -142,6 +144,7 @@ function MembersPageContent() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [genderFilter, setGenderFilter] = useState<string | null>(null);
+  const [isSuccessFilter, setIsSuccessFilter] = useState<string | null>(null); // 是否找到筛选
   const [searchTerm, setSearchTerm] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
   
@@ -156,6 +159,7 @@ function MembersPageContent() {
         setStatusFilter(parsedFilters.status);
         setTypeFilter(parsedFilters.type);
         setGenderFilter(parsedFilters.gender);
+        setIsSuccessFilter(parsedFilters.isSuccess);
         
         // 只有当搜索词不为空时才设置
         if (parsedFilters.search) {
@@ -180,13 +184,14 @@ function MembersPageContent() {
         status: statusFilter,
         type: typeFilter,
         gender: genderFilter,
+        isSuccess: isSuccessFilter,
         search: searchTerm
       };
       
       localStorage.setItem('memberListFilters', JSON.stringify(filtersToSave));
       console.log('保存筛选项到 localStorage:', filtersToSave);
     }
-  }, [statusFilter, typeFilter, genderFilter, searchTerm, filterInitialized]);
+  }, [statusFilter, typeFilter, genderFilter, isSuccessFilter, searchTerm, filterInitialized]);
   
   const [memberCounts, setMemberCounts] = useState({ NORMAL: 0, ONE_TIME: 0, ANNUAL: 0 });
   const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(() => {
@@ -231,6 +236,11 @@ function MembersPageContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   
+  // 标记找到相关状态
+  const [markSuccessDialogOpen, setMarkSuccessDialogOpen] = useState(false);
+  const [markSuccessLoading, setMarkSuccessLoading] = useState(false);
+  const [markSuccessValue, setMarkSuccessValue] = useState<number>(1); // 1为找到，0为未找到
+  
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -264,6 +274,7 @@ function MembersPageContent() {
       // 修复搜索参数名称问题
       if (searchTerm) queryParams.set('searchKeyword', searchTerm);
       if (typeFilter) queryParams.set('memberType', typeFilter);
+      if (isSuccessFilter) queryParams.set('isSuccess', isSuccessFilter);
       
       // 使用统一的API端点，通过查询参数处理筛选
       const apiUrl = '/api/members';
@@ -556,6 +567,7 @@ function MembersPageContent() {
       case 'type':
       case 'status':
       case 'gender':
+      case 'is_success':
         return 'min-w-[100px]';
       case 'birth_year':
       case 'height':
@@ -886,6 +898,55 @@ function MembersPageContent() {
       });
     } finally {
       setUpgradeLoading(false);
+    }
+  };
+
+  // 标记找到处理函数
+  const handleMarkSuccess = async (memberId: string) => {
+    setMarkSuccessLoading(true);
+    try {
+      const response = await fetch(`/api/members/${memberId}/mark-success`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': session?.user?.id || '',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({
+          is_success: markSuccessValue
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '标记失败');
+      }
+
+      toast({
+        title: '标记成功',
+        description: markSuccessValue === 1 ? '已标记为找到' : '已取消标记'
+      });
+
+      setMarkSuccessDialogOpen(false);
+      setSelectedMemberId(null);
+      
+      // 刷新路由缓存
+      router.refresh();
+      
+      // 延迟一点时间后重新获取数据，确保后端更新生效
+      setTimeout(() => {
+        fetchMembers();
+      }, 300);
+    } catch (error) {
+      console.error('标记失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '标记失败',
+        description: error instanceof Error ? error.message : '操作失败，请重试'
+      });
+    } finally {
+      setMarkSuccessLoading(false);
     }
   };
 
@@ -1468,6 +1529,7 @@ function MembersPageContent() {
     setStatusFilter(null);
     setTypeFilter(null);
     setGenderFilter(null);
+    setIsSuccessFilter(null);
     setSearchTerm('');
     setSearchKeyword('');
     
@@ -1684,6 +1746,26 @@ function MembersPageContent() {
         </DialogContent>
       </Dialog>
 
+      {/* 标记找到对话框 */}
+      <Dialog open={markSuccessDialogOpen} onOpenChange={setMarkSuccessDialogOpen}>
+        <DialogContent className="w-[95%] max-w-lg mx-auto">
+          <DialogHeader>
+            <DialogTitle>标记找到</DialogTitle>
+            <DialogDescription>
+              {markSuccessValue === 1 
+                ? '确定要将该用户标记为找到吗？' 
+                : '确定要取消该用户的找到标记吗？'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMarkSuccessDialogOpen(false)}>取消</Button>
+            <Button onClick={() => handleMarkSuccess(selectedMemberId!)} disabled={markSuccessLoading}>
+              {markSuccessLoading ? '处理中...' : '确认'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* 会员匹配对话框 */}
       <Dialog open={matchDialogOpen} onOpenChange={setMatchDialogOpen}>
         <DialogContent className="w-[95%] max-w-2xl mx-auto">
@@ -1852,6 +1934,27 @@ function MembersPageContent() {
                 </SelectContent>
               </Select>
               
+              <Select 
+                value={isSuccessFilter !== null ? isSuccessFilter : 'ALL'} 
+                onValueChange={(value) => {
+                  if (value === 'ALL') {
+                    setIsSuccessFilter(null);
+                  } else {
+                    setIsSuccessFilter(value);
+                  }
+                }}
+                defaultValue={isSuccessFilter !== null ? isSuccessFilter : 'ALL'}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="是否找到" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部</SelectItem>
+                  <SelectItem value="1">已找到</SelectItem>
+                  <SelectItem value="0">未找到</SelectItem>
+                </SelectContent>
+              </Select>
+              
               {/* 清除筛选按钮 */}
               <Button 
                 variant="outline" 
@@ -1940,7 +2043,7 @@ function MembersPageContent() {
           </div>
           
             {/* 筛选下拉框 - 移动端垂直排列 */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
             <Select 
               value={statusFilter !== null ? statusFilter : 'ALL'} 
               onValueChange={(value) => {
@@ -2003,6 +2106,27 @@ function MembersPageContent() {
                 <SelectItem value="ALL">全部性别</SelectItem>
                 <SelectItem value="male">男</SelectItem>
                 <SelectItem value="female">女</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select 
+              value={isSuccessFilter !== null ? isSuccessFilter : 'ALL'} 
+              onValueChange={(value) => {
+                if (value === 'ALL') {
+                  setIsSuccessFilter(null);
+                } else {
+                  setIsSuccessFilter(value);
+                }
+              }}
+              defaultValue={isSuccessFilter !== null ? isSuccessFilter : 'ALL'}
+            >
+                <SelectTrigger className="w-full">
+                <SelectValue placeholder="是否找到" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">全部</SelectItem>
+                <SelectItem value="1">已找到</SelectItem>
+                <SelectItem value="0">未找到</SelectItem>
               </SelectContent>
             </Select>
             </div>
@@ -2240,6 +2364,18 @@ function MembersPageContent() {
                         minute: '2-digit'
                       })}</span>
                     </div>
+                    {selectedColumns.includes('is_success') && (
+                      <div>
+                        <span className="text-gray-500">是否找到：</span>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          member.is_success === 1 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {member.is_success === 1 ? '已找到' : '未找到'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* 卡片操作按钮 */}
@@ -2279,10 +2415,22 @@ function MembersPageContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 px-3 text-xs"
+                      className="h-8 px-3 text-xs hidden"
                       onClick={() => copyMemberLink(member)}
                     >
                       {copiedLinkMemberId === member.id ? '已复制链接' : '复制链接'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs text-green-600"
+                      onClick={() => {
+                        setSelectedMemberId(member.id);
+                        setMarkSuccessValue(member.is_success === 1 ? 0 : 1);
+                        setMarkSuccessDialogOpen(true);
+                      }}
+                    >
+                      {member.is_success === 1 ? '取消标记' : '标记找到'}
                     </Button>
                     {member.status === 'ACTIVE' && (
                       <>
@@ -2489,6 +2637,15 @@ function MembersPageContent() {
                                 {member.status === 'ACTIVE' ? '激活' : member.status === 'REVOKED' ? '撤销' : '成功'}
                               </span>
                             ) :
+                            columnKey === 'is_success' ? (
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                member.is_success === 1 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {member.is_success === 1 ? '已找到' : '未找到'}
+                              </span>
+                            ) :
                             columnKey === 'created_at' ? new Date(member[columnKey as keyof Member] as string | number).toLocaleString('zh-CN', {
                               year: 'numeric',
                               month: '2-digit',
@@ -2554,7 +2711,7 @@ function MembersPageContent() {
                               <Button
                                 variant="outline"
                                 size="xs"
-                                className="h-7 px-2 py-0 text-xs border border-gray-300 hover:bg-gray-50 shadow-sm"
+                                className="h-7 px-2 py-0 text-xs border border-gray-300 hover:bg-gray-50 shadow-sm hidden"
                                 onClick={() => copyMemberLink(member)}
                               >
                                 {copiedLinkMemberId === member.id ? (
@@ -2568,6 +2725,18 @@ function MembersPageContent() {
                                     复制链接
                                   </span>
                                 )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="h-7 px-2 py-0 text-xs border border-gray-300 hover:bg-gray-50 shadow-sm text-green-600"
+                                onClick={() => {
+                                  setSelectedMemberId(member.id);
+                                  setMarkSuccessValue(member.is_success === 1 ? 0 : 1);
+                                  setMarkSuccessDialogOpen(true);
+                                }}
+                              >
+                                {member.is_success === 1 ? '取消标记' : '标记找到'}
                               </Button>
                               {member.status === 'ACTIVE' && (
                                 <>
