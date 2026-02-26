@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type MemberInfo = {
   id: number;
@@ -22,6 +22,23 @@ type QuickReply = {
   reply_content: string;
 };
 
+type WecomJsSdkConfigResponse = {
+  success: boolean;
+  corpId: string;
+  agentId: string;
+  config: {
+    timestamp: number;
+    nonceStr: string;
+    signature: string;
+  };
+  agentConfig: {
+    timestamp: number;
+    nonceStr: string;
+    signature: string;
+  };
+  error?: string;
+};
+
 export default function WecomSidebarPage() {
   const [memberNo, setMemberNo] = useState('');
   const [member, setMember] = useState<MemberInfo | null>(null);
@@ -33,6 +50,9 @@ export default function WecomSidebarPage() {
   const [key, setKey] = useState('');
   const [rawQuery, setRawQuery] = useState('');
   const [wecomClientReady, setWecomClientReady] = useState(false);
+  const [sendChannel, setSendChannel] = useState('未检测');
+  const [sdkStatus, setSdkStatus] = useState('未初始化');
+  const sdkInitStartedRef = useRef(false);
 
   const pickFirstNonEmpty = (...values: Array<string | null | undefined>) => {
     for (const value of values) {
@@ -46,6 +66,127 @@ export default function WecomSidebarPage() {
     const p = new URLSearchParams();
     if (key) p.set('key', key);
     return p;
+  };
+
+  const detectWecomSendChannel = () => {
+    const ww = (window as any)?.ww;
+    const wxQy = (window as any)?.wx?.qy;
+    const bridge = (window as any)?.WeixinJSBridge;
+
+    if (typeof ww?.sendChatMessage === 'function') {
+      return 'ww.sendChatMessage';
+    }
+    if (typeof wxQy?.sendChatMessage === 'function') {
+      return 'wx.qy.sendChatMessage';
+    }
+    if (typeof bridge?.invoke === 'function') {
+      return 'WeixinJSBridge.invoke(sendChatMessage)';
+    }
+    return '';
+  };
+
+  const loadWxSdkScript = async () => {
+    const existingWx = (window as any)?.wx;
+    if (existingWx?.config) return;
+
+    await new Promise<void>((resolve, reject) => {
+      const existing = document.getElementById('wecom-jssdk-script') as HTMLScriptElement | null;
+      if (existing) {
+        if ((window as any)?.wx?.config) {
+          resolve();
+          return;
+        }
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error('企业微信JSSDK脚本加载失败')), {
+          once: true
+        });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = 'wecom-jssdk-script';
+      script.src = 'https://res.wx.qq.com/open/js/jweixin-1.2.0.js';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('企业微信JSSDK脚本加载失败'));
+      document.head.appendChild(script);
+    });
+  };
+
+  const initWecomJsSdk = async (accessKeyOverride?: string) => {
+    if (sdkInitStartedRef.current) return;
+    sdkInitStartedRef.current = true;
+    setSdkStatus('初始化中');
+
+    try {
+      await loadWxSdkScript();
+
+      const params = new URLSearchParams();
+      const effectiveKey = (accessKeyOverride || key || '').trim();
+      if (effectiveKey) {
+        params.set('key', effectiveKey);
+      }
+      params.set('url', window.location.href.split('#')[0]);
+      const response = await fetch(`/api/wecom-sidebar/js-sdk-config?${params.toString()}`);
+      const data = (await response.json()) as WecomJsSdkConfigResponse;
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || '获取企业微信JS-SDK签名失败');
+      }
+
+      const wx = (window as any)?.wx;
+      if (!wx?.config || !wx?.agentConfig) {
+        throw new Error('当前环境缺少 wx.config 或 wx.agentConfig');
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const done = (cb: () => void) => {
+          if (settled) return;
+          settled = true;
+          cb();
+        };
+
+        wx.config({
+          beta: true,
+          debug: false,
+          appId: data.corpId,
+          timestamp: data.config.timestamp,
+          nonceStr: data.config.nonceStr,
+          signature: data.config.signature,
+          jsApiList: ['checkJsApi', 'getContext', 'sendChatMessage', 'getCurExternalContact']
+        });
+
+        wx.ready(() => {
+          wx.agentConfig({
+            corpid: data.corpId,
+            agentid: data.agentId,
+            timestamp: data.agentConfig.timestamp,
+            nonceStr: data.agentConfig.nonceStr,
+            signature: data.agentConfig.signature,
+            jsApiList: ['getContext', 'sendChatMessage', 'getCurExternalContact'],
+            success: () => done(() => resolve()),
+            fail: (err: any) =>
+              done(() =>
+                reject(new Error(err?.errMsg || err?.errmsg || '企业微信agentConfig初始化失败'))
+              )
+          });
+        });
+
+        wx.error((err: any) => {
+          done(() => reject(new Error(err?.errMsg || err?.errmsg || '企业微信config初始化失败')));
+        });
+      });
+
+      const channel = detectWecomSendChannel();
+      setWecomClientReady(Boolean(channel));
+      setSendChannel(channel || '未检测');
+      setSdkStatus('初始化成功');
+    } catch (error) {
+      const channel = detectWecomSendChannel();
+      setWecomClientReady(Boolean(channel));
+      setSendChannel(channel || '未检测');
+      setSdkStatus(`初始化失败：${error instanceof Error ? error.message : '未知错误'}`);
+    }
   };
 
   const fetchQuickReplies = async () => {
@@ -88,8 +229,12 @@ export default function WecomSidebarPage() {
     setWecomUserId(resolvedWecomUserId);
     setToUserId(target);
     setKey(accessKey);
-    const wxQy = (window as any)?.wx?.qy;
-    setWecomClientReady(Boolean(wxQy?.sendChatMessage));
+    const channel = detectWecomSendChannel();
+    setWecomClientReady(Boolean(channel));
+    setSendChannel(channel || '未检测');
+    initWecomJsSdk(accessKey).catch(() => {
+      // initWecomJsSdk内部已兜底状态
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -98,7 +243,9 @@ export default function WecomSidebarPage() {
       `raw_query: ${rawQuery || '(empty)'}`,
       `wecomUserId: ${wecomUserId || '(empty)'}`,
       `toUserId: ${toUserId || '(empty)'}`,
-      `key: ${key ? '(exists)' : '(empty)'}`
+      `key: ${key ? '(exists)' : '(empty)'}`,
+      `sendChannel: ${sendChannel}`,
+      `sdkStatus: ${sdkStatus}`
     ].join('\n');
     await navigator.clipboard.writeText(debugText);
     setMessage('诊断信息已复制，可直接发给开发排查');
@@ -167,16 +314,78 @@ export default function WecomSidebarPage() {
     setLoading(true);
     setMessage('');
     try {
-      const wxQy = (window as any)?.wx?.qy;
-      if (wxQy?.sendChatMessage) {
-        await new Promise<void>((resolve, reject) => {
-          wxQy.sendChatMessage({
-            msgtype: 'text',
-            text: { content },
-            success: () => resolve(),
-            fail: (err: any) => reject(new Error(err?.errMsg || err?.errmsg || '企业微信会话发送失败'))
+      const channel = detectWecomSendChannel();
+      setWecomClientReady(Boolean(channel));
+      setSendChannel(channel || '未检测');
+
+      const sendByClient = async () => {
+        if (!channel) return false;
+        const ww = (window as any)?.ww;
+        const wxQy = (window as any)?.wx?.qy;
+        const bridge = (window as any)?.WeixinJSBridge;
+
+        if (channel === 'ww.sendChatMessage') {
+          await new Promise<void>((resolve, reject) => {
+            let settled = false;
+            const done = (fn: () => void) => {
+              if (settled) return;
+              settled = true;
+              fn();
+            };
+            try {
+              const maybePromise = ww.sendChatMessage({
+                msgtype: 'text',
+                text: { content },
+                success: () => done(() => resolve()),
+                fail: (err: any) => done(() => reject(new Error(err?.errMsg || err?.errmsg || '企业微信会话发送失败')))
+              });
+              if (maybePromise && typeof maybePromise.then === 'function') {
+                maybePromise.then(() => done(() => resolve())).catch((err: any) => {
+                  done(() => reject(new Error(err?.errMsg || err?.errmsg || err?.message || '企业微信会话发送失败')));
+                });
+              }
+            } catch (err: any) {
+              done(() => reject(new Error(err?.message || '企业微信会话发送失败')));
+            }
           });
-        });
+          return true;
+        }
+
+        if (channel === 'wx.qy.sendChatMessage') {
+          await new Promise<void>((resolve, reject) => {
+            wxQy.sendChatMessage({
+              msgtype: 'text',
+              text: { content },
+              success: () => resolve(),
+              fail: (err: any) => reject(new Error(err?.errMsg || err?.errmsg || '企业微信会话发送失败'))
+            });
+          });
+          return true;
+        }
+
+        if (channel === 'WeixinJSBridge.invoke(sendChatMessage)') {
+          await new Promise<void>((resolve, reject) => {
+            bridge.invoke(
+              'sendChatMessage',
+              { msgtype: 'text', text: { content } },
+              (res: any) => {
+                const errMsg = (res?.err_msg || '').toLowerCase();
+                if (errMsg.includes('ok')) {
+                  resolve();
+                  return;
+                }
+                reject(new Error(res?.err_msg || '企业微信会话发送失败'));
+              }
+            );
+          });
+          return true;
+        }
+
+        return false;
+      };
+
+      const sentByClient = await sendByClient();
+      if (sentByClient) {
         setMessage('发送成功');
         return;
       }
@@ -244,8 +453,9 @@ export default function WecomSidebarPage() {
       <section className="rounded-lg border border-gray-200 p-3">
         <div className="mb-2 font-semibold">快捷回复</div>
         <div className="mb-2 text-xs text-gray-500">
-          发送通道：{wecomClientReady ? '企业微信会话发送（推荐）' : '应用消息发送（兜底）'}
+          发送通道：{wecomClientReady ? `企业微信会话发送（${sendChannel}）` : '应用消息发送（兜底）'}
         </div>
+        <div className="mb-2 text-xs text-gray-500">SDK状态：{sdkStatus}</div>
         <div className="mb-2">
           <input
             value={toUserId}
