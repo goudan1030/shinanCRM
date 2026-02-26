@@ -119,6 +119,21 @@ export default function WecomSidebarPage() {
     setSdkStatus('初始化中');
 
     try {
+      const channel = detectWecomSendChannel();
+      if (channel === 'WeixinJSBridge.invoke(sendChatMessage)') {
+        setWecomClientReady(true);
+        setSendChannel(channel);
+        setSdkStatus('Bridge模式：无需 wx.config / wx.agentConfig');
+        return;
+      }
+
+      if (channel === 'ww.sendChatMessage') {
+        setWecomClientReady(true);
+        setSendChannel(channel);
+        setSdkStatus('客户端模式：已检测到 ww.sendChatMessage');
+        return;
+      }
+
       await loadWxSdkScript();
 
       const params = new URLSearchParams();
@@ -177,9 +192,9 @@ export default function WecomSidebarPage() {
         });
       });
 
-      const channel = detectWecomSendChannel();
-      setWecomClientReady(Boolean(channel));
-      setSendChannel(channel || '未检测');
+      const readyChannel = detectWecomSendChannel();
+      setWecomClientReady(Boolean(readyChannel));
+      setSendChannel(readyChannel || '未检测');
       setSdkStatus('初始化成功');
     } catch (error) {
       const channel = detectWecomSendChannel();
