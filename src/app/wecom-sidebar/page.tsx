@@ -31,6 +31,15 @@ export default function WecomSidebarPage() {
   const [wecomUserId, setWecomUserId] = useState('');
   const [toUserId, setToUserId] = useState('');
   const [key, setKey] = useState('');
+  const [rawQuery, setRawQuery] = useState('');
+
+  const pickFirstNonEmpty = (...values: Array<string | null | undefined>) => {
+    for (const value of values) {
+      const trimmed = (value || '').trim();
+      if (trimmed) return trimmed;
+    }
+    return '';
+  };
 
   const buildApiParams = () => {
     const p = new URLSearchParams();
@@ -59,13 +68,38 @@ export default function WecomSidebarPage() {
 
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
-    const wuid = search.get('wecom_userid') || '';
-    const target = search.get('to_userid') || wuid;
-    const accessKey = search.get('key') || '';
-    setWecomUserId(wuid);
+    setRawQuery(window.location.search || '');
+    const resolvedWecomUserId = pickFirstNonEmpty(
+      search.get('wecom_userid'),
+      search.get('wecomUserId'),
+      search.get('userid'),
+      search.get('user_id'),
+      search.get('follow_userid')
+    );
+    const target = pickFirstNonEmpty(
+      search.get('to_userid'),
+      search.get('toUserId'),
+      search.get('touser'),
+      search.get('receiver_userid'),
+      resolvedWecomUserId
+    );
+    const accessKey = pickFirstNonEmpty(search.get('key'), search.get('access_key'));
+    setWecomUserId(resolvedWecomUserId);
     setToUserId(target);
     setKey(accessKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleCopyDebugInfo = async () => {
+    const debugText = [
+      `raw_query: ${rawQuery || '(empty)'}`,
+      `wecomUserId: ${wecomUserId || '(empty)'}`,
+      `toUserId: ${toUserId || '(empty)'}`,
+      `key: ${key ? '(exists)' : '(empty)'}`
+    ].join('\n');
+    await navigator.clipboard.writeText(debugText);
+    setMessage('诊断信息已复制，可直接发给开发排查');
+  };
 
   useEffect(() => {
     if (!key && !wecomUserId && !toUserId) return;
@@ -129,7 +163,7 @@ export default function WecomSidebarPage() {
   const handleSendQuickReply = async (content: string) => {
     if (!toUserId) {
       await navigator.clipboard.writeText(content);
-      setMessage('未识别 to_userid，已复制到剪贴板');
+      setMessage('未识别接收人UserID，已复制到剪贴板。请先填写“接收人UserID”后再发送');
       return;
     }
     setLoading(true);
@@ -190,6 +224,28 @@ export default function WecomSidebarPage() {
 
       <section className="rounded-lg border border-gray-200 p-3">
         <div className="mb-2 font-semibold">快捷回复</div>
+        <div className="mb-2">
+          <input
+            value={toUserId}
+            onChange={(e) => setToUserId(e.target.value.trim())}
+            placeholder="接收人UserID（自动识别失败时可手动填写）"
+            className="w-full rounded-md border border-gray-300 px-2 py-1.5"
+          />
+          <div className="mt-1 text-xs text-gray-500">
+            已兼容参数：to_userid / wecom_userid / userid / user_id / follow_userid
+          </div>
+        </div>
+        <div className="mb-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2 text-xs text-gray-600">
+          <div>识别到的 wecom_userid：{wecomUserId || '未识别'}</div>
+          <div>识别到的 to_userid：{toUserId || '未识别'}</div>
+          <button
+            type="button"
+            onClick={handleCopyDebugInfo}
+            className="mt-1 rounded-md border px-2 py-1 text-xs"
+          >
+            复制诊断信息
+          </button>
+        </div>
         <div className="grid gap-2">
           {quickReplies.map((item) => (
             <div key={item.id} className="rounded-md border border-gray-200 p-2">
