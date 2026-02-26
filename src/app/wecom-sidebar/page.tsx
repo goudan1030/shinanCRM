@@ -32,6 +32,7 @@ export default function WecomSidebarPage() {
   const [toUserId, setToUserId] = useState('');
   const [key, setKey] = useState('');
   const [rawQuery, setRawQuery] = useState('');
+  const [wecomClientReady, setWecomClientReady] = useState(false);
 
   const pickFirstNonEmpty = (...values: Array<string | null | undefined>) => {
     for (const value of values) {
@@ -87,6 +88,8 @@ export default function WecomSidebarPage() {
     setWecomUserId(resolvedWecomUserId);
     setToUserId(target);
     setKey(accessKey);
+    const wxQy = (window as any)?.wx?.qy;
+    setWecomClientReady(Boolean(wxQy?.sendChatMessage));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -161,14 +164,30 @@ export default function WecomSidebarPage() {
   };
 
   const handleSendQuickReply = async (content: string) => {
-    if (!toUserId) {
-      await navigator.clipboard.writeText(content);
-      setMessage('未识别接收人UserID，已复制到剪贴板。请先填写“接收人UserID”后再发送');
-      return;
-    }
     setLoading(true);
     setMessage('');
     try {
+      const wxQy = (window as any)?.wx?.qy;
+      if (wxQy?.sendChatMessage) {
+        await new Promise<void>((resolve, reject) => {
+          wxQy.sendChatMessage({
+            msgtype: 'text',
+            text: { content },
+            success: () => resolve(),
+            fail: (err: any) => reject(new Error(err?.errMsg || err?.errmsg || '企业微信会话发送失败'))
+          });
+        });
+        setMessage('发送成功');
+        return;
+      }
+
+      // 兜底：客户端会话发送不可用时，仍尝试旧的应用消息发送链路
+      if (!toUserId) {
+        await navigator.clipboard.writeText(content);
+        setMessage('当前环境未提供会话发送能力，且未识别接收人UserID，已复制到剪贴板');
+        return;
+      }
+
       const response = await fetch(`/api/wecom-sidebar/send-quick-reply?${buildApiParams().toString()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -224,6 +243,9 @@ export default function WecomSidebarPage() {
 
       <section className="rounded-lg border border-gray-200 p-3">
         <div className="mb-2 font-semibold">快捷回复</div>
+        <div className="mb-2 text-xs text-gray-500">
+          发送通道：{wecomClientReady ? '企业微信会话发送（推荐）' : '应用消息发送（兜底）'}
+        </div>
         <div className="mb-2">
           <input
             value={toUserId}
