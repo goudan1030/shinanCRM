@@ -70,6 +70,12 @@ export default function WecomSidebarPage() {
   const sdkInitStartedRef = useRef(false);
   const canSendInCurrentEntry = SEND_ALLOWED_ENTRIES.has(contextEntry);
   const canGetContactInCurrentEntry = CONTACT_ALLOWED_ENTRIES.has(contextEntry);
+  const isContextUnknown =
+    contextEntry === '未获取' ||
+    contextEntry === '不可用' ||
+    contextEntry === '获取失败' ||
+    contextEntry === 'unknown';
+  const canSendInEntryText = canSendInCurrentEntry ? 'yes' : isContextUnknown ? 'unknown' : 'no';
 
   const pickFirstNonEmpty = (...values: Array<string | null | undefined>) => {
     for (const value of values) {
@@ -221,7 +227,7 @@ export default function WecomSidebarPage() {
     }
   };
 
-  const detectWecomContext = async () => {
+  const detectWecomContext = async (): Promise<string> => {
     try {
       const ww = (window as any)?.ww;
       const wx = (window as any)?.wx;
@@ -232,7 +238,7 @@ export default function WecomSidebarPage() {
         const entry = res?.entry || 'unknown';
         setContextEntry(entry);
         setContextSource('ww.getContext');
-        return;
+        return entry;
       }
 
       if (typeof wx?.qy?.getContext === 'function') {
@@ -246,26 +252,27 @@ export default function WecomSidebarPage() {
             fail: (err: any) => reject(new Error(err?.errMsg || err?.errmsg || 'getContext失败'))
           });
         });
-        return;
+        return 'unknown';
       }
 
       if (typeof bridge?.invoke === 'function') {
-        await new Promise<void>((resolve) => {
+        const entry = await new Promise<string>((resolve) => {
           bridge.invoke('getContext', {}, (res: any) => {
-            const entry = res?.entry || 'unknown';
-            setContextEntry(entry);
-            setContextSource('WeixinJSBridge.invoke(getContext)');
-            resolve();
+            resolve((res?.entry || 'unknown') as string);
           });
         });
-        return;
+        setContextEntry(entry);
+        setContextSource('WeixinJSBridge.invoke(getContext)');
+        return entry;
       }
 
       setContextEntry('不可用');
       setContextSource('无可用上下文API');
+      return '不可用';
     } catch {
       setContextEntry('获取失败');
       setContextSource('getContext报错');
+      return '获取失败';
     }
   };
 
@@ -381,7 +388,7 @@ export default function WecomSidebarPage() {
       `sdkStatus: ${sdkStatus}`,
       `contextEntry: ${contextEntry}`,
       `contextSource: ${contextSource}`,
-      `canSendInEntry: ${canSendInCurrentEntry ? 'yes' : 'no'}`,
+      `canSendInEntry: ${canSendInEntryText}`,
       `canGetContactInEntry: ${canGetContactInCurrentEntry ? 'yes' : 'no'}`
     ].join('\n');
     await navigator.clipboard.writeText(debugText);
@@ -466,8 +473,16 @@ export default function WecomSidebarPage() {
 
       const sendByClient = async () => {
         if (!channel) return false;
-        if (!canSendInCurrentEntry) {
-          throw new Error(`当前入口(${contextEntry})不支持会话发送`);
+        const latestEntry = await detectWecomContext().catch(() => contextEntry);
+        const allowByEntry = SEND_ALLOWED_ENTRIES.has(latestEntry);
+        const allowByUnknown =
+          latestEntry === 'unknown' ||
+          latestEntry === '不可用' ||
+          latestEntry === '未获取' ||
+          latestEntry === '获取失败';
+
+        if (!allowByEntry && !allowByUnknown) {
+          throw new Error(`当前入口(${latestEntry})不支持会话发送`);
         }
         const ww = (window as any)?.ww;
         const wxQy = (window as any)?.wx?.qy;
@@ -636,7 +651,8 @@ export default function WecomSidebarPage() {
         <div className="mb-2 text-xs text-gray-500">SDK状态：{sdkStatus}</div>
         <div className="mb-2 text-xs text-gray-500">会话入口：{contextEntry}（{contextSource}）</div>
         <div className="mb-2 text-xs text-gray-500">
-          入口能力：发送{canSendInCurrentEntry ? '可用' : '不可用'}，客户ID获取
+          入口能力：发送
+          {canSendInCurrentEntry ? '可用' : isContextUnknown ? '待判定' : '不可用'}，客户ID获取
           {canGetContactInCurrentEntry ? '可用' : '不可用'}
         </div>
         <div className="mb-2">
