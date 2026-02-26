@@ -11,6 +11,7 @@
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { UserRole, TokenPayload } from '@/types/auth';
 
 // 严格要求JWT密钥来自环境变量，禁止默认回退值
@@ -20,9 +21,10 @@ if (!JWT_SECRET) {
 }
 
 // Token配置常量
-const TOKEN_EXPIRES_IN = '7d';               // Token有效期（7天）
-const TOKEN_REFRESH_THRESHOLD = 24 * 60 * 60; // 刷新阈值（24小时，单位：秒）
+const TOKEN_EXPIRES_IN = '30d';               // Token有效期（30天，持久登录）
+const TOKEN_REFRESH_THRESHOLD = 7 * 24 * 60 * 60; // 刷新阈值（7天，单位：秒）
 const TOKEN_COOKIE_NAME = 'auth_token';      // Cookie名称
+const TOKEN_COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30天（秒）
 
 // 角色层级定义（从高到低）
 const roleHierarchy: Record<string, number> = {
@@ -42,6 +44,15 @@ export interface UserPayload {
   name: string;
   role: string;
   avatar_url?: string;
+  session_id?: string;
+}
+
+function createSessionId(): string {
+  try {
+    return randomUUID();
+  } catch {
+    return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
 }
 
 /**
@@ -63,13 +74,15 @@ export interface UserPayload {
  * ```
  */
 export function generateToken(user: UserPayload): string {
+  const sessionId = user.session_id || createSessionId();
   return jwt.sign(
     {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
-      avatar_url: user.avatar_url
+      avatar_url: user.avatar_url,
+      session_id: sessionId
     },
     JWT_SECRET,
     { expiresIn: TOKEN_EXPIRES_IN }
@@ -167,22 +180,23 @@ export function refreshToken(user: UserPayload): string {
  * @returns 更新后的响应对象
  */
 export function setTokenCookie(response: NextResponse, token: string): NextResponse {
-  // 检测是否在HTTPS环境中
-  // 在服务端，我们通过环境变量或请求头来判断
-  // 默认情况下，如果明确设置了HTTPS环境变量，则启用secure
-  // 否则禁用secure，让HTTP和HTTPS都能工作
-  const shouldSecure = process.env.NEXT_PUBLIC_HTTPS === 'true' || 
-                       process.env.FORCE_SECURE_COOKIE === 'true';
+  // 生产环境默认启用secure，兼容企业微信WebView对第三方上下文cookie的限制
+  const shouldSecure =
+    process.env.FORCE_SECURE_COOKIE === 'true' ||
+    (process.env.FORCE_SECURE_COOKIE !== 'false' && process.env.NODE_ENV === 'production');
+  const sameSite = shouldSecure ? 'none' : 'lax';
+  const cookieDomain = process.env.AUTH_COOKIE_DOMAIN?.trim();
   
   response.cookies.set({
     name: TOKEN_COOKIE_NAME,
     value: token,
     httpOnly: true,                           // 仅服务器可访问Cookie
-    secure: shouldSecure,                     // 根据环境变量设置
-    sameSite: 'lax',                         // 使用lax，兼容性更好
-    maxAge: 7 * 24 * 60 * 60,                 // 7天（秒）
+    secure: shouldSecure,
+    sameSite,
+    maxAge: TOKEN_COOKIE_MAX_AGE,
+    expires: new Date(Date.now() + TOKEN_COOKIE_MAX_AGE * 1000),
     path: '/',                                // 所有路径可访问
-    // 不设置domain，让浏览器自动处理，确保子域名也能访问
+    ...(cookieDomain ? { domain: cookieDomain } : {})
   });
   
   return response;

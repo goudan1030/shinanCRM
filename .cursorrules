@@ -45,3 +45,7 @@
     - 考虑使用Next.js 14的高级特性，如增量静态再生成（ISR）、动态导入等来进一步优化性能。
 
     在整个过程中，始终参考[Next.js官方文档](https://nextjs.org/docs)，确保使用最新的Next.js 14最佳实践。
+
+    ## 企业微信开发强制前置
+    - 每次进入开发任务前，先阅读并遵循项目 Skill：`.cursor/skills/wecom-chat-toolbar-91789/SKILL.md`。
+    - 涉及企业微信侧边栏、聊天工具栏、`sendChatMessage`、`permission denied`、`getContext` 时，必须优先按该 Skill 的流程执行与排错。

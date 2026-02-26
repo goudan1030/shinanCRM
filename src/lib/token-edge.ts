@@ -13,9 +13,10 @@ if (!JWT_SECRET) {
 // 转换为Uint8Array类型，jose库需要
 const JWT_SECRET_BYTES = new TextEncoder().encode(JWT_SECRET);
 // Token过期时间
-const TOKEN_EXPIRES_IN = '7d'; // 7天过期
+const TOKEN_EXPIRES_IN = '30d'; // 30天过期（持久登录）
 // 刷新Token的时间阈值（小于这个时间时自动刷新Token）
-const TOKEN_REFRESH_THRESHOLD = 24 * 60 * 60; // 24小时（秒）
+const TOKEN_REFRESH_THRESHOLD = 7 * 24 * 60 * 60; // 7天（秒）
+const TOKEN_COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30天（秒）
 
 // 角色层级定义
 const roleHierarchy: Record<string, number> = {
@@ -32,6 +33,15 @@ export interface UserPayload {
   name: string;
   role: string;
   avatar_url?: string;
+  session_id?: string;
+}
+
+function createSessionId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
 }
 
 /**
@@ -95,13 +105,15 @@ export async function shouldRefreshToken(token: string): Promise<boolean> {
  * @returns 新的Token
  */
 export async function refreshToken(user: UserPayload): Promise<string> {
+  const sessionId = user.session_id || createSessionId();
   // 使用jose创建JWT
   const token = await new SignJWT({
     id: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
-    avatar_url: user.avatar_url
+    avatar_url: user.avatar_url,
+    session_id: sessionId
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -118,19 +130,25 @@ export async function refreshToken(user: UserPayload): Promise<string> {
  * @returns 更新后的响应对象
  */
 export function setTokenCookie(response: NextResponse, token: string): NextResponse {
-  // 检测是否在HTTPS环境中
-  const isHttps = process.env.NEXT_PUBLIC_HTTPS === 'true' || 
-                  (typeof process !== 'undefined' && process.env.FORCE_SECURE_COOKIE === 'true');
+  const shouldSecure =
+    (typeof process !== 'undefined' && process.env.FORCE_SECURE_COOKIE === 'true') ||
+    ((typeof process !== 'undefined' && process.env.FORCE_SECURE_COOKIE !== 'false') &&
+      typeof process !== 'undefined' &&
+      process.env.NODE_ENV === 'production');
+  const sameSite = shouldSecure ? 'none' : 'lax';
+  const cookieDomain =
+    typeof process !== 'undefined' ? process.env.AUTH_COOKIE_DOMAIN?.trim() : undefined;
   
   response.cookies.set({
     name: 'auth_token',
     value: token,
     httpOnly: true,
-    secure: isHttps, // 根据实际协议设置
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60, // 7天（秒）
-    path: '/'
-    // 不设置domain，让浏览器自动处理
+    secure: shouldSecure,
+    sameSite,
+    maxAge: TOKEN_COOKIE_MAX_AGE,
+    expires: new Date(Date.now() + TOKEN_COOKIE_MAX_AGE * 1000),
+    path: '/',
+    ...(cookieDomain ? { domain: cookieDomain } : {})
   });
   return response;
 }

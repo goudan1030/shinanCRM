@@ -39,6 +39,19 @@ type WecomJsSdkConfigResponse = {
   error?: string;
 };
 
+const SEND_ALLOWED_ENTRIES = new Set([
+  'single_chat_tools',
+  'group_chat_tools',
+  'chat_attachment',
+  'single_kf_tools'
+]);
+
+const CONTACT_ALLOWED_ENTRIES = new Set([
+  'contact_profile',
+  'single_chat_tools',
+  'single_kf_tools'
+]);
+
 export default function WecomSidebarPage() {
   const [memberNo, setMemberNo] = useState('');
   const [member, setMember] = useState<MemberInfo | null>(null);
@@ -55,6 +68,8 @@ export default function WecomSidebarPage() {
   const [contextEntry, setContextEntry] = useState('未获取');
   const [contextSource, setContextSource] = useState('未检测');
   const sdkInitStartedRef = useRef(false);
+  const canSendInCurrentEntry = SEND_ALLOWED_ENTRIES.has(contextEntry);
+  const canGetContactInCurrentEntry = CONTACT_ALLOWED_ENTRIES.has(contextEntry);
 
   const pickFirstNonEmpty = (...values: Array<string | null | undefined>) => {
     for (const value of values) {
@@ -254,6 +269,56 @@ export default function WecomSidebarPage() {
     }
   };
 
+  const fetchCurrentExternalContact = async () => {
+    try {
+      const ww = (window as any)?.ww;
+      const wx = (window as any)?.wx;
+      const bridge = (window as any)?.WeixinJSBridge;
+
+      if (typeof ww?.getCurExternalContact === 'function') {
+        const res = await ww.getCurExternalContact();
+        const userId = (res?.userId || '').trim();
+        if (userId) {
+          if (!toUserId) setToUserId(userId);
+          if (!wecomUserId) setWecomUserId(userId);
+        }
+        return;
+      }
+
+      if (typeof wx?.qy?.getCurExternalContact === 'function') {
+        await new Promise<void>((resolve) => {
+          wx.qy.getCurExternalContact({
+            success: (res: any) => {
+              const userId = (res?.userId || '').trim();
+              if (userId) {
+                if (!toUserId) setToUserId(userId);
+                if (!wecomUserId) setWecomUserId(userId);
+              }
+              resolve();
+            },
+            fail: () => resolve()
+          });
+        });
+        return;
+      }
+
+      if (typeof bridge?.invoke === 'function') {
+        await new Promise<void>((resolve) => {
+          bridge.invoke('getCurExternalContact', {}, (res: any) => {
+            const userId = (res?.userId || '').trim();
+            if (userId) {
+              if (!toUserId) setToUserId(userId);
+              if (!wecomUserId) setWecomUserId(userId);
+            }
+            resolve();
+          });
+        });
+      }
+    } catch {
+      // getCurExternalContact失败时保持静默，避免干扰主流程
+    }
+  };
+
   const fetchQuickReplies = async () => {
     const response = await fetch(`/api/wecom-sidebar/quick-replies?${buildApiParams().toString()}`);
     const data = await response.json();
@@ -315,7 +380,9 @@ export default function WecomSidebarPage() {
       `sendChannel: ${sendChannel}`,
       `sdkStatus: ${sdkStatus}`,
       `contextEntry: ${contextEntry}`,
-      `contextSource: ${contextSource}`
+      `contextSource: ${contextSource}`,
+      `canSendInEntry: ${canSendInCurrentEntry ? 'yes' : 'no'}`,
+      `canGetContactInEntry: ${canGetContactInCurrentEntry ? 'yes' : 'no'}`
     ].join('\n');
     await navigator.clipboard.writeText(debugText);
     setMessage('诊断信息已复制，可直接发给开发排查');
@@ -327,6 +394,15 @@ export default function WecomSidebarPage() {
     fetchBoundMember().catch((error) => setMessage(error.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, wecomUserId, toUserId]);
+
+  useEffect(() => {
+    if (!canGetContactInCurrentEntry) return;
+    if (toUserId && wecomUserId) return;
+    fetchCurrentExternalContact().catch(() => {
+      // fetchCurrentExternalContact内部已兜底
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextEntry]);
 
   const handleSearchMember = async () => {
     if (!memberNo.trim()) return;
@@ -390,6 +466,9 @@ export default function WecomSidebarPage() {
 
       const sendByClient = async () => {
         if (!channel) return false;
+        if (!canSendInCurrentEntry) {
+          throw new Error(`当前入口(${contextEntry})不支持会话发送`);
+        }
         const ww = (window as any)?.ww;
         const wxQy = (window as any)?.wx?.qy;
         const bridge = (window as any)?.WeixinJSBridge;
@@ -501,7 +580,10 @@ export default function WecomSidebarPage() {
       const fallback = content;
       await navigator.clipboard.writeText(fallback);
       const text = error instanceof Error ? error.message : '发送失败';
-      const permissionDenied = /permission denied/i.test(text);
+      const permissionDenied =
+        /permission denied/i.test(text) ||
+        /without context/i.test(text) ||
+        /不支持会话发送/i.test(text);
       setMessage(
         permissionDenied
           ? `发送权限被拒绝（entry: ${contextEntry}）。请从客户会话的“聊天工具栏入口”打开后再试，已自动复制回复内容`
@@ -553,6 +635,10 @@ export default function WecomSidebarPage() {
         </div>
         <div className="mb-2 text-xs text-gray-500">SDK状态：{sdkStatus}</div>
         <div className="mb-2 text-xs text-gray-500">会话入口：{contextEntry}（{contextSource}）</div>
+        <div className="mb-2 text-xs text-gray-500">
+          入口能力：发送{canSendInCurrentEntry ? '可用' : '不可用'}，客户ID获取
+          {canGetContactInCurrentEntry ? '可用' : '不可用'}
+        </div>
         <div className="mb-2">
           <input
             value={toUserId}
