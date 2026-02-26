@@ -5,8 +5,11 @@
 import { jwtVerify, SignJWT } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 
-// JWT密钥，生产环境中应从环境变量获取
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-should-be-long-and-secure';
+// 严格要求JWT密钥来自环境变量，禁止默认回退值
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('缺少必要环境变量: JWT_SECRET。请在运行环境中配置后再启动应用。');
+}
 // 转换为Uint8Array类型，jose库需要
 const JWT_SECRET_BYTES = new TextEncoder().encode(JWT_SECRET);
 // Token过期时间

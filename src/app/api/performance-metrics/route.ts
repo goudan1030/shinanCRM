@@ -4,7 +4,7 @@
  * 用于接收和处理前端发送的性能监控数据
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { executeQuery } from '@/lib/database-netlify';
 
 // 性能指标接口
 interface PerformanceMetric {
@@ -15,6 +15,8 @@ interface PerformanceMetric {
   userAgent?: string;   // 用户代理
   connection?: string;  // 网络连接类型
   url?: string;         // 资源URL(仅对API_TIMING指标有效)
+  connectionInfo?: string;
+  resourceUrl?: string;
 }
 
 /**
@@ -23,7 +25,7 @@ interface PerformanceMetric {
  */
 export async function POST(request: NextRequest) {
   try {
-    const data = await request.json();
+    const data = (await request.json()) as PerformanceMetric;
     
     // 检查必要字段
     if (!data.name || typeof data.value !== 'number' || !data.page || !data.timestamp) {
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || '';
     
     // 保存到数据库
-    await query(`
+    await executeQuery(`
       INSERT INTO performance_metrics 
       (name, value, page, timestamp, user_agent, connection_info, resource_url) 
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -47,8 +49,8 @@ export async function POST(request: NextRequest) {
       data.page,
       data.timestamp,
       userAgent,
-      data.connectionInfo || null,
-      data.resourceUrl || null
+      data.connectionInfo || data.connection || null,
+      data.resourceUrl || data.url || null
     ]);
     
     // 检查是否需要发出性能警报
@@ -76,8 +78,8 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get('page') || '';
     
     // 构建查询条件
-    let conditions = [];
-    let params = [];
+    const conditions: string[] = [];
+    const params: (string | number)[] = [];
     
     if (start) {
       conditions.push('timestamp >= ?');
@@ -104,7 +106,7 @@ export async function GET(request: NextRequest) {
       : '';
     
     // 获取性能指标数据
-    const metrics = await query(`
+    const [metrics] = await executeQuery(`
       SELECT 
         name, 
         AVG(value) as avg_value, 
@@ -118,15 +120,15 @@ export async function GET(request: NextRequest) {
     `, params);
     
     // 获取时间段内的API调用数据
-    const apiCalls = await query(`
+    const [apiCalls] = await executeQuery(`
       SELECT 
-        endpoint, 
+        resource_url AS endpoint, 
         AVG(value) as avg_duration, 
         COUNT(*) as count
       FROM performance_metrics
-      WHERE name = 'ApiCall'
+      WHERE name IN ('ApiCall', 'API_TIMING')
       ${whereClause ? whereClause.replace('WHERE', 'AND') : ''}
-      GROUP BY endpoint
+      GROUP BY resource_url
       ORDER BY avg_duration DESC
       LIMIT 10
     `, params);
@@ -151,7 +153,7 @@ export async function GET(request: NextRequest) {
 /**
  * 检查性能指标是否需要发出警报
  */
-async function checkForPerformanceAlerts(data: any) {
+async function checkForPerformanceAlerts(data: PerformanceMetric) {
   try {
     // 定义各指标的警报阈值
     const thresholds: Record<string, { threshold: number, severity: 'low' | 'medium' | 'high' }> = {
@@ -167,7 +169,7 @@ async function checkForPerformanceAlerts(data: any) {
     const metricThreshold = thresholds[data.name];
     if (metricThreshold && data.value > metricThreshold.threshold) {
       // 记录性能警报
-      await query(`
+      await executeQuery(`
         INSERT INTO performance_alerts
         (metric_name, metric_value, threshold, page, severity, user_agent, occurred_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)

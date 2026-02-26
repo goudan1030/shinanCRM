@@ -26,7 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 const formSchema = z.object({
   corp_id: z.string().min(1, '请输入企业ID'),
   agent_id: z.string().min(1, '请输入应用ID'),
-  secret: z.string().min(1, '请输入应用Secret'),
+  secret: z.string().optional(),
   member_notification_enabled: z.boolean().default(true),
   notification_recipients: z.string().default('@all'),
   message_type: z.enum(['text', 'textcard', 'markdown']).default('textcard'),
@@ -39,6 +39,7 @@ export default function WecomConfigPage() {
   const { toast } = useToast();
   const [isConfigLoading, setIsConfigLoading] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
+  const [hasSecret, setHasSecret] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({    
     resolver: zodResolver(formSchema),
@@ -71,10 +72,11 @@ export default function WecomConfigPage() {
         }
 
         if (data) {
+          setHasSecret(Boolean(data.has_secret));
           form.reset({
             corp_id: data.corp_id || '',
             agent_id: data.agent_id || '',
-            secret: data.secret || '',
+            secret: '',
             member_notification_enabled: data.member_notification_enabled !== false,
             notification_recipients: data.notification_recipients || '@all',
             message_type: data.message_type || 'textcard',
@@ -179,7 +181,7 @@ export default function WecomConfigPage() {
         <h2 className="text-lg font-semibold">企业微信配置</h2>
         <Button 
           onClick={handleTestNotification}
-          disabled={isTesting || !form.watch('corp_id') || !form.watch('agent_id') || !form.watch('secret')}
+          disabled={isTesting || !form.watch('corp_id') || !form.watch('agent_id') || (!form.watch('secret') && !hasSecret)}
           variant="outline"
         >
           {isTesting ? '测试中...' : '测试通知'}
@@ -230,6 +232,11 @@ export default function WecomConfigPage() {
                     <FormControl>
                       <Input type="password" placeholder="请输入应用Secret" {...field} />
                     </FormControl>
+                    {hasSecret && !field.value && (
+                      <div className="text-sm text-muted-foreground">
+                        已配置Secret，留空则保持不变
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

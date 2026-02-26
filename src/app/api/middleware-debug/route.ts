@@ -6,31 +6,22 @@ const publicRoutes = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/session',
-  '/api/debug/db-test',
-  '/favicon.ico',
-  '/_next',
-  '/WW_verify_',
+  '/contracts/sign',
+  '/api/messages/push/status',
 ];
 
 const wecomPublicRoutes = [
   '/api/wecom/callback',
   '/api/wecom/verify',
-  '/api/wecom/manual-check',
-  '/api/wecom/process-queue',
-  '/api/wecom/test-auth',
-  '/api/wecom/config',
-  '/api/wecom/debug',
-  '/api/wecom/diagnosis',
   '/api/wecom/message',
-  '/api/wecom/simple',
-  '/api/wecom/test-connection',
-  '/api/wecom/test-notification',
-  '/api/wecom/test-query'
+  '/api/wecom/callback/data',
+  '/api/wecom/callback/command',
+  '/api/wecom/universal-verify'
 ];
 
 function isPublicPath(path: string): boolean {
-  const isGeneralPublic = publicRoutes.some(route => path.startsWith(route) || path === route);
-  const isWecomPublic = wecomPublicRoutes.some(route => path.startsWith(route) || path === route);
+  const isGeneralPublic = publicRoutes.some(route => path === route || path.startsWith(`${route}/`));
+  const isWecomPublic = wecomPublicRoutes.some(route => path === route || path.startsWith(`${route}/`));
   return isGeneralPublic || isWecomPublic;
 }
 
@@ -38,17 +29,16 @@ export async function GET() {
   try {
     // 测试各种路径
     const testPaths = [
-      '/api/debug/db-test',
+      '/api/wecom/message',
       '/api/wecom/test-auth',
-      '/api/wecom/manual-check',
       '/api/wecom/config',
       '/api/members',
       '/login'
     ];
 
     const results = testPaths.map(path => {
-      const isGeneralPublic = publicRoutes.some(route => path.startsWith(route) || path === route);
-      const isWecomPublic = wecomPublicRoutes.some(route => path.startsWith(route) || path === route);
+      const isGeneralPublic = publicRoutes.some(route => path === route || path.startsWith(`${route}/`));
+      const isWecomPublic = wecomPublicRoutes.some(route => path === route || path.startsWith(`${route}/`));
       const finalResult = isGeneralPublic || isWecomPublic;
       
       return {

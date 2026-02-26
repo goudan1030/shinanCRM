@@ -12,6 +12,8 @@
 
 import mysql, { PoolOptions, Pool, RowDataPacket, ResultSetHeader, QueryResult } from 'mysql2/promise';
 import dns from 'dns';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { promisify } from 'util';
 
 /**
@@ -39,10 +41,21 @@ async function testDnsResolution(hostname: string): Promise<boolean> {
   }
 }
 
+// 严格检查必要的环境变量，禁止任何明文回退值
+const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'] as const;
+const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+  throw new Error(
+    `缺少必要的数据库环境变量: ${missingEnvVars.join(', ')}。` +
+    '请在部署平台（如 Netlify）中配置后再启动应用。'
+  );
+}
+
 // 决定使用哪个用户凭证
 const useDiagUser = !!process.env.DIAG_DB_USER && !!process.env.DIAG_DB_PASSWORD;
-const dbUser = useDiagUser ? process.env.DIAG_DB_USER : process.env.DB_USER;
-const dbPassword = useDiagUser ? process.env.DIAG_DB_PASSWORD : process.env.DB_PASSWORD;
+const dbUser = (useDiagUser ? process.env.DIAG_DB_USER : process.env.DB_USER) as string;
+const dbPassword = (useDiagUser ? process.env.DIAG_DB_PASSWORD : process.env.DB_PASSWORD) as string;
 
 /**
  * 测试TCP连接
@@ -68,52 +81,26 @@ async function testTcpConnection(host: string, port: number): Promise<boolean> {
   }
 }
 
-/**
- * 检查并设置环境变量
- */
-function initializeEnvVars() {
-  // 为Netlify环境设置默认值
-  const defaultEnvVars = {
-    DB_HOST: '121.41.65.220',
-    DB_PORT: '3306',
-    DB_USER: 'h5_cloud_user',
-    DB_PASSWORD: 'mc72TNcMmy6HCybH',
-    DB_NAME: 'h5_cloud_db',
-    JWT_SECRET: 'sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe'
-  };
-
-  // 设置缺失的环境变量
-  Object.entries(defaultEnvVars).forEach(([key, value]) => {
-    if (!process.env[key]) {
-      process.env[key] = value;
-      console.log(`设置默认环境变量: ${key}`);
-    }
-  });
-  
-  // 打印当前使用的环境变量（隐藏密码）
-  console.log('当前数据库配置:', {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: dbUser,
-    database: process.env.DB_NAME,
-    hasPassword: !!dbPassword,
-    usingDiagUser: useDiagUser
-  });
-}
-
-// 初始化环境变量
-initializeEnvVars();
+// 打印当前使用的环境变量（隐藏密码）
+console.log('当前数据库配置:', {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: dbUser,
+  database: process.env.DB_NAME,
+  hasPassword: !!dbPassword,
+  usingDiagUser: useDiagUser
+});
 
 /**
  * 性能优化的数据库配置
  */
 const netlifyDBConfig: PoolOptions = {
   // 基本连接信息
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '3306', 10),
+  host: process.env.DB_HOST as string,
+  port: parseInt(process.env.DB_PORT as string, 10),
   user: dbUser,
   password: dbPassword,
-  database: process.env.DB_NAME,
+  database: process.env.DB_NAME as string,
   
   // 性能优化配置
   waitForConnections: true,
@@ -272,11 +259,63 @@ export interface UserInfo {
 }
 
 /**
- * 密码加密函数
+ * bcrypt哈希轮数，默认12轮
  */
-function hashPassword(password: string): string {
-  const crypto = require('crypto');
-  return crypto.createHash('md5').update(password).digest('hex');
+const BCRYPT_SALT_ROUNDS = (() => {
+  const parsed = Number(process.env.BCRYPT_SALT_ROUNDS || '12');
+  if (Number.isNaN(parsed) || parsed < 8 || parsed > 15) {
+    return 12;
+  }
+  return parsed;
+})();
+
+function isBcryptHash(hash: string): boolean {
+  return hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2y$');
+}
+
+function hashPasswordLegacyMd5(password: string): string {
+  return crypto.createHash('md5').update(password).digest('hex').toLowerCase();
+}
+
+function hashPasswordLegacySha256(password: string): string {
+  return crypto.createHash('sha256').update(password).digest('hex').toLowerCase();
+}
+
+async function hashPasswordSecure(password: string): Promise<string> {
+  return bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+}
+
+async function verifyPasswordAndUpgradeIfNeeded(
+  plainPassword: string,
+  storedHash: string,
+  userId: number
+): Promise<boolean> {
+  if (!storedHash) {
+    return false;
+  }
+
+  if (isBcryptHash(storedHash)) {
+    return bcrypt.compare(plainPassword, storedHash);
+  }
+
+  const normalizedStoredHash = storedHash.toLowerCase();
+  const matchedLegacy =
+    normalizedStoredHash === hashPasswordLegacyMd5(plainPassword) ||
+    normalizedStoredHash === hashPasswordLegacySha256(plainPassword);
+
+  if (!matchedLegacy) {
+    return false;
+  }
+
+  // 旧哈希验证通过后，自动升级为bcrypt，后续登录走强哈希
+  try {
+    const upgradedHash = await hashPasswordSecure(plainPassword);
+    await executeQuery('UPDATE admin_users SET password = ? WHERE id = ?', [upgradedHash, userId]);
+  } catch (upgradeError) {
+    console.error('密码自动升级为bcrypt失败:', upgradeError);
+  }
+
+  return true;
 }
 
 /**
@@ -286,11 +325,6 @@ export async function authenticateUser(email: string, password: string): Promise
   try {
     console.log('=== 开始用户认证流程 ===');
     console.log('认证信息:', { email, passwordLength: password.length });
-
-    // 对密码进行加密处理
-    console.log('开始密码加密处理...');
-    const hashedPassword = hashPassword(password);
-    console.log('✓ 密码加密完成:', { hashedPasswordLength: hashedPassword.length });
 
     // 查询用户
     console.log('执行数据库查询:', { email });
@@ -305,20 +339,18 @@ export async function authenticateUser(email: string, password: string): Promise
       return null;
     }
 
-    const user = rows[0];
-    const dbPassword = user.password.toLowerCase();
-    console.log('数据库密码信息:', { 
-      dbPasswordLength: dbPassword.length,
-      hashedPasswordLength: hashedPassword.length,
-      passwordsMatch: dbPassword === hashedPassword
-    });
-    
+    const user = rows[0] as RowDataPacket & { password?: string };
+    const storedPasswordHash = typeof user.password === 'string' ? user.password : '';
+    const passwordValid = await verifyPasswordAndUpgradeIfNeeded(
+      password,
+      storedPasswordHash,
+      Number(user.id)
+    );
+
     // 验证密码
-    if (dbPassword !== hashedPassword) {
+    if (!passwordValid) {
       console.log('✗ 密码验证失败:', {
-        hashedPasswordLength: hashedPassword.length,
-        dbPasswordLength: dbPassword.length,
-        passwordsMatch: false
+        storedHashLength: storedPasswordHash.length
       });
       return null;
     }
@@ -399,7 +431,7 @@ export async function updateUserProfile(userId: number, data: UserProfileUpdate)
  */
 export async function updateUserPassword(userId: number, newPassword: string): Promise<any> {
   try {
-    const hashedPassword = hashPassword(newPassword);
+    const hashedPassword = await hashPasswordSecure(newPassword);
     const [result] = await executeQuery(
       'UPDATE admin_users SET password = ? WHERE id = ?',
       [hashedPassword, userId]

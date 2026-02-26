@@ -3,7 +3,7 @@ import { UserPayload, verifyToken, getTokenFromCookieStore } from './token';
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { executeQuery } from '@/lib/database-netlify';
-import { compare } from 'bcrypt';
+import { compare } from 'bcryptjs';
 
 export interface User {
   id: number;

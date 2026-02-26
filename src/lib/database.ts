@@ -12,6 +12,7 @@
 
 import mysql, { PoolOptions, Pool, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 /**
  * 数据库查询结果类型
@@ -49,25 +50,15 @@ export interface UserProfileUpdate {
   [key: string]: any;
 }
 
-// 设置默认环境变量（在未找到.env.local的情况下使用）
-if (!process.env.DB_HOST) {
-  console.warn('警告: 找不到.env.local文件，使用默认环境变量');
-  process.env.DB_HOST = '121.41.65.220';
-  process.env.DB_PORT = '3306';
-  process.env.DB_USER = 'h5_cloud_user';
-  process.env.DB_PASSWORD = 'mc72TNcMmy6HCybH';
-  process.env.DB_NAME = 'h5_cloud_db';
-  process.env.JWT_SECRET = 'sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe';
-  process.env.SERVER_URL = 'http://121.41.65.220:8888/';
-}
-
-// 检查必要的环境变量
-const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+// 严格检查必要的环境变量，禁止任何明文回退值
+const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'] as const;
+const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
 
 if (missingEnvVars.length > 0) {
-  console.warn(`警告: 缺少数据库配置环境变量: ${missingEnvVars.join(', ')}`);
-  console.warn('将使用默认值，这在生产环境中是不安全的');
+  throw new Error(
+    `缺少必要的数据库环境变量: ${missingEnvVars.join(', ')}。` +
+    '请在 .env.local（或部署环境变量）中完成配置后再启动应用。'
+  );
 }
 
 /**
@@ -76,11 +67,11 @@ if (missingEnvVars.length > 0) {
  */
 const dbConfig: PoolOptions = {
   // 基本连接信息
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '3306', 10),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'h5_cloud_db',
+  host: process.env.DB_HOST as string,
+  port: parseInt(process.env.DB_PORT as string, 10),
+  user: process.env.DB_USER as string,
+  password: process.env.DB_PASSWORD as string,
+  database: process.env.DB_NAME as string,
   
   // 连接池配置
   waitForConnections: true,        // 连接不够时等待，而不是立即失败
@@ -110,7 +101,7 @@ console.log('数据库配置信息:', {
 const pool: Pool = mysql.createPool(dbConfig);
 
 // 为保持向后兼容，可以在这里添加连接事件监听器
-pool.on('connection', function(connection) {
+pool.on('connection', function() {
   console.log('新的数据库连接已建立');
 });
 
@@ -142,20 +133,63 @@ export function createClient() {
   return mysql.createConnection(dbConfig);
 }
 
+const BCRYPT_SALT_ROUNDS = (() => {
+  const parsed = Number(process.env.BCRYPT_SALT_ROUNDS || '12');
+  if (Number.isNaN(parsed) || parsed < 8 || parsed > 15) {
+    return 12;
+  }
+  return parsed;
+})();
+
+function isBcryptHash(hash: string): boolean {
+  return hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2y$');
+}
+
+function hashPasswordLegacyMd5(password: string): string {
+  return crypto.createHash('md5').update(password).digest('hex').toLowerCase();
+}
+
+function hashPasswordLegacySha256(password: string): string {
+  return crypto.createHash('sha256').update(password).digest('hex').toLowerCase();
+}
+
+async function hashPasswordSecure(password: string): Promise<string> {
+  return bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+}
+
 /**
- * 密码加密函数
- * 
- * 使用SHA-256算法对密码进行单向加密
- * 
- * @param password 原始密码
- * @returns 加密后的密码哈希值（小写十六进制字符串）
+ * 兼容旧哈希（MD5/SHA256）并自动升级到bcrypt
  */
-export function hashPassword(password: string): string {
-  return crypto
-    .createHash('sha256')
-    .update(password)
-    .digest('hex')
-    .toLowerCase();
+async function verifyPasswordAndUpgradeIfNeeded(
+  plainPassword: string,
+  storedHash: string,
+  userId: number
+): Promise<boolean> {
+  if (!storedHash) {
+    return false;
+  }
+
+  if (isBcryptHash(storedHash)) {
+    return bcrypt.compare(plainPassword, storedHash);
+  }
+
+  const normalizedStoredHash = storedHash.toLowerCase();
+  const matchedLegacy =
+    normalizedStoredHash === hashPasswordLegacyMd5(plainPassword) ||
+    normalizedStoredHash === hashPasswordLegacySha256(plainPassword);
+
+  if (!matchedLegacy) {
+    return false;
+  }
+
+  try {
+    const upgradedHash = await hashPasswordSecure(plainPassword);
+    await pool.execute('UPDATE admin_users SET password = ? WHERE id = ?', [upgradedHash, userId]);
+  } catch (upgradeError) {
+    console.error('密码自动升级为bcrypt失败:', upgradeError);
+  }
+
+  return true;
 }
 
 /**
@@ -176,11 +210,6 @@ export async function authenticateUser(email: string, password: string): Promise
     // 首先测试数据库连接
     await checkDatabaseConnection();
 
-    // 对密码进行加密处理
-    console.log('开始密码加密处理...');
-    const hashedPassword = hashPassword(password);
-    console.log('✓ 密码加密完成:', { hashedPasswordLength: hashedPassword.length });
-
     // 查询用户
     console.log('执行数据库查询:', { email });
     const [rows] = await pool.execute<RowDataPacket[]>(
@@ -194,20 +223,18 @@ export async function authenticateUser(email: string, password: string): Promise
       return null;
     }
 
-    const user = rows[0];
-    const dbPassword = user.password.toLowerCase();
-    console.log('数据库密码信息:', { 
-      dbPasswordLength: dbPassword.length,
-      hashedPasswordLength: hashedPassword.length,
-      passwordsMatch: dbPassword === hashedPassword
-    });
-    
+    const user = rows[0] as RowDataPacket & { password?: string };
+    const storedPasswordHash = typeof user.password === 'string' ? user.password : '';
+    const passwordValid = await verifyPasswordAndUpgradeIfNeeded(
+      password,
+      storedPasswordHash,
+      Number(user.id)
+    );
+
     // 验证密码
-    if (dbPassword !== hashedPassword) {
+    if (!passwordValid) {
       console.log('✗ 密码验证失败:', {
-        hashedPasswordLength: hashedPassword.length,
-        dbPasswordLength: dbPassword.length,
-        passwordsMatch: false
+        storedHashLength: storedPasswordHash.length
       });
       return null;
     }
@@ -276,7 +303,7 @@ export async function updateUserProfile(userId: number, data: UserProfileUpdate)
  */
 export async function updateUserPassword(userId: number, newPassword: string): Promise<ResultSetHeader> {
   try {
-    const hashedPassword = hashPassword(newPassword);
+    const hashedPassword = await hashPasswordSecure(newPassword);
 
     const [result] = await pool.execute<ResultSetHeader>(
       'UPDATE admin_users SET password = ? WHERE id = ?',

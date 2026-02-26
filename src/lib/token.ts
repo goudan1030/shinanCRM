@@ -13,11 +13,11 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRole, TokenPayload } from '@/types/auth';
 
-// 从环境变量中获取JWT密钥，如果未设置，使用默认值（从env.template）
-const JWT_SECRET = process.env.JWT_SECRET || 'sn8we6nRudHjsDnso7h3Qzpr5Pax8Jwe';
-
-// 打印JWT密钥设置状态（不显示实际值）
-console.log('JWT密钥状态:', process.env.JWT_SECRET ? '已设置' : '使用默认值');
+// 严格要求JWT密钥来自环境变量，禁止默认回退值
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('缺少必要环境变量: JWT_SECRET。请在运行环境中配置后再启动应用。');
+}
 
 // Token配置常量
 const TOKEN_EXPIRES_IN = '7d';               // Token有效期（7天）

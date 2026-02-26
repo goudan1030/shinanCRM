@@ -42,8 +42,8 @@ const publicRoutes = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/auth/session',
-  '/api/debug/db-test',  // 数据库调试API
-  '/api/middleware-debug',  // middleware调试API
+  '/wecom-sidebar', // 企业微信侧边栏页面（H5）
+  '/api/wecom-sidebar', // 企业微信侧边栏API
   // 合同签署相关 - 客户公开访问
   '/contracts/sign', // 合同签署页面
   // 推送相关API - 不需要认证
@@ -52,30 +52,14 @@ const publicRoutes = [
   '/api/wecom/message', // 企业微信消息接收URL
   '/api/wecom/verify',  // 企业微信验证URL
   '/api/wecom/callback', // 企业微信回调URL
-  '/api/wecom/test-verify', // 企业微信测试验证API
-  '/api/wecom/ip-info', // 企业微信IP信息API
-  '/api/wecom/simple-verify', // 企业微信简化验证API
-  '/api/wecom/standard-verify', // 企业微信官方标准验证API
-  '/api/wecom/diagnosis', // 企业微信诊断工具API
-  '/api/wecom/minimal-verify', // 企业微信最简验证API
-  '/api/wecom/manual-check', // 手动检查API
-  '/api/wecom/process-queue', // 队列处理API
-  '/api/wecom/test-auth', // 测试认证API
-  '/api/wecom/config', // 配置API
-  '/api/wecom/config-check', // 配置检查API
-  '/api/wecom/status', // 状态监控API
-  '/api/wecom/debug', // 调试API
-  '/api/wecom/test-connection', // 测试连接API
-  '/api/wecom/test-notification', // 测试通知API
-  '/api/wecom/test-query', // 测试查询API
-  '/api/wecom/test-contract-notification', // 测试合同签署通知API
-  '/api/wecom/test-member-update-notification', // 测试会员更新通知API
-  '/api/wecom/simple', // 简单API
-  '/api/wecom/logs', // 日志查看API
   '/api/wecom/callback/data', // 第三方应用数据回调
   '/api/wecom/callback/command', // 第三方应用指令回调
   '/api/wecom/universal-verify', // 企业微信通用验证API
 ];
+
+function isPublicRoute(pathname: string): boolean {
+  return publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
 
 // 中间件实现
 export async function middleware(request: NextRequest) {
@@ -90,7 +74,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 公开路由直接访问
-  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 
