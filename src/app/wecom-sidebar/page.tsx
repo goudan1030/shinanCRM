@@ -52,6 +52,8 @@ export default function WecomSidebarPage() {
   const [wecomClientReady, setWecomClientReady] = useState(false);
   const [sendChannel, setSendChannel] = useState('未检测');
   const [sdkStatus, setSdkStatus] = useState('未初始化');
+  const [contextEntry, setContextEntry] = useState('未获取');
+  const [contextSource, setContextSource] = useState('未检测');
   const sdkInitStartedRef = useRef(false);
 
   const pickFirstNonEmpty = (...values: Array<string | null | undefined>) => {
@@ -204,6 +206,54 @@ export default function WecomSidebarPage() {
     }
   };
 
+  const detectWecomContext = async () => {
+    try {
+      const ww = (window as any)?.ww;
+      const wx = (window as any)?.wx;
+      const bridge = (window as any)?.WeixinJSBridge;
+
+      if (typeof ww?.getContext === 'function') {
+        const res = await ww.getContext();
+        const entry = res?.entry || 'unknown';
+        setContextEntry(entry);
+        setContextSource('ww.getContext');
+        return;
+      }
+
+      if (typeof wx?.qy?.getContext === 'function') {
+        await new Promise<void>((resolve, reject) => {
+          wx.qy.getContext({
+            success: (res: any) => {
+              setContextEntry(res?.entry || 'unknown');
+              setContextSource('wx.qy.getContext');
+              resolve();
+            },
+            fail: (err: any) => reject(new Error(err?.errMsg || err?.errmsg || 'getContext失败'))
+          });
+        });
+        return;
+      }
+
+      if (typeof bridge?.invoke === 'function') {
+        await new Promise<void>((resolve) => {
+          bridge.invoke('getContext', {}, (res: any) => {
+            const entry = res?.entry || 'unknown';
+            setContextEntry(entry);
+            setContextSource('WeixinJSBridge.invoke(getContext)');
+            resolve();
+          });
+        });
+        return;
+      }
+
+      setContextEntry('不可用');
+      setContextSource('无可用上下文API');
+    } catch {
+      setContextEntry('获取失败');
+      setContextSource('getContext报错');
+    }
+  };
+
   const fetchQuickReplies = async () => {
     const response = await fetch(`/api/wecom-sidebar/quick-replies?${buildApiParams().toString()}`);
     const data = await response.json();
@@ -250,6 +300,9 @@ export default function WecomSidebarPage() {
     initWecomJsSdk(accessKey).catch(() => {
       // initWecomJsSdk内部已兜底状态
     });
+    detectWecomContext().catch(() => {
+      // detectWecomContext内部已兜底状态
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -260,7 +313,9 @@ export default function WecomSidebarPage() {
       `toUserId: ${toUserId || '(empty)'}`,
       `key: ${key ? '(exists)' : '(empty)'}`,
       `sendChannel: ${sendChannel}`,
-      `sdkStatus: ${sdkStatus}`
+      `sdkStatus: ${sdkStatus}`,
+      `contextEntry: ${contextEntry}`,
+      `contextSource: ${contextSource}`
     ].join('\n');
     await navigator.clipboard.writeText(debugText);
     setMessage('诊断信息已复制，可直接发给开发排查');
@@ -379,19 +434,41 @@ export default function WecomSidebarPage() {
         }
 
         if (channel === 'WeixinJSBridge.invoke(sendChatMessage)') {
-          await new Promise<void>((resolve, reject) => {
-            bridge.invoke(
-              'sendChatMessage',
-              { msgtype: 'text', text: { content } },
-              (res: any) => {
+          const tryBridgePayload = async (payload: any) =>
+            new Promise<void>((resolve, reject) => {
+              bridge.invoke('sendChatMessage', payload, (res: any) => {
                 const errMsg = (res?.err_msg || '').toLowerCase();
                 if (errMsg.includes('ok')) {
                   resolve();
                   return;
                 }
                 reject(new Error(res?.err_msg || '企业微信会话发送失败'));
-              }
-            );
+              });
+            });
+
+          const payloads = [
+            { msgtype: 'text', text: { content } },
+            { msgtype: 'text', text: { content }, content },
+            { msgType: 'text', content }
+          ];
+
+          let lastError: Error | null = null;
+          for (const payload of payloads) {
+            try {
+              await tryBridgePayload(payload);
+              lastError = null;
+              break;
+            } catch (err) {
+              lastError = err as Error;
+            }
+          }
+
+          if (lastError) {
+            throw lastError;
+          }
+
+          await detectWecomContext().catch(() => {
+            // 无需中断发送
           });
           return true;
         }
@@ -423,8 +500,12 @@ export default function WecomSidebarPage() {
     } catch (error) {
       const fallback = content;
       await navigator.clipboard.writeText(fallback);
+      const text = error instanceof Error ? error.message : '发送失败';
+      const permissionDenied = /permission denied/i.test(text);
       setMessage(
-        `${error instanceof Error ? error.message : '发送失败'}，已自动复制回复内容`
+        permissionDenied
+          ? `发送权限被拒绝（entry: ${contextEntry}）。请从客户会话的“聊天工具栏入口”打开后再试，已自动复制回复内容`
+          : `${text}，已自动复制回复内容`
       );
     } finally {
       setLoading(false);
@@ -471,6 +552,7 @@ export default function WecomSidebarPage() {
           发送通道：{wecomClientReady ? `企业微信会话发送（${sendChannel}）` : '应用消息发送（兜底）'}
         </div>
         <div className="mb-2 text-xs text-gray-500">SDK状态：{sdkStatus}</div>
+        <div className="mb-2 text-xs text-gray-500">会话入口：{contextEntry}（{contextSource}）</div>
         <div className="mb-2">
           <input
             value={toUserId}
