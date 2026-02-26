@@ -67,6 +67,7 @@ export default function WecomSidebarPage() {
   const [sdkStatus, setSdkStatus] = useState('未初始化');
   const [contextEntry, setContextEntry] = useState('未获取');
   const [contextSource, setContextSource] = useState('未检测');
+  const [contactStatus, setContactStatus] = useState('未尝试');
   const sdkInitStartedRef = useRef(false);
   const canSendInCurrentEntry = SEND_ALLOWED_ENTRIES.has(contextEntry);
   const canGetContactInCurrentEntry = CONTACT_ALLOWED_ENTRIES.has(contextEntry);
@@ -288,6 +289,9 @@ export default function WecomSidebarPage() {
         if (userId) {
           if (!toUserId) setToUserId(userId);
           if (!wecomUserId) setWecomUserId(userId);
+          setContactStatus('已获取（ww.getCurExternalContact）');
+        } else {
+          setContactStatus('未返回userId（ww.getCurExternalContact）');
         }
         return;
       }
@@ -300,10 +304,18 @@ export default function WecomSidebarPage() {
               if (userId) {
                 if (!toUserId) setToUserId(userId);
                 if (!wecomUserId) setWecomUserId(userId);
+                setContactStatus('已获取（wx.qy.getCurExternalContact）');
+              } else {
+                setContactStatus('未返回userId（wx.qy.getCurExternalContact）');
               }
               resolve();
             },
-            fail: () => resolve()
+            fail: (err: any) => {
+              setContactStatus(
+                `失败（wx.qy.getCurExternalContact）：${err?.errMsg || err?.errmsg || 'unknown'}`
+              );
+              resolve();
+            }
           });
         });
         return;
@@ -316,13 +328,21 @@ export default function WecomSidebarPage() {
             if (userId) {
               if (!toUserId) setToUserId(userId);
               if (!wecomUserId) setWecomUserId(userId);
+              setContactStatus('已获取（WeixinJSBridge.getCurExternalContact）');
+            } else {
+              setContactStatus(
+                `失败（WeixinJSBridge.getCurExternalContact）：${res?.err_msg || 'unknown'}`
+              );
             }
             resolve();
           });
         });
+        return;
       }
+
+      setContactStatus('当前环境无 getCurExternalContact 能力');
     } catch {
-      // getCurExternalContact失败时保持静默，避免干扰主流程
+      setContactStatus('getCurExternalContact 调用异常');
     }
   };
 
@@ -389,7 +409,8 @@ export default function WecomSidebarPage() {
       `contextEntry: ${contextEntry}`,
       `contextSource: ${contextSource}`,
       `canSendInEntry: ${canSendInEntryText}`,
-      `canGetContactInEntry: ${canGetContactInCurrentEntry ? 'yes' : 'no'}`
+      `canGetContactInEntry: ${canGetContactInCurrentEntry ? 'yes' : 'no'}`,
+      `contactStatus: ${contactStatus}`
     ].join('\n');
     await navigator.clipboard.writeText(debugText);
     setMessage('诊断信息已复制，可直接发给开发排查');
@@ -466,6 +487,7 @@ export default function WecomSidebarPage() {
   const handleSendQuickReply = async (content: string) => {
     setLoading(true);
     setMessage('');
+    let runtimeEntry = contextEntry;
     try {
       const channel = detectWecomSendChannel();
       setWecomClientReady(Boolean(channel));
@@ -474,6 +496,7 @@ export default function WecomSidebarPage() {
       const sendByClient = async () => {
         if (!channel) return false;
         const latestEntry = await detectWecomContext().catch(() => contextEntry);
+        runtimeEntry = latestEntry;
         const allowByEntry = SEND_ALLOWED_ENTRIES.has(latestEntry);
         const allowByUnknown =
           latestEntry === 'unknown' ||
@@ -599,9 +622,12 @@ export default function WecomSidebarPage() {
         /permission denied/i.test(text) ||
         /without context/i.test(text) ||
         /不支持会话发送/i.test(text);
+      const entrySupportsSend = SEND_ALLOWED_ENTRIES.has(runtimeEntry);
       setMessage(
         permissionDenied
-          ? `发送权限被拒绝（entry: ${contextEntry}）。请从客户会话的“聊天工具栏入口”打开后再试，已自动复制回复内容`
+          ? entrySupportsSend
+            ? `发送权限被拒绝（entry: ${runtimeEntry}）。当前入口已正确，通常是“应用客户联系权限或成员可见范围”不足。错误：${text}。已自动复制回复内容`
+            : `发送权限被拒绝（entry: ${runtimeEntry}）。请从客户会话的“聊天工具栏入口”打开后再试，已自动复制回复内容`
           : `${text}，已自动复制回复内容`
       );
     } finally {
@@ -655,6 +681,7 @@ export default function WecomSidebarPage() {
           {canSendInCurrentEntry ? '可用' : isContextUnknown ? '待判定' : '不可用'}，客户ID获取
           {canGetContactInCurrentEntry ? '可用' : '不可用'}
         </div>
+        <div className="mb-2 text-xs text-gray-500">客户ID获取状态：{contactStatus}</div>
         <div className="mb-2">
           <input
             value={toUserId}
