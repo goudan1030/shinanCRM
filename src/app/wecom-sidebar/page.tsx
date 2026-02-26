@@ -77,6 +77,8 @@ export default function WecomSidebarPage() {
     contextEntry === '获取失败' ||
     contextEntry === 'unknown';
   const canSendInEntryText = canSendInCurrentEntry ? 'yes' : isContextUnknown ? 'unknown' : 'no';
+  const canTryGetContact = canGetContactInCurrentEntry || isContextUnknown;
+  const canGetContactText = canGetContactInCurrentEntry ? 'yes' : isContextUnknown ? 'unknown' : 'no';
 
   const pickFirstNonEmpty = (...values: Array<string | null | undefined>) => {
     for (const value of values) {
@@ -243,17 +245,17 @@ export default function WecomSidebarPage() {
       }
 
       if (typeof wx?.qy?.getContext === 'function') {
-        await new Promise<void>((resolve, reject) => {
+        const entry = await new Promise<string>((resolve, reject) => {
           wx.qy.getContext({
             success: (res: any) => {
-              setContextEntry(res?.entry || 'unknown');
-              setContextSource('wx.qy.getContext');
-              resolve();
+              resolve((res?.entry || 'unknown') as string);
             },
             fail: (err: any) => reject(new Error(err?.errMsg || err?.errmsg || 'getContext失败'))
           });
         });
-        return 'unknown';
+        setContextEntry(entry);
+        setContextSource('wx.qy.getContext');
+        return entry;
       }
 
       if (typeof bridge?.invoke === 'function') {
@@ -409,7 +411,7 @@ export default function WecomSidebarPage() {
       `contextEntry: ${contextEntry}`,
       `contextSource: ${contextSource}`,
       `canSendInEntry: ${canSendInEntryText}`,
-      `canGetContactInEntry: ${canGetContactInCurrentEntry ? 'yes' : 'no'}`,
+      `canGetContactInEntry: ${canGetContactText}`,
       `contactStatus: ${contactStatus}`
     ].join('\n');
     await navigator.clipboard.writeText(debugText);
@@ -424,7 +426,7 @@ export default function WecomSidebarPage() {
   }, [key, wecomUserId, toUserId]);
 
   useEffect(() => {
-    if (!canGetContactInCurrentEntry) return;
+    if (!canTryGetContact) return;
     if (toUserId && wecomUserId) return;
     fetchCurrentExternalContact().catch(() => {
       // fetchCurrentExternalContact内部已兜底
@@ -679,7 +681,7 @@ export default function WecomSidebarPage() {
         <div className="mb-2 text-xs text-gray-500">
           入口能力：发送
           {canSendInCurrentEntry ? '可用' : isContextUnknown ? '待判定' : '不可用'}，客户ID获取
-          {canGetContactInCurrentEntry ? '可用' : '不可用'}
+          {canGetContactInCurrentEntry ? '可用' : isContextUnknown ? '待判定' : '不可用'}
         </div>
         <div className="mb-2 text-xs text-gray-500">客户ID获取状态：{contactStatus}</div>
         <div className="mb-2">
