@@ -15,59 +15,66 @@ type MemberInfo = {
   city: string | null;
 };
 
+type MsgType = 'info' | 'success' | 'error';
+
 export default function BindPage() {
   const runtime = useWecomSidebarRuntime();
   const [memberNo, setMemberNo] = useState('');
-  const [member, setMember] = useState<MemberInfo | null>(null);
-  const [hasBinding, setHasBinding] = useState(false);
+  const [searchedMember, setSearchedMember] = useState<MemberInfo | null>(null);
+  const [boundMember, setBoundMember] = useState<MemberInfo | null>(null);
   const [checkingBinding, setCheckingBinding] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [msgType, setMsgType] = useState<MsgType>('info');
+
   const bindUserId = runtime.wecomUserId || runtime.toUserId;
+
+  const showMsg = (text: string, type: MsgType = 'info') => {
+    setMessage(text);
+    setMsgType(type);
+    setTimeout(() => setMessage(''), 4000);
+  };
 
   const fetchBoundMember = async () => {
     if (!runtime.wecomUserId) {
       setCheckingBinding(false);
       return;
     }
-    const params = runtime.buildApiParams();
-    params.set('wecom_userid', runtime.wecomUserId);
-    const response = await fetch(`/api/wecom-sidebar/member?${params.toString()}`);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || '获取已绑定信息失败');
-    if (data.member) {
-      setMember(data.member);
-      setMemberNo(data.member.member_no || '');
-      setHasBinding(true);
-    } else {
-      setHasBinding(false);
+    try {
+      const params = runtime.buildApiParams();
+      params.set('wecom_userid', runtime.wecomUserId);
+      const response = await fetch(`/api/wecom-sidebar/member?${params.toString()}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '获取绑定信息失败');
+      setBoundMember(data.member || null);
+    } catch (error) {
+      showMsg(error instanceof Error ? error.message : '检查绑定失败', 'error');
+    } finally {
+      setCheckingBinding(false);
     }
-    setCheckingBinding(false);
   };
 
   useEffect(() => {
     setCheckingBinding(true);
-    fetchBoundMember().catch((error) => {
-      setMessage(error.message);
-      setCheckingBinding(false);
-    });
+    setBoundMember(null);
+    fetchBoundMember();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runtime.wecomUserId, runtime.key]);
 
-  const handleSearchMember = async () => {
+  const handleSearch = async () => {
     if (!memberNo.trim()) return;
     setLoading(true);
-    setMessage('');
+    setSearchedMember(null);
     try {
       const params = runtime.buildApiParams();
       params.set('member_no', memberNo.trim());
       const response = await fetch(`/api/wecom-sidebar/member?${params.toString()}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '查询失败');
-      setMember(data.member || null);
-      if (!data.member) setMessage('未找到该编号对应会员');
+      setSearchedMember(data.member || null);
+      if (!data.member) showMsg('未找到该编号对应会员', 'error');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '查询失败');
+      showMsg(error instanceof Error ? error.message : '查询失败', 'error');
     } finally {
       setLoading(false);
     }
@@ -75,95 +82,195 @@ export default function BindPage() {
 
   const handleBind = async () => {
     if (!bindUserId) {
-      setMessage(`缺少 wecom_userid，无法绑定。当前入口(${runtime.contextEntry})，客户ID获取状态：${runtime.contactStatus}`);
+      showMsg(
+        `缺少 wecom_userid，无法绑定。入口：${runtime.contextEntry}，客户ID状态：${runtime.contactStatus}`,
+        'error'
+      );
       return;
     }
     if (!memberNo.trim()) {
-      setMessage('请先输入会员编号');
+      showMsg('请先输入会员编号', 'error');
       return;
     }
     setLoading(true);
-    setMessage('');
     try {
       const response = await fetch(`/api/wecom-sidebar/bind?${runtime.buildApiParams().toString()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          wecom_userid: bindUserId,
-          member_no: memberNo.trim()
-        })
+        body: JSON.stringify({ wecom_userid: bindUserId, member_no: memberNo.trim() })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '绑定失败');
-      setMember(data.member || null);
-      setMessage('绑定成功');
+      setBoundMember(data.member || null);
+      setSearchedMember(null);
+      setMemberNo('');
+      showMsg('绑定成功！', 'success');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '绑定失败');
+      showMsg(error instanceof Error ? error.message : '绑定失败', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleUnbind = async () => {
+    if (!bindUserId || !boundMember) return;
+    if (!confirm(`确认解除 ${boundMember.member_no} 的绑定关系？`)) return;
+    setLoading(true);
+    try {
+      const params = runtime.buildApiParams();
+      params.set('wecom_userid', bindUserId);
+      const response = await fetch(`/api/wecom-sidebar/bind?${params.toString()}`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '解绑失败');
+      setBoundMember(null);
+      showMsg('已解除绑定', 'success');
+    } catch (error) {
+      showMsg(error instanceof Error ? error.message : '解绑失败', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenProfile = async (userId: string) => {
+    try {
+      await runtime.openUserProfile(userId, 2);
+    } catch {
+      showMsg('打开资料页失败，该功能需在企业微信聊天工具栏中使用', 'error');
+    }
+  };
+
+  const MemberCard = ({ m, showUnbind = false }: { m: MemberInfo; showUnbind?: boolean }) => (
+    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <div className="bg-green-600 px-3 py-2 text-white flex items-center justify-between">
+        <div>
+          <div className="font-semibold">{m.member_no}</div>
+          <div className="text-xs text-green-200">{m.nickname || '未填写昵称'}</div>
+        </div>
+        <div className="text-right text-xs text-green-100">
+          <div>{m.status || '-'}</div>
+          <div>{m.type || '-'}</div>
+        </div>
+      </div>
+      <div className="p-3 space-y-1.5 text-xs text-gray-600">
+        <div><span className="text-gray-400">微信号：</span>{m.wechat || '未填写'}</div>
+        <div><span className="text-gray-400">手机号：</span>{m.phone || '未填写'}</div>
+        <div><span className="text-gray-400">性别：</span>{m.gender || '-'}</div>
+        <div><span className="text-gray-400">城市：</span>{m.city || '-'}</div>
+      </div>
+      <div className="flex gap-2 border-t border-gray-100 p-3">
+        <button
+          onClick={() => handleOpenProfile(m.wechat || m.member_no)}
+          className="flex-1 rounded-md border border-gray-200 bg-gray-50 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
+        >
+          👤 查看资料
+        </button>
+        {showUnbind && (
+          <button
+            onClick={handleUnbind}
+            disabled={loading}
+            className="flex-1 rounded-md border border-red-200 bg-red-50 py-1.5 text-xs text-red-500 hover:bg-red-100 disabled:opacity-50"
+          >
+            解除绑定
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <section className="rounded-lg border border-gray-200 p-3">
-      <div className="mb-2 font-semibold">信息查询</div>
-      <div className="mb-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2 text-xs text-gray-600">
-        <div>当前会话 wecom_userid：{runtime.wecomUserId || '未识别'}</div>
-        <div>备用 to_userid：{runtime.toUserId || '未识别'}</div>
-        <div>上下文入口：{runtime.contextEntry || 'unknown'}</div>
-        <div>客户ID获取状态：{runtime.contactStatus}</div>
+    <div className="space-y-3">
+      {/* 客户信息 */}
+      <div className="rounded-lg border border-gray-200 bg-white p-3 text-xs">
+        <div className="mb-2 font-medium text-gray-700">当前客户信息</div>
+        <div className="space-y-1 text-gray-500">
+          <div>wecom_userid：<span className={runtime.wecomUserId ? 'text-green-600' : 'text-orange-500'}>{runtime.wecomUserId || '未识别'}</span></div>
+          <div>上下文入口：<span>{runtime.contextEntry || 'unknown'}</span></div>
+          <div>客户ID状态：<span>{runtime.contactStatus}</span></div>
+        </div>
+        {!bindUserId && (
+          <div className="mt-2 rounded-md bg-orange-50 p-2 text-orange-600 text-xs">
+            无法获取客户 wecom_userid，绑定功能受限。请确认从企业微信聊天工具栏进入。
+          </div>
+        )}
       </div>
 
+      {/* 已绑定展示 */}
       {checkingBinding ? (
-        <div className="text-gray-500">正在检查绑定状态...</div>
-      ) : hasBinding ? (
-        <div className="space-y-2">
-          <div className="text-xs text-green-700">当前用户已绑定，展示绑定会员信息：</div>
-          <div className="rounded-md bg-gray-50 p-2 text-sm">
-            <div>编号：{member?.member_no}</div>
-            <div>昵称：{member?.nickname || '未填写'}</div>
-            <div>微信号：{member?.wechat || '未填写'}</div>
-            <div>手机号：{member?.phone || '未填写'}</div>
-            <div>状态：{member?.status || '未知'}</div>
-            <div>类型：{member?.type || '未知'}</div>
-            <div>城市：{member?.city || '未填写'}</div>
-          </div>
+        <div className="rounded-lg border border-gray-200 bg-white py-6 text-center text-sm text-gray-400">
+          检查绑定状态中…
+        </div>
+      ) : boundMember ? (
+        <div>
+          <div className="mb-2 text-xs font-medium text-green-600">✓ 当前客户已绑定</div>
+          <MemberCard m={boundMember} showUnbind />
         </div>
       ) : (
-        <div className="space-y-2">
-          <div className="text-xs text-orange-700">当前用户未绑定，请先输入会员编号进行绑定：</div>
-          <div className="mb-2 flex gap-2">
-            <input
-              value={memberNo}
-              onChange={(e) => setMemberNo(e.target.value)}
-              placeholder="输入会员编号，例如 M17071"
-              className="flex-1 rounded-md border border-gray-300 px-2 py-1.5"
-            />
-            <button onClick={handleSearchMember} disabled={loading} className="rounded-md border px-2.5 py-1.5">
-              查询
-            </button>
-            <button onClick={handleBind} disabled={loading} className="rounded-md border px-2.5 py-1.5">
-              绑定
-            </button>
-          </div>
+        <div>
+          <div className="mb-2 text-xs font-medium text-orange-600">当前客户未绑定，请输入会员编号绑定</div>
 
-          {member ? (
-            <div className="rounded-md bg-gray-50 p-2 text-sm">
-              <div>编号：{member.member_no}</div>
-              <div>昵称：{member.nickname || '未填写'}</div>
-              <div>微信号：{member.wechat || '未填写'}</div>
-              <div>手机号：{member.phone || '未填写'}</div>
-              <div>状态：{member.status || '未知'}</div>
-              <div>类型：{member.type || '未知'}</div>
-              <div>城市：{member.city || '未填写'}</div>
+          {/* 搜索 + 绑定 */}
+          <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-3">
+            <div className="flex gap-2">
+              <input
+                value={memberNo}
+                onChange={(e) => setMemberNo(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="输入会员编号，例如 M17071"
+                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+              />
+              <button
+                onClick={handleSearch}
+                disabled={loading}
+                className="rounded-md border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+              >
+                查询
+              </button>
             </div>
-          ) : (
-            <div className="text-gray-500">请先查询并绑定会员</div>
-          )}
+
+            {searchedMember ? (
+              <div>
+                <div className="mb-2 text-xs text-gray-500">查询结果：</div>
+                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="bg-gray-100 px-3 py-2">
+                    <div className="font-medium text-gray-800">{searchedMember.member_no}</div>
+                    <div className="text-xs text-gray-500">{searchedMember.nickname || '未填写昵称'} · {searchedMember.gender || '-'} · {searchedMember.city || '-'}</div>
+                  </div>
+                  <div className="p-3 text-xs text-gray-600 space-y-1">
+                    <div><span className="text-gray-400">微信号：</span>{searchedMember.wechat || '未填写'}</div>
+                    <div><span className="text-gray-400">手机号：</span>{searchedMember.phone || '未填写'}</div>
+                    <div><span className="text-gray-400">状态：</span>{searchedMember.status || '-'} · 类型：{searchedMember.type || '-'}</div>
+                  </div>
+                  <div className="border-t border-gray-100 p-3">
+                    <button
+                      onClick={handleBind}
+                      disabled={loading || !bindUserId}
+                      className="w-full rounded-md bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {loading ? '绑定中…' : `绑定到当前客户`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
 
-      {message && <div className="mt-3 text-blue-600">{message}</div>}
-    </section>
+      {/* 消息提示 */}
+      {message && (
+        <div
+          className={[
+            'rounded-lg border p-3 text-xs',
+            msgType === 'success' && 'border-green-200 bg-green-50 text-green-700',
+            msgType === 'error' && 'border-red-200 bg-red-50 text-red-700',
+            msgType === 'info' && 'border-blue-200 bg-blue-50 text-blue-700'
+          ].filter(Boolean).join(' ')}
+        >
+          {message}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,10 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  SEND_ALLOWED_ENTRIES,
-  useWecomSidebarRuntime
-} from '../_lib/runtime';
+import { SEND_ALLOWED_ENTRIES, useWecomSidebarRuntime } from '../_lib/runtime';
 
 type QuickReply = {
   id: number;
@@ -14,13 +11,72 @@ type QuickReply = {
   reply_content: string;
 };
 
+type SendState = 'idle' | 'sending' | 'success' | 'error' | 'copied';
+
 export default function QuickReplyPage() {
   const runtime = useWecomSidebarRuntime();
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sendStates, setSendStates] = useState<Record<number, SendState>>({});
+  const [globalMsg, setGlobalMsg] = useState('');
 
-  const canSendInCurrentEntry = SEND_ALLOWED_ENTRIES.has(runtime.contextEntry);
+  const canSend = SEND_ALLOWED_ENTRIES.has(runtime.contextEntry);
+
+  const fetchQuickReplies = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/wecom-sidebar/quick-replies?${runtime.buildApiParams().toString()}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '获取快捷回复失败');
+      setQuickReplies(data.list || []);
+    } catch (error) {
+      setGlobalMsg(error instanceof Error ? error.message : '获取失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuickReplies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runtime.key]);
+
+  const setSendState = (id: number, state: SendState) => {
+    setSendStates((prev) => ({ ...prev, [id]: state }));
+  };
+
+  const handleSend = async (item: QuickReply) => {
+    setSendState(item.id, 'sending');
+    setGlobalMsg('');
+
+    try {
+      const channel = runtime.refreshSendChannel();
+      const latestEntry = await runtime.refreshContext().catch(() => runtime.contextEntry);
+      const allowByEntry = SEND_ALLOWED_ENTRIES.has(latestEntry);
+
+      if (!channel || !allowByEntry) {
+        await navigator.clipboard.writeText(item.reply_content);
+        setSendState(item.id, 'copied');
+        setGlobalMsg(
+          !channel
+            ? '未检测到企业微信会话能力，内容已复制，请粘贴到聊天框手动发送'
+            : `当前入口 (${latestEntry}) 不支持会话发送，内容已复制`
+        );
+        setTimeout(() => setSendState(item.id, 'idle'), 3000);
+        return;
+      }
+
+      await runtime.sendChatMessage({ msgtype: 'text', text: { content: item.reply_content } });
+      setSendState(item.id, 'success');
+      setTimeout(() => setSendState(item.id, 'idle'), 2000);
+    } catch (error) {
+      const text = error instanceof Error ? error.message : '发送失败';
+      await navigator.clipboard.writeText(item.reply_content).catch(() => {});
+      setSendState(item.id, 'error');
+      setGlobalMsg(`${text}，内容已复制到剪贴板`);
+      setTimeout(() => setSendState(item.id, 'idle'), 3000);
+    }
+  };
 
   const handleCopyDebugInfo = async () => {
     const debugText = [
@@ -35,134 +91,116 @@ export default function QuickReplyPage() {
       `contactStatus: ${runtime.contactStatus}`
     ].join('\n');
     await navigator.clipboard.writeText(debugText);
-    setMessage('诊断信息已复制，可直接发给开发排查');
+    setGlobalMsg('诊断信息已复制');
   };
 
-  const fetchQuickReplies = async () => {
-    const response = await fetch(`/api/wecom-sidebar/quick-replies?${runtime.buildApiParams().toString()}`);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || '获取快捷回复失败');
-    setQuickReplies(data.list || []);
+  // 按分类分组
+  const grouped = quickReplies.reduce<Record<string, QuickReply[]>>((acc, item) => {
+    const key = item.category || '默认';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  const getSendBtnLabel = (state: SendState) => {
+    switch (state) {
+      case 'sending': return '发送中…';
+      case 'success': return '✓ 已发送';
+      case 'copied': return '已复制';
+      case 'error': return '失败';
+      default: return '发送';
+    }
   };
 
-  useEffect(() => {
-    fetchQuickReplies().catch((error) => setMessage(error.message));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runtime.key]);
-
-  const handleInsertQuickReply = async (content: string) => {
-    setLoading(true);
-    setMessage('');
-
-    try {
-      const channel = runtime.refreshSendChannel();
-      const latestEntry = await runtime.refreshContext().catch(() => runtime.contextEntry);
-      const allowByEntry = SEND_ALLOWED_ENTRIES.has(latestEntry);
-
-      if (!channel) {
-        await navigator.clipboard.writeText(content);
-        setMessage('未检测到企业微信会话能力，已复制内容，请粘贴到聊天输入框后手动发送');
-        return;
-      }
-
-      if (!allowByEntry) {
-        await navigator.clipboard.writeText(content);
-        setMessage(`当前入口(${latestEntry})不支持会话发送（官方要求：single_chat_tools/group_chat_tools），已复制内容`);
-        return;
-      }
-
-      const ww = (window as any)?.ww;
-      const wxQy = (window as any)?.wx?.qy;
-      const bridge = (window as any)?.WeixinJSBridge;
-
-      if (channel === 'ww.sendChatMessage') {
-        await ww.sendChatMessage({
-          msgtype: 'text',
-          text: { content }
-        });
-      } else if (channel === 'wx.qy.sendChatMessage') {
-        await new Promise<void>((resolve, reject) => {
-          wxQy.sendChatMessage({
-            msgtype: 'text',
-            text: { content },
-            success: () => resolve(),
-            fail: (err: any) => reject(new Error(err?.errMsg || err?.errmsg || '写入聊天框失败'))
-          });
-        });
-      } else if (channel === 'WeixinJSBridge.invoke(sendChatMessage)') {
-        await new Promise<void>((resolve, reject) => {
-          bridge.invoke('sendChatMessage', { msgtype: 'text', text: { content } }, (res: any) => {
-            const errMsg = (res?.err_msg || '').toLowerCase();
-            if (errMsg.includes('ok')) {
-              resolve();
-              return;
-            }
-            reject(new Error(res?.err_msg || '写入聊天框失败'));
-          });
-        });
-      }
-
-      setMessage('内容已写入会话输入区域，请在聊天窗口手动点击发送');
-    } catch (error) {
-      const text = error instanceof Error ? error.message : '写入失败';
-      await navigator.clipboard.writeText(content);
-      setMessage(`${text}，已复制内容，请粘贴到输入框后手动发送`);
-    } finally {
-      setLoading(false);
+  const getSendBtnClass = (state: SendState) => {
+    const base = 'rounded-md px-3 py-1.5 text-xs font-medium transition-colors';
+    switch (state) {
+      case 'sending': return `${base} bg-gray-100 text-gray-400 cursor-not-allowed`;
+      case 'success': return `${base} bg-green-50 text-green-600 border border-green-200`;
+      case 'copied': return `${base} bg-yellow-50 text-yellow-600 border border-yellow-200`;
+      case 'error': return `${base} bg-red-50 text-red-500 border border-red-200`;
+      default: return `${base} bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100`;
     }
   };
 
   return (
-    <section className="rounded-lg border border-gray-200 p-3">
-      <div className="mb-2 font-semibold">快捷回复</div>
-      <div className="mb-2 text-xs text-gray-500">
-        发送通道：{runtime.wecomClientReady ? runtime.sendChannel : '未检测到会话写入能力'}
-      </div>
-      <div className="mb-2 text-xs text-gray-500">SDK状态：{runtime.sdkStatus}</div>
-      <div className="mb-2 text-xs text-gray-500">
-        会话入口：{runtime.contextEntry}（{runtime.contextSource}）
-      </div>
-      <div className="mb-2 text-xs text-gray-500">
-        入口能力：发送{canSendInCurrentEntry ? '可用' : '不可用'}
-      </div>
-      <div className="mb-2 text-xs text-gray-500">客户ID获取状态：{runtime.contactStatus}</div>
-
-      <div className="mb-2">
-        <input
-          value={runtime.toUserId}
-          onChange={(e) => runtime.setToUserId(e.target.value.trim())}
-          placeholder="接收人UserID（自动识别失败时可手动填写）"
-          className="w-full rounded-md border border-gray-300 px-2 py-1.5"
-        />
-      </div>
-
-      <div className="mb-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2 text-xs text-gray-600">
-        <div>识别到的 wecom_userid：{runtime.wecomUserId || '未识别'}</div>
-        <div>识别到的 to_userid：{runtime.toUserId || '未识别'}</div>
-        <button type="button" onClick={handleCopyDebugInfo} className="mt-1 rounded-md border px-2 py-1 text-xs">
-          复制诊断信息
-        </button>
-      </div>
-
-      <div className="grid gap-2">
-        {quickReplies.map((item) => (
-          <div key={item.id} className="rounded-md border border-gray-200 p-2">
-            <div className="font-medium">{item.title}</div>
-            <div className="mb-1 text-xs text-gray-500">{item.category}</div>
-            <div className="mb-1.5 whitespace-pre-wrap">{item.reply_content}</div>
-            <button
-              onClick={() => handleInsertQuickReply(item.reply_content)}
-              disabled={loading}
-              className="rounded-md border px-2 py-1"
-            >
-              发送
-            </button>
+    <div className="space-y-3">
+      {/* 状态栏 */}
+      <div className="rounded-lg border border-gray-200 bg-white p-3 text-xs space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-gray-700">会话状态</span>
+          <button onClick={handleCopyDebugInfo} className="rounded border border-gray-200 px-2 py-0.5 text-gray-500 hover:bg-gray-50">
+            复制诊断
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-500">
+          <div>
+            入口：
+            <span className={canSend ? 'text-green-600 font-medium' : 'text-orange-500'}>
+              {runtime.contextEntry}
+            </span>
           </div>
-        ))}
-        {quickReplies.length === 0 && <div className="text-gray-500">暂无快捷回复模板</div>}
+          <div>
+            发送：
+            <span className={canSend ? 'text-green-600 font-medium' : 'text-orange-500'}>
+              {canSend ? '可用' : '不可用'}
+            </span>
+          </div>
+          <div className="col-span-2 truncate">通道：{runtime.sendChannel || '未检测'}</div>
+        </div>
+        {!canSend && (
+          <div className="rounded-md bg-orange-50 p-2 text-orange-600 text-xs">
+            当前未从聊天工具栏入口打开，发送按钮将改为复制到剪贴板。<br />
+            请在企业微信聊天界面工具栏中打开此应用以启用直接发送。
+          </div>
+        )}
       </div>
 
-      {message && <div className="mt-3 text-blue-600">{message}</div>}
-    </section>
+      {/* 快捷回复列表 */}
+      {loading ? (
+        <div className="text-center text-gray-400 py-8">加载中…</div>
+      ) : Object.keys(grouped).length === 0 ? (
+        <div className="rounded-lg border border-dashed border-gray-200 bg-white py-8 text-center text-gray-400">
+          暂无快捷回复模板
+        </div>
+      ) : (
+        Object.entries(grouped).map(([category, items]) => (
+          <div key={category}>
+            <div className="mb-1.5 px-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{category}</div>
+            <div className="space-y-2">
+              {items.map((item) => {
+                const state = sendStates[item.id] || 'idle';
+                return (
+                  <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-800 truncate">{item.title}</div>
+                        <div className="mt-1 text-xs text-gray-500 whitespace-pre-wrap break-words leading-relaxed">
+                          {item.reply_content}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleSend(item)}
+                        disabled={state === 'sending'}
+                        className={getSendBtnClass(state)}
+                      >
+                        {getSendBtnLabel(state)}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))
+      )}
+
+      {/* 全局消息提示 */}
+      {globalMsg && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
+          {globalMsg}
+        </div>
+      )}
+    </div>
   );
 }

@@ -29,6 +29,11 @@ type WecomJsSdkConfigResponse = {
   error?: string;
 };
 
+export type SendChatMessageParams =
+  | { msgtype: 'text'; text: { content: string } }
+  | { msgtype: 'news'; news: { link: string; title: string; desc: string; imgUrl: string } }
+  | { msgtype: 'miniprogram'; miniprogram: { appid: string; title: string; imagePath: string; page: string } };
+
 export type SidebarRuntime = {
   key: string;
   rawQuery: string;
@@ -45,6 +50,9 @@ export type SidebarRuntime = {
   buildApiParams: () => URLSearchParams;
   refreshContext: () => Promise<string>;
   refreshSendChannel: () => string;
+  refreshExternalContact: () => Promise<void>;
+  sendChatMessage: (params: SendChatMessageParams) => Promise<void>;
+  openUserProfile: (userId: string, type?: 1 | 2) => Promise<void>;
 };
 
 const pickFirstNonEmpty = (...values: Array<string | null | undefined>) => {
@@ -110,6 +118,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
   const [contextSource, setContextSource] = useState('未检测');
   const [contactStatus, setContactStatus] = useState('未尝试');
   const sdkInitStartedRef = useRef(false);
+  const bridgeRetryTimerRef = useRef<number | null>(null);
 
   const buildApiParams = () => {
     const p = new URLSearchParams();
@@ -270,7 +279,16 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
       if (!response.ok || !data.success) throw new Error(data.error || '获取企业微信JS-SDK签名失败');
 
       const wx = (window as any)?.wx;
-      if (!wx?.config || !wx?.agentConfig) throw new Error('当前环境缺少 wx.config 或 wx.agentConfig');
+      if (!wx?.config || !wx?.agentConfig) {
+        const fallbackChannel = detectWecomSendChannel();
+        if (fallbackChannel === 'WeixinJSBridge.invoke(sendChatMessage)') {
+          setWecomClientReady(true);
+          setSendChannel(fallbackChannel);
+          setSdkStatus('Bridge模式：检测到 sendChatMessage，跳过 wx.config');
+          return;
+        }
+        throw new Error('当前环境缺少 wx.config 或 wx.agentConfig');
+      }
 
       await new Promise<void>((resolve, reject) => {
         let settled = false;
@@ -287,7 +305,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
           timestamp: data.config.timestamp,
           nonceStr: data.config.nonceStr,
           signature: data.config.signature,
-          jsApiList: ['checkJsApi', 'getContext', 'sendChatMessage', 'getCurExternalContact']
+          jsApiList: ['checkJsApi', 'getContext', 'sendChatMessage', 'getCurExternalContact', 'openUserProfile']
         });
 
         wx.ready(() => {
@@ -297,7 +315,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
             timestamp: data.agentConfig.timestamp,
             nonceStr: data.agentConfig.nonceStr,
             signature: data.agentConfig.signature,
-            jsApiList: ['getContext', 'sendChatMessage', 'getCurExternalContact'],
+            jsApiList: ['getContext', 'sendChatMessage', 'getCurExternalContact', 'openUserProfile'],
             success: () => done(() => resolve()),
             fail: (err: any) =>
               done(() => reject(new Error(err?.errMsg || err?.errmsg || '企业微信agentConfig初始化失败')))
@@ -351,6 +369,26 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     refreshSendChannel();
     initWecomJsSdk(accessKey).catch(() => {});
     refreshContext().catch(() => {});
+
+    // 企业微信部分环境下 WeixinJSBridge 注入较晚，首次会出现 context 不可用
+    const onBridgeReady = () => {
+      refreshSendChannel();
+      refreshContext().catch(() => {});
+    };
+    document.addEventListener('WeixinJSBridgeReady', onBridgeReady as EventListener);
+
+    // 再做一次短延时重试，提升首屏获取 entry 成功率
+    bridgeRetryTimerRef.current = window.setTimeout(() => {
+      refreshSendChannel();
+      refreshContext().catch(() => {});
+    }, 800);
+
+    return () => {
+      document.removeEventListener('WeixinJSBridgeReady', onBridgeReady as EventListener);
+      if (bridgeRetryTimerRef.current) {
+        window.clearTimeout(bridgeRetryTimerRef.current);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -361,6 +399,64 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     fetchCurrentExternalContact().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contextEntry]);
+
+  const sendChatMessage = async (params: SendChatMessageParams): Promise<void> => {
+    const channel = detectWecomSendChannel();
+    const ww = (window as any)?.ww;
+    const wxQy = (window as any)?.wx?.qy;
+    const bridge = (window as any)?.WeixinJSBridge;
+
+    if (channel === 'ww.sendChatMessage') {
+      await ww.sendChatMessage(params);
+    } else if (channel === 'wx.qy.sendChatMessage') {
+      await new Promise<void>((resolve, reject) => {
+        wxQy.sendChatMessage({
+          ...params,
+          success: () => resolve(),
+          fail: (err: any) => reject(new Error(err?.errMsg || err?.errmsg || '发送失败'))
+        });
+      });
+    } else if (channel === 'WeixinJSBridge.invoke(sendChatMessage)') {
+      await new Promise<void>((resolve, reject) => {
+        bridge.invoke('sendChatMessage', params, (res: any) => {
+          const errMsg = (res?.err_msg || '').toLowerCase();
+          if (errMsg.includes('ok')) resolve();
+          else reject(new Error(res?.err_msg || '发送失败'));
+        });
+      });
+    } else {
+      throw new Error('未检测到企业微信会话发送能力');
+    }
+  };
+
+  // ww.openUserProfile：打开成员或外部联系人的个人信息页（官方文档 91795）
+  const openUserProfile = async (userId: string, type: 1 | 2 = 2): Promise<void> => {
+    const ww = (window as any)?.ww;
+    const wx = (window as any)?.wx;
+    const bridge = (window as any)?.WeixinJSBridge;
+
+    if (typeof ww?.openUserProfile === 'function') {
+      await ww.openUserProfile({ type, userid: userId });
+      return;
+    }
+
+    if (typeof wx?.invoke === 'function') {
+      await new Promise<void>((resolve, reject) => {
+        wx.invoke('openUserProfile', { type, userid: userId }, (res: any) => {
+          if ((res?.err_msg || '').includes('ok')) resolve();
+          else reject(new Error(res?.err_msg || '打开资料页失败'));
+        });
+      });
+      return;
+    }
+
+    if (typeof bridge?.invoke === 'function') {
+      bridge.invoke('openUserProfile', { type, userid: userId }, () => {});
+      return;
+    }
+
+    throw new Error('当前环境不支持 openUserProfile');
+  };
 
   return {
     key,
@@ -377,6 +473,9 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     setToUserId,
     buildApiParams,
     refreshContext,
-    refreshSendChannel
+    refreshSendChannel,
+    refreshExternalContact: fetchCurrentExternalContact,
+    sendChatMessage,
+    openUserProfile
   };
 }
