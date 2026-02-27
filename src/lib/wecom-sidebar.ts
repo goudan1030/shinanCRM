@@ -103,6 +103,16 @@ export function verifySidebarAccess(request: NextRequest): { ok: boolean; messag
     return { ok: true };
   }
 
+  // 兜底：允许来自当前站点侧边栏页面的同源请求，避免企业微信后台URL未携带key时全部失效
+  const referer = request.headers.get('referer') || '';
+  const host = request.headers.get('host') || '';
+  const refererIsSidebar =
+    referer.includes('/wecom-sidebar') &&
+    (host ? referer.includes(host) : referer.startsWith(request.nextUrl.origin));
+  if (refererIsSidebar) {
+    return { ok: true };
+  }
+
   return { ok: false, message: '访问密钥无效' };
 }
 
