@@ -121,6 +121,9 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
   const [contactStatus, setContactStatus] = useState('未尝试');
   const sdkInitStartedRef = useRef(false);
   const bridgeRetryTimerRef = useRef<number | null>(null);
+  const retryTimersRef = useRef<number[]>([]);
+  // 已成功拿到 wecom_userid 时置 true，避免重复请求
+  const contactFetchedRef = useRef(false);
 
   const buildApiParams = () => {
     const p = new URLSearchParams();
@@ -185,6 +188,9 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
   };
 
   const fetchCurrentExternalContact = async () => {
+    // 已成功获取则跳过
+    if (contactFetchedRef.current) return;
+
     const bridgeAvailable = typeof (window as any)?.WeixinJSBridge?.invoke === 'function';
     const entryAllowed = CONTACT_ALLOWED_ENTRIES.has(contextEntry);
 
@@ -202,6 +208,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
         const res = await ww.getCurExternalContact();
         const userId = (res?.userId || '').trim();
         if (userId) {
+          contactFetchedRef.current = true;
           if (!toUserId) setToUserId(userId);
           if (!wecomUserId) setWecomUserId(userId);
           setContactStatus('已获取（ww.getCurExternalContact）');
@@ -217,6 +224,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
             success: (res: any) => {
               const userId = (res?.userId || '').trim();
               if (userId) {
+                contactFetchedRef.current = true;
                 if (!toUserId) setToUserId(userId);
                 if (!wecomUserId) setWecomUserId(userId);
                 setContactStatus('已获取（wx.qy.getCurExternalContact）');
@@ -246,6 +254,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
           invoker('getCurExternalContact', {}, (res: any) => {
             const userId = (res?.userId || '').trim();
             if (userId) {
+              contactFetchedRef.current = true;
               if (!toUserId) setToUserId(userId);
               if (!wecomUserId) setWecomUserId(userId);
               setContactStatus('已获取（wx.invoke/getCurExternalContact）');
@@ -354,6 +363,9 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
       setWecomClientReady(Boolean(readyChannel));
       setSendChannel(readyChannel || '未检测');
       setSdkStatus('初始化成功');
+
+      // agentConfig 完成后立即尝试获取客户 ID（这是最佳时机）
+      fetchCurrentExternalContact().catch(() => {});
     } catch (error) {
       const channel = detectWecomSendChannel();
       setWecomClientReady(Boolean(channel));
@@ -396,11 +408,27 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     // 企业微信部分环境下 WeixinJSBridge 注入较晚，首次会出现 context 不可用
     const onBridgeReady = () => {
       refreshSendChannel();
-      refreshContext().catch(() => {});
+      refreshContext()
+        .then(() => fetchCurrentExternalContact())
+        .catch(() => {});
     };
     document.addEventListener('WeixinJSBridgeReady', onBridgeReady as EventListener);
 
-    // 再做一次短延时重试，提升首屏获取 entry 成功率
+    // getCurExternalContact 依赖 agentConfig 完成，存在时序不确定性
+    // 分 500ms / 1500ms / 3000ms 三阶段重试，permission denied 时不再重试
+    const RETRY_DELAYS = [500, 1500, 3000];
+    retryTimersRef.current = RETRY_DELAYS.map((delay) =>
+      window.setTimeout(async () => {
+        if (contactFetchedRef.current) return; // 已获取，跳过
+        refreshSendChannel();
+        await refreshContext().catch(() => {});
+        if (!contactFetchedRef.current) {
+          await fetchCurrentExternalContact().catch(() => {});
+        }
+      }, delay)
+    );
+
+    // 保留兼容旧逻辑的单次 context 重试
     bridgeRetryTimerRef.current = window.setTimeout(() => {
       refreshSendChannel();
       refreshContext().catch(() => {});
@@ -408,17 +436,17 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
 
     return () => {
       document.removeEventListener('WeixinJSBridgeReady', onBridgeReady as EventListener);
-      if (bridgeRetryTimerRef.current) {
-        window.clearTimeout(bridgeRetryTimerRef.current);
-      }
+      if (bridgeRetryTimerRef.current) window.clearTimeout(bridgeRetryTimerRef.current);
+      retryTimersRef.current.forEach((t) => window.clearTimeout(t));
+      retryTimersRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    if (contactFetchedRef.current) return; // 已获取，无需再触发
     const bridgeAvailable = typeof (window as any)?.WeixinJSBridge?.invoke === 'function';
     const entryAllowed = CONTACT_ALLOWED_ENTRIES.has(contextEntry);
-    // WeixinJSBridge 通道下 entry 可能是 unknown，但仍要尝试获取客户 ID
     if (!entryAllowed && !bridgeAvailable) return;
     if (toUserId && wecomUserId) return;
     fetchCurrentExternalContact().catch(() => {});
