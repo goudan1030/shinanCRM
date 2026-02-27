@@ -13,6 +13,23 @@ type MemberInfo = {
   type: string | null;
   status: string | null;
   city: string | null;
+  remaining_matches?: number | null;
+};
+
+const MEMBER_TYPE_MAP: Record<string, string> = {
+  ANNUAL: '年费会员',
+  ONE_TIME: '一次性会员',
+  NORMAL: '普通会员'
+};
+
+const getMemberTypeLabel = (type: string | null, remaining: number | null | undefined) => {
+  if (!type) return '-';
+  const label = MEMBER_TYPE_MAP[type] || type;
+  if (type === 'ONE_TIME') {
+    const count = remaining ?? 0;
+    return `${label}（剩余 ${count} 次）`;
+  }
+  return label;
 };
 
 type MsgType = 'info' | 'success' | 'error';
@@ -45,6 +62,7 @@ export default function BindPage() {
     try {
       const params = runtime.buildApiParams();
       params.set('wecom_userid', runtime.wecomUserId);
+      params.set('detail', '1');
       const response = await fetch(`/api/wecom-sidebar/member?${params.toString()}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '获取绑定信息失败');
@@ -143,43 +161,88 @@ export default function BindPage() {
     }
   };
 
-  const MemberCard = ({ m, showUnbind = false }: { m: MemberInfo; showUnbind?: boolean }) => (
-    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-      <div className="bg-green-600 px-3 py-2 text-white flex items-center justify-between">
-        <div>
-          <div className="font-semibold">{m.member_no}</div>
-          <div className="text-xs text-green-200">{m.nickname || '未填写昵称'}</div>
+  const MemberCard = ({ m, showUnbind = false }: { m: MemberInfo; showUnbind?: boolean }) => {
+    const isOneTime = m.type === 'ONE_TIME';
+    const remainingCount = m.remaining_matches ?? 0;
+    const typeLabel = getMemberTypeLabel(m.type, m.remaining_matches);
+
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+        {/* 卡片头部 */}
+        <div className="bg-green-600 px-3 py-2 text-white flex items-center justify-between">
+          <div>
+            <div className="font-semibold">{m.member_no}</div>
+            <div className="text-xs text-green-200">{m.nickname || '未填写昵称'}</div>
+          </div>
+          <div className="text-right text-xs text-green-100">
+            <div>{m.status || '-'}</div>
+          </div>
         </div>
-        <div className="text-right text-xs text-green-100">
-          <div>{m.status || '-'}</div>
-          <div>{m.type || '-'}</div>
+
+        {/* 会员类型 + 次卡剩余次数 */}
+        <div className={[
+          'px-3 py-2 border-b border-gray-100 flex items-center justify-between',
+          isOneTime ? 'bg-amber-50' : 'bg-gray-50'
+        ].join(' ')}>
+          <span className="text-xs text-gray-500">会员类型</span>
+          <div className="flex items-center gap-2">
+            <span className={[
+              'rounded-full px-2 py-0.5 text-xs font-medium',
+              isOneTime
+                ? 'bg-amber-100 text-amber-700'
+                : m.type === 'ANNUAL'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-gray-100 text-gray-600'
+            ].join(' ')}>
+              {MEMBER_TYPE_MAP[m.type || ''] || m.type || '-'}
+            </span>
+            {isOneTime && (
+              <span className={[
+                'rounded-full px-2 py-0.5 text-xs font-semibold',
+                remainingCount > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+              ].join(' ')}>
+                剩余 {remainingCount} 次
+              </span>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="p-3 space-y-1.5 text-xs text-gray-600">
-        <div><span className="text-gray-400">微信号：</span>{m.wechat || '未填写'}</div>
-        <div><span className="text-gray-400">手机号：</span>{m.phone || '未填写'}</div>
-        <div><span className="text-gray-400">性别：</span>{m.gender || '-'}</div>
-        <div><span className="text-gray-400">城市：</span>{m.city || '-'}</div>
-      </div>
-      <div className="flex gap-2 border-t border-gray-100 p-3">
-        <button
-          onClick={() => handleOpenProfile(m.wechat || m.member_no)}
-          className="flex-1 rounded-md border border-gray-200 bg-gray-50 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
-        >
-          👤 查看资料
-        </button>
-        {showUnbind && (
-          <button
-            onClick={handleUnbind}
-            disabled={loading}
-            className="flex-1 rounded-md border border-red-200 bg-red-50 py-1.5 text-xs text-red-500 hover:bg-red-100 disabled:opacity-50"
-          >
-            解除绑定
-          </button>
+
+        {/* 次卡用尽提示 */}
+        {isOneTime && remainingCount <= 0 && (
+          <div className="bg-red-50 px-3 py-1.5 text-xs text-red-600 border-b border-red-100">
+            ⚠️ 匹配次数已用完，请引导会员续费
+          </div>
         )}
+
+        {/* 基础信息 */}
+        <div className="p-3 space-y-1.5 text-xs text-gray-600">
+          <div><span className="text-gray-400">微信号：</span>{m.wechat || '未填写'}</div>
+          <div><span className="text-gray-400">手机号：</span>{m.phone || '未填写'}</div>
+          <div><span className="text-gray-400">性别：</span>{m.gender || '-'}</div>
+          <div><span className="text-gray-400">城市：</span>{m.city || '-'}</div>
+        </div>
+
+        {/* 操作按钮 */}
+        <div className="flex gap-2 border-t border-gray-100 p-3">
+          <button
+            onClick={() => handleOpenProfile(m.wechat || m.member_no)}
+            className="flex-1 rounded-md border border-gray-200 bg-gray-50 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
+          >
+            👤 查看资料
+          </button>
+          {showUnbind && (
+            <button
+              onClick={handleUnbind}
+              disabled={loading}
+              className="flex-1 rounded-md border border-red-200 bg-red-50 py-1.5 text-xs text-red-500 hover:bg-red-100 disabled:opacity-50"
+            >
+              解除绑定
+            </button>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -264,7 +327,21 @@ export default function BindPage() {
                   <div className="p-3 text-xs text-gray-600 space-y-1">
                     <div><span className="text-gray-400">微信号：</span>{searchedMember.wechat || '未填写'}</div>
                     <div><span className="text-gray-400">手机号：</span>{searchedMember.phone || '未填写'}</div>
-                    <div><span className="text-gray-400">状态：</span>{searchedMember.status || '-'} · 类型：{searchedMember.type || '-'}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-400">类型：</span>
+                      <span className={[
+                        'rounded-full px-2 py-0.5 text-xs font-medium',
+                        searchedMember.type === 'ONE_TIME'
+                          ? 'bg-amber-100 text-amber-700'
+                          : searchedMember.type === 'ANNUAL'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-600'
+                      ].join(' ')}>
+                        {MEMBER_TYPE_MAP[searchedMember.type || ''] || searchedMember.type || '-'}
+                      </span>
+                      <span className="text-gray-400 ml-1">状态：</span>
+                      {searchedMember.status || '-'}
+                    </div>
                   </div>
                   <div className="border-t border-gray-100 p-3">
                     <button
