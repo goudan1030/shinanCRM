@@ -45,6 +45,8 @@ export type SidebarRuntime = {
   contextSource: string;
   contactStatus: string;
   wecomClientReady: boolean;
+  /** 综合判断当前是否可发送消息（entry 允许 OR WeixinJSBridge 可用） */
+  canSendMessage: boolean;
   setWecomUserId: (value: string) => void;
   setToUserId: (value: string) => void;
   buildApiParams: () => URLSearchParams;
@@ -161,7 +163,11 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
 
       if (typeof bridge?.invoke === 'function') {
         const entry = await new Promise<string>((resolve) => {
-          bridge.invoke('getContext', {}, (res: any) => resolve((res?.entry || 'unknown') as string));
+          bridge.invoke('getContext', {}, (res: any) => {
+            // WeixinJSBridge 旧版响应可能使用 type 字段，新版使用 entry
+            const e = (res?.entry || res?.type || res?.data?.entry || '').trim();
+            resolve(e || 'unknown');
+          });
         });
         setContextEntry(entry);
         setContextSource('WeixinJSBridge.invoke(getContext)');
@@ -179,7 +185,11 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
   };
 
   const fetchCurrentExternalContact = async () => {
-    if (!CONTACT_ALLOWED_ENTRIES.has(contextEntry)) {
+    const bridgeAvailable = typeof (window as any)?.WeixinJSBridge?.invoke === 'function';
+    const entryAllowed = CONTACT_ALLOWED_ENTRIES.has(contextEntry);
+
+    // WeixinJSBridge 可用时 entry 可能是 unknown（agentConfig 未完成），仍尝试获取
+    if (!entryAllowed && !bridgeAvailable) {
       setContactStatus(`已跳过：当前入口(${contextEntry})非客户信息可读上下文`);
       return;
     }
@@ -254,18 +264,23 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
 
     try {
       const channel = detectWecomSendChannel();
-      if (channel === 'WeixinJSBridge.invoke(sendChatMessage)') {
-        setWecomClientReady(true);
-        setSendChannel(channel);
-        setSdkStatus('Bridge模式：无需 wx.config / wx.agentConfig');
-        return;
-      }
 
+      // ww.sendChatMessage 已就绪，无需额外初始化
       if (channel === 'ww.sendChatMessage') {
         setWecomClientReady(true);
         setSendChannel(channel);
         setSdkStatus('客户端模式：已检测到 ww.sendChatMessage');
         return;
+      }
+
+      // WeixinJSBridge 可用时：记录通道，但仍继续加载 jweixin SDK
+      // 目的：通过 wx.config + wx.agentConfig 拿到正确的 getContext entry
+      // 不能在这里提前 return，否则 entry 永远是 unknown
+      if (channel === 'WeixinJSBridge.invoke(sendChatMessage)') {
+        setWecomClientReady(true);
+        setSendChannel(channel);
+        setSdkStatus('Bridge模式：继续尝试 agentConfig 获取上下文');
+        // 继续往下走，尝试 SDK 初始化
       }
 
       await loadWxSdkScript();
@@ -393,8 +408,10 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
   }, []);
 
   useEffect(() => {
-    const allowByEntry = CONTACT_ALLOWED_ENTRIES.has(contextEntry);
-    if (!allowByEntry) return;
+    const bridgeAvailable = typeof (window as any)?.WeixinJSBridge?.invoke === 'function';
+    const entryAllowed = CONTACT_ALLOWED_ENTRIES.has(contextEntry);
+    // WeixinJSBridge 通道下 entry 可能是 unknown，但仍要尝试获取客户 ID
+    if (!entryAllowed && !bridgeAvailable) return;
     if (toUserId && wecomUserId) return;
     fetchCurrentExternalContact().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -458,6 +475,12 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     throw new Error('当前环境不支持 openUserProfile');
   };
 
+  // WeixinJSBridge 可用时 entry 可能是 unknown（agentConfig 尚未完成），
+  // 但只要通道存在就应允许发送，不能因 unknown 阻断
+  const canSendMessage =
+    SEND_ALLOWED_ENTRIES.has(contextEntry) ||
+    (wecomClientReady && sendChannel === 'WeixinJSBridge.invoke(sendChatMessage)');
+
   return {
     key,
     rawQuery,
@@ -469,6 +492,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     contextSource,
     contactStatus,
     wecomClientReady,
+    canSendMessage,
     setWecomUserId,
     setToUserId,
     buildApiParams,

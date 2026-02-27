@@ -20,7 +20,7 @@ export default function QuickReplyPage() {
   const [sendStates, setSendStates] = useState<Record<number, SendState>>({});
   const [globalMsg, setGlobalMsg] = useState('');
 
-  const canSend = SEND_ALLOWED_ENTRIES.has(runtime.contextEntry);
+  const canSend = runtime.canSendMessage;
 
   const fetchQuickReplies = async () => {
     try {
@@ -52,9 +52,11 @@ export default function QuickReplyPage() {
     try {
       const channel = runtime.refreshSendChannel();
       const latestEntry = await runtime.refreshContext().catch(() => runtime.contextEntry);
-      const allowByEntry = SEND_ALLOWED_ENTRIES.has(latestEntry);
+      const entryAllowed = SEND_ALLOWED_ENTRIES.has(latestEntry);
+      // WeixinJSBridge 通道下 entry 可能是 unknown，但通道可用就允许发送
+      const allowSend = entryAllowed || (!!channel && channel.includes('WeixinJSBridge'));
 
-      if (!channel || !allowByEntry) {
+      if (!channel || !allowSend) {
         await navigator.clipboard.writeText(item.reply_content);
         setSendState(item.id, 'copied');
         setGlobalMsg(
@@ -150,8 +152,8 @@ export default function QuickReplyPage() {
         </div>
         {!canSend && (
           <div className="rounded-md bg-orange-50 p-2 text-orange-600 text-xs">
-            当前未从聊天工具栏入口打开，发送按钮将改为复制到剪贴板。<br />
-            请在企业微信聊天界面工具栏中打开此应用以启用直接发送。
+            当前入口（{runtime.contextEntry}）不支持直接发送，点击发送按钮将自动复制内容。<br />
+            请从企业微信聊天界面工具栏打开此应用以启用直接发送。
           </div>
         )}
       </div>

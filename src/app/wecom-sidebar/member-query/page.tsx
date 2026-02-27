@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { SEND_ALLOWED_ENTRIES, useWecomSidebarRuntime } from '../_lib/runtime';
+import { useWecomSidebarRuntime } from '../_lib/runtime';
 
 type MemberDetail = {
   id?: number;
@@ -107,12 +107,14 @@ export default function MemberQueryPage() {
     try {
       const channel = runtime.refreshSendChannel();
       const latestEntry = await runtime.refreshContext().catch(() => runtime.contextEntry);
-      const allowByEntry = SEND_ALLOWED_ENTRIES.has(latestEntry);
       const content = formatMemberCard(member);
 
-      if (!channel || !allowByEntry) {
+      // WeixinJSBridge 通道下 entry 可能是 unknown，但通道可用就允许发送
+      const allowSend = runtime.canSendMessage || (!!channel && channel.includes('WeixinJSBridge'));
+
+      if (!channel || !allowSend) {
         await navigator.clipboard.writeText(content);
-        showMsg('已复制会员名片，请粘贴到聊天框发送', 'info');
+        showMsg(`当前入口(${latestEntry})不支持直接发送，已复制会员名片，请粘贴到聊天框`, 'info');
         return;
       }
 
