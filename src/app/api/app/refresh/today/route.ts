@@ -4,15 +4,20 @@ import { randomInt } from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
-    // 首先获取所有非删除的会员ID
+    // 随机抽取100名未删除、且未标记为"找到"的会员进行刷新
+    // is_success = 1 表示已找到对象，不再需要刷新曝光
     const [allMembers] = await executeQuery(
-      'SELECT id FROM members WHERE deleted = 0 ORDER BY RAND() LIMIT 100'
+      `SELECT id FROM members
+       WHERE deleted = 0
+         AND (is_success IS NULL OR is_success = 0)
+       ORDER BY RAND()
+       LIMIT 100`
     );
 
     if (allMembers.length === 0) {
       return NextResponse.json({
         success: false,
-        error: '没有找到可刷新的会员'
+        error: '没有找到可刷新的会员（所有会员均已标记为"找到"或已删除）'
       });
     }
 
