@@ -4,15 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 
 export const SEND_ALLOWED_ENTRIES = new Set([
   'single_chat_tools',
-  'group_chat_tools',
-  'chat_attachment',
-  'single_kf_tools'
+  'group_chat_tools'
 ]);
 
 export const CONTACT_ALLOWED_ENTRIES = new Set([
   'contact_profile',
-  'single_chat_tools',
-  'single_kf_tools'
+  'single_chat_tools'
 ]);
 
 type WecomJsSdkConfigResponse = {
@@ -173,6 +170,10 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
   };
 
   const fetchCurrentExternalContact = async () => {
+    if (!CONTACT_ALLOWED_ENTRIES.has(contextEntry)) {
+      setContactStatus(`已跳过：当前入口(${contextEntry})非客户信息可读上下文`);
+      return;
+    }
     try {
       const ww = (window as any)?.ww;
       const wx = (window as any)?.wx;
@@ -327,7 +328,11 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     const resolvedWecomUserId = pickFirstNonEmpty(
       search.get('wecom_userid'),
       search.get('wecomUserId'),
+      search.get('external_userid'),
+      search.get('externalUserId'),
+      search.get('externaluserid'),
       search.get('userid'),
+      search.get('userId'),
       search.get('user_id'),
       search.get('follow_userid')
     );
@@ -351,7 +356,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
 
   useEffect(() => {
     const allowByEntry = CONTACT_ALLOWED_ENTRIES.has(contextEntry);
-    if (!allowByEntry && !isContextUnknown(contextEntry)) return;
+    if (!allowByEntry) return;
     if (toUserId && wecomUserId) return;
     fetchCurrentExternalContact().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps

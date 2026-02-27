@@ -23,6 +23,7 @@ export default function BindPage() {
   const [checkingBinding, setCheckingBinding] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const bindUserId = runtime.wecomUserId || runtime.toUserId;
 
   const fetchBoundMember = async () => {
     if (!runtime.wecomUserId) {
@@ -73,8 +74,8 @@ export default function BindPage() {
   };
 
   const handleBind = async () => {
-    if (!runtime.wecomUserId) {
-      setMessage('缺少 wecom_userid，无法绑定，请从客户侧边栏入口打开');
+    if (!bindUserId) {
+      setMessage(`缺少 wecom_userid，无法绑定。当前入口(${runtime.contextEntry})，客户ID获取状态：${runtime.contactStatus}`);
       return;
     }
     if (!memberNo.trim()) {
@@ -88,7 +89,7 @@ export default function BindPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          wecom_userid: runtime.wecomUserId,
+          wecom_userid: bindUserId,
           member_no: memberNo.trim()
         })
       });
@@ -108,7 +109,9 @@ export default function BindPage() {
       <div className="mb-2 font-semibold">信息查询</div>
       <div className="mb-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2 text-xs text-gray-600">
         <div>当前会话 wecom_userid：{runtime.wecomUserId || '未识别'}</div>
+        <div>备用 to_userid：{runtime.toUserId || '未识别'}</div>
         <div>上下文入口：{runtime.contextEntry || 'unknown'}</div>
+        <div>客户ID获取状态：{runtime.contactStatus}</div>
       </div>
 
       {checkingBinding ? (

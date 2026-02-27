@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import {
   SEND_ALLOWED_ENTRIES,
-  detectWecomSendChannel,
-  isContextUnknown,
   useWecomSidebarRuntime
 } from '../_lib/runtime';
 
@@ -23,7 +21,6 @@ export default function QuickReplyPage() {
   const [message, setMessage] = useState('');
 
   const canSendInCurrentEntry = SEND_ALLOWED_ENTRIES.has(runtime.contextEntry);
-  const unknownEntry = isContextUnknown(runtime.contextEntry);
 
   const handleCopyDebugInfo = async () => {
     const debugText = [
@@ -61,7 +58,6 @@ export default function QuickReplyPage() {
       const channel = runtime.refreshSendChannel();
       const latestEntry = await runtime.refreshContext().catch(() => runtime.contextEntry);
       const allowByEntry = SEND_ALLOWED_ENTRIES.has(latestEntry);
-      const allowByUnknown = isContextUnknown(latestEntry);
 
       if (!channel) {
         await navigator.clipboard.writeText(content);
@@ -69,9 +65,9 @@ export default function QuickReplyPage() {
         return;
       }
 
-      if (!allowByEntry && !allowByUnknown) {
+      if (!allowByEntry) {
         await navigator.clipboard.writeText(content);
-        setMessage(`当前入口(${latestEntry})不支持会话写入，已复制内容，请粘贴后手动发送`);
+        setMessage(`当前入口(${latestEntry})不支持会话发送（官方要求：single_chat_tools/group_chat_tools），已复制内容`);
         return;
       }
 
@@ -127,7 +123,7 @@ export default function QuickReplyPage() {
         会话入口：{runtime.contextEntry}（{runtime.contextSource}）
       </div>
       <div className="mb-2 text-xs text-gray-500">
-        入口能力：发送{canSendInCurrentEntry ? '可用' : unknownEntry ? '待判定' : '不可用'}
+        入口能力：发送{canSendInCurrentEntry ? '可用' : '不可用'}
       </div>
       <div className="mb-2 text-xs text-gray-500">客户ID获取状态：{runtime.contactStatus}</div>
 
