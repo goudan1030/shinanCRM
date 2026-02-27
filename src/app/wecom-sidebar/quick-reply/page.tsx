@@ -19,13 +19,16 @@ export default function QuickReplyPage() {
   const [loading, setLoading] = useState(true);
   const [sendStates, setSendStates] = useState<Record<number, SendState>>({});
   const [globalMsg, setGlobalMsg] = useState('');
+  const [initing, setIniting] = useState(false);
 
   const canSend = runtime.canSendMessage;
 
   const fetchQuickReplies = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/wecom-sidebar/quick-replies?${runtime.buildApiParams().toString()}`);
+      const response = await fetch(
+        `/api/wecom-sidebar/quick-replies?${runtime.buildApiParams().toString()}`
+      );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '获取快捷回复失败');
       setQuickReplies(data.list || []);
@@ -46,6 +49,15 @@ export default function QuickReplyPage() {
   };
 
   const handleSend = async (item: QuickReply) => {
+    // SDK 未就绪时，仅做复制兜底
+    if (!runtime.sdkInitialized) {
+      await navigator.clipboard.writeText(item.reply_content).catch(() => {});
+      setSendState(item.id, 'copied');
+      setGlobalMsg('SDK 初始化中，内容已复制，稍后重试发送');
+      setTimeout(() => setSendState(item.id, 'idle'), 3000);
+      return;
+    }
+
     setSendState(item.id, 'sending');
     setGlobalMsg('');
 
@@ -53,7 +65,6 @@ export default function QuickReplyPage() {
       const channel = runtime.refreshSendChannel();
       const latestEntry = await runtime.refreshContext().catch(() => runtime.contextEntry);
       const entryAllowed = SEND_ALLOWED_ENTRIES.has(latestEntry);
-      // WeixinJSBridge 通道下 entry 可能是 unknown，但通道可用就允许发送
       const allowSend = entryAllowed || (!!channel && channel.includes('WeixinJSBridge'));
 
       if (!channel || !allowSend) {
@@ -75,8 +86,6 @@ export default function QuickReplyPage() {
       const rawMsg = error instanceof Error ? error.message : '发送失败';
       await navigator.clipboard.writeText(item.reply_content).catch(() => {});
       setSendState(item.id, 'copied');
-
-      // permission denied 给出具体原因
       const isPermDenied = rawMsg.toLowerCase().includes('permission denied');
       setGlobalMsg(
         isPermDenied
@@ -87,12 +96,32 @@ export default function QuickReplyPage() {
     }
   };
 
+  const handleInitDefaults = async () => {
+    setIniting(true);
+    setGlobalMsg('');
+    try {
+      const res = await fetch(
+        `/api/wecom-sidebar/quick-replies/init-defaults?${runtime.buildApiParams().toString()}`,
+        { method: 'POST' }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '初始化失败');
+      setGlobalMsg(data.message || '初始化成功');
+      await fetchQuickReplies();
+    } catch (error) {
+      setGlobalMsg(error instanceof Error ? error.message : '初始化失败');
+    } finally {
+      setIniting(false);
+    }
+  };
+
   const handleCopyDebugInfo = async () => {
     const debugText = [
       `raw_query: ${runtime.rawQuery || '(empty)'}`,
       `wecomUserId: ${runtime.wecomUserId || '(empty)'}`,
       `toUserId: ${runtime.toUserId || '(empty)'}`,
       `key: ${runtime.key ? '(exists)' : '(empty)'}`,
+      `sdkInitialized: ${runtime.sdkInitialized}`,
       `sendChannel: ${runtime.sendChannel}`,
       `sdkStatus: ${runtime.sdkStatus}`,
       `contextEntry: ${runtime.contextEntry}`,
@@ -111,13 +140,14 @@ export default function QuickReplyPage() {
     return acc;
   }, {});
 
-  const getSendBtnLabel = (state: SendState) => {
+  const getSendBtnLabel = (state: SendState, sdkReady: boolean) => {
+    if (!sdkReady) return '复制';
     switch (state) {
       case 'sending': return '发送中…';
       case 'success': return '✓ 已发送';
       case 'copied': return '已复制';
       case 'error': return '失败';
-      default: return '发送';
+      default: return canSend ? '发送' : '复制';
     }
   };
 
@@ -128,19 +158,41 @@ export default function QuickReplyPage() {
       case 'success': return `${base} bg-green-50 text-green-600 border border-green-200`;
       case 'copied': return `${base} bg-yellow-50 text-yellow-600 border border-yellow-200`;
       case 'error': return `${base} bg-red-50 text-red-500 border border-red-200`;
-      default: return `${base} bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100`;
+      default: return canSend
+        ? `${base} bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100`
+        : `${base} bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100`;
     }
   };
 
   return (
     <div className="space-y-3">
+      {/* SDK 初始化中提示条 */}
+      {!runtime.sdkInitialized && (
+        <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-600">
+          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+          企业微信 SDK 初始化中，请稍候…
+        </div>
+      )}
+
       {/* 状态栏 */}
       <div className="rounded-lg border border-gray-200 bg-white p-3 text-xs space-y-1.5">
         <div className="flex items-center justify-between">
           <span className="font-medium text-gray-700">会话状态</span>
-          <button onClick={handleCopyDebugInfo} className="rounded border border-gray-200 px-2 py-0.5 text-gray-500 hover:bg-gray-50">
-            复制诊断
-          </button>
+          <div className="flex gap-1.5">
+            <button
+              onClick={handleInitDefaults}
+              disabled={initing}
+              className="rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+            >
+              {initing ? '初始化中…' : '初始化默认内容'}
+            </button>
+            <button
+              onClick={handleCopyDebugInfo}
+              className="rounded border border-gray-200 px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+            >
+              复制诊断
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-500">
           <div>
@@ -152,14 +204,15 @@ export default function QuickReplyPage() {
           <div>
             发送：
             <span className={canSend ? 'text-green-600 font-medium' : 'text-orange-500'}>
-              {canSend ? '可用' : '不可用'}
+              {!runtime.sdkInitialized ? '初始化中' : canSend ? '可用' : '不可用'}
             </span>
           </div>
           <div className="col-span-2 truncate">通道：{runtime.sendChannel || '未检测'}</div>
         </div>
-        {!canSend && (
+        {runtime.sdkInitialized && !canSend && (
           <div className="rounded-md bg-orange-50 p-2 text-orange-600 text-xs">
-            当前入口（{runtime.contextEntry}）不支持直接发送，点击发送按钮将自动复制内容。<br />
+            当前入口（{runtime.contextEntry}）不支持直接发送，点击发送按钮将自动复制内容。
+            <br />
             请从企业微信聊天界面工具栏打开此应用以启用直接发送。
           </div>
         )}
@@ -169,13 +222,22 @@ export default function QuickReplyPage() {
       {loading ? (
         <div className="text-center text-gray-400 py-8">加载中…</div>
       ) : Object.keys(grouped).length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-200 bg-white py-8 text-center text-gray-400">
-          暂无快捷回复模板
+        <div className="rounded-lg border border-dashed border-gray-200 bg-white py-8 text-center">
+          <p className="text-gray-400 text-sm mb-3">暂无快捷回复模板</p>
+          <button
+            onClick={handleInitDefaults}
+            disabled={initing}
+            className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+          >
+            {initing ? '初始化中…' : '一键初始化默认内容'}
+          </button>
         </div>
       ) : (
         Object.entries(grouped).map(([category, items]) => (
           <div key={category}>
-            <div className="mb-1.5 px-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{category}</div>
+            <div className="mb-1.5 px-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              {category}
+            </div>
             <div className="space-y-2">
               {items.map((item) => {
                 const state = sendStates[item.id] || 'idle';
@@ -193,7 +255,7 @@ export default function QuickReplyPage() {
                         disabled={state === 'sending'}
                         className={getSendBtnClass(state)}
                       >
-                        {getSendBtnLabel(state)}
+                        {getSendBtnLabel(state, runtime.sdkInitialized)}
                       </button>
                     </div>
                   </div>

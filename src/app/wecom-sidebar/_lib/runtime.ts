@@ -45,6 +45,8 @@ export type SidebarRuntime = {
   contextSource: string;
   contactStatus: string;
   wecomClientReady: boolean;
+  /** SDK 初始化流程已完成（成功或失败），各页面据此决定是否展示功能区 */
+  sdkInitialized: boolean;
   /** 综合判断当前是否可发送消息（entry 允许 OR WeixinJSBridge 可用） */
   canSendMessage: boolean;
   setWecomUserId: (value: string) => void;
@@ -114,6 +116,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
   const [wecomUserId, setWecomUserId] = useState('');
   const [toUserId, setToUserId] = useState('');
   const [wecomClientReady, setWecomClientReady] = useState(false);
+  const [sdkInitialized, setSdkInitialized] = useState(false);
   const [sendChannel, setSendChannel] = useState('未检测');
   const [sdkStatus, setSdkStatus] = useState('未初始化');
   const [contextEntry, setContextEntry] = useState('未获取');
@@ -287,6 +290,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
         setWecomClientReady(true);
         setSendChannel(channel);
         setSdkStatus('客户端模式：已检测到 ww.sendChatMessage');
+        setSdkInitialized(true);
         return;
       }
 
@@ -317,6 +321,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
           setWecomClientReady(true);
           setSendChannel(fallbackChannel);
           setSdkStatus('Bridge模式：检测到 sendChatMessage，跳过 wx.config');
+          setSdkInitialized(true);
           return;
         }
         throw new Error('当前环境缺少 wx.config 或 wx.agentConfig');
@@ -363,6 +368,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
       setWecomClientReady(Boolean(readyChannel));
       setSendChannel(readyChannel || '未检测');
       setSdkStatus('初始化成功');
+      setSdkInitialized(true);
 
       // agentConfig 完成后立即尝试获取客户 ID（这是最佳时机）
       fetchCurrentExternalContact().catch(() => {});
@@ -371,6 +377,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
       setWecomClientReady(Boolean(channel));
       setSendChannel(channel || '未检测');
       setSdkStatus(`初始化失败：${error instanceof Error ? error.message : '未知错误'}`);
+      setSdkInitialized(true);
     }
   };
 
@@ -535,6 +542,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     contextSource,
     contactStatus,
     wecomClientReady,
+    sdkInitialized,
     canSendMessage,
     setWecomUserId,
     setToUserId,
