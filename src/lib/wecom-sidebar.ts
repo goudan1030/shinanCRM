@@ -94,6 +94,15 @@ export async function ensureWecomSidebarTables(): Promise<void> {
   }
 
   await executeQuery(`
+    CREATE TABLE IF NOT EXISTS wecom_last_contact (
+      access_key VARCHAR(128) PRIMARY KEY COMMENT '员工侧边栏 access key',
+      wecom_userid VARCHAR(128) NOT NULL COMMENT '最后一次成功获取的客户 external_userid',
+      source VARCHAR(64) NOT NULL DEFAULT 'auto' COMMENT '来源：auto / manual',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await executeQuery(`
     CREATE TABLE IF NOT EXISTS wecom_api_cache (
       cache_key VARCHAR(128) PRIMARY KEY,
       cache_value TEXT NOT NULL,

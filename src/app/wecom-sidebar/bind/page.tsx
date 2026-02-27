@@ -181,6 +181,14 @@ export default function BindPage() {
       setSearchedMember(null);
       setMemberNo('');
       showMsg('绑定成功！', 'success');
+      // 若是手动输入的 wecom_userid，绑定成功后持久化到 DB，下次可自动恢复
+      if (bindUserId === manualUserId && runtime.key) {
+        fetch(`/api/wecom-sidebar/last-contact?key=${encodeURIComponent(runtime.key)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wecom_userid: bindUserId, source: 'manual' })
+        }).catch(() => {});
+      }
     } catch (error) {
       showMsg(error instanceof Error ? error.message : '绑定失败', 'error');
     } finally {
@@ -311,6 +319,16 @@ export default function BindPage() {
             <span className={runtime.wecomUserId ? 'text-green-600' : 'text-orange-500'}>
               {runtime.wecomUserId || '未自动识别'}
             </span>
+            {runtime.wecomUserId && runtime.userIdSource === 'db_cache' && (
+              <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
+                来自上次缓存
+              </span>
+            )}
+            {runtime.wecomUserId && runtime.userIdSource === 'live' && (
+              <span className="ml-1.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700">
+                实时获取
+              </span>
+            )}
           </div>
           <div>上下文入口：<span>{runtime.contextEntry || 'unknown'}</span></div>
           <div className="leading-relaxed">客户ID状态：{runtime.contactStatus}</div>
@@ -321,7 +339,7 @@ export default function BindPage() {
           <div className="mt-2 space-y-1.5">
             <div className="rounded-md bg-orange-50 p-2 text-orange-600">
               自动获取客户ID失败（需要应用配置「客户联系」权限）。<br />
-              可手动填入客户企微 external_userid 继续绑定：
+              可手动填入客户企微 external_userid 继续绑定（将永久保存）：
             </div>
             <input
               value={manualUserId}

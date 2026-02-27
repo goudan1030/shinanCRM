@@ -49,6 +49,8 @@ export type SidebarRuntime = {
   sdkInitialized: boolean;
   /** 综合判断当前是否可发送消息（entry 允许 OR WeixinJSBridge 可用） */
   canSendMessage: boolean;
+  /** wecom_userid 的来源：'live'=实时获取 | 'db_cache'=DB缓存 | 'url'=URL参数 | 'manual'=手动 */
+  userIdSource: 'live' | 'db_cache' | 'url' | 'manual' | '';
   setWecomUserId: (value: string) => void;
   setToUserId: (value: string) => void;
   buildApiParams: () => URLSearchParams;
@@ -122,11 +124,31 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
   const [contextEntry, setContextEntry] = useState('未获取');
   const [contextSource, setContextSource] = useState('未检测');
   const [contactStatus, setContactStatus] = useState('未尝试');
+  const [userIdSource, setUserIdSource] = useState<SidebarRuntime['userIdSource']>('');
   const sdkInitStartedRef = useRef(false);
   const bridgeRetryTimerRef = useRef<number | null>(null);
   const retryTimersRef = useRef<number[]>([]);
   // 已成功拿到 wecom_userid 时置 true，避免重复请求
   const contactFetchedRef = useRef(false);
+  // 持久化 wecom_userid 到 DB（fire-and-forget）
+  const persistWecomUserId = (accessKey: string, userId: string, source: 'auto' | 'manual') => {
+    if (!accessKey || !userId) return;
+    fetch(`/api/wecom-sidebar/last-contact?key=${encodeURIComponent(accessKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wecom_userid: userId, source })
+    }).catch(() => {});
+  };
+  // 从 DB 加载上次缓存的 wecom_userid（fallback）
+  const loadCachedWecomUserId = async (accessKey: string): Promise<string> => {
+    try {
+      const res = await fetch(`/api/wecom-sidebar/last-contact?key=${encodeURIComponent(accessKey)}`);
+      const data = await res.json();
+      return (data?.wecom_userid || '').trim();
+    } catch {
+      return '';
+    }
+  };
 
   const buildApiParams = () => {
     const p = new URLSearchParams();
@@ -202,6 +224,20 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
       setContactStatus(`已跳过：当前入口(${contextEntry})非客户信息可读上下文`);
       return;
     }
+
+    // 本地持有的 key（此时 key state 可能尚未同步，从 URL 再读一次）
+    const currentKey = key || new URLSearchParams(window.location.search).get('key') || '';
+
+    // 成功时保存到 DB 的统一处理函数
+    const onSuccess = (userId: string, method: string) => {
+      contactFetchedRef.current = true;
+      if (!toUserId) setToUserId(userId);
+      setWecomUserId(userId);
+      setUserIdSource('live');
+      setContactStatus(`已获取（${method}）`);
+      persistWecomUserId(currentKey, userId, 'auto');
+    };
+
     try {
       const ww = (window as any)?.ww;
       const wx = (window as any)?.wx;
@@ -211,10 +247,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
         const res = await ww.getCurExternalContact();
         const userId = (res?.userId || '').trim();
         if (userId) {
-          contactFetchedRef.current = true;
-          if (!toUserId) setToUserId(userId);
-          if (!wecomUserId) setWecomUserId(userId);
-          setContactStatus('已获取（ww.getCurExternalContact）');
+          onSuccess(userId, 'ww.getCurExternalContact');
         } else {
           setContactStatus('未返回userId（ww.getCurExternalContact）');
         }
@@ -227,10 +260,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
             success: (res: any) => {
               const userId = (res?.userId || '').trim();
               if (userId) {
-                contactFetchedRef.current = true;
-                if (!toUserId) setToUserId(userId);
-                if (!wecomUserId) setWecomUserId(userId);
-                setContactStatus('已获取（wx.qy.getCurExternalContact）');
+                onSuccess(userId, 'wx.qy.getCurExternalContact');
               } else {
                 setContactStatus('未返回userId（wx.qy.getCurExternalContact）');
               }
@@ -246,7 +276,6 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
       }
 
       if (typeof bridge?.invoke === 'function') {
-        const wx = (window as any)?.wx;
         // 优先用 wx.invoke（agentConfig 上下文），降级到 bridge.invoke
         const invoker: (method: string, data: any, cb: (res: any) => void) => void =
           typeof wx?.invoke === 'function'
@@ -257,10 +286,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
           invoker('getCurExternalContact', {}, (res: any) => {
             const userId = (res?.userId || '').trim();
             if (userId) {
-              contactFetchedRef.current = true;
-              if (!toUserId) setToUserId(userId);
-              if (!wecomUserId) setWecomUserId(userId);
-              setContactStatus('已获取（wx.invoke/getCurExternalContact）');
+              onSuccess(userId, 'wx.invoke/getCurExternalContact');
             } else {
               const errMsg = res?.err_msg || res?.errMsg || 'unknown';
               setContactStatus(`失败（getCurExternalContact）：${errMsg}`);
@@ -268,11 +294,49 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
             resolve();
           });
         });
+
+        // 实时获取失败时，从 DB 缓存恢复
+        if (!contactFetchedRef.current && currentKey) {
+          const cached = await loadCachedWecomUserId(currentKey);
+          if (cached) {
+            contactFetchedRef.current = true;
+            if (!toUserId) setToUserId(cached);
+            setWecomUserId(cached);
+            setUserIdSource('db_cache');
+            setContactStatus('已从 DB 缓存恢复 wecom_userid（实时获取失败）');
+          }
+        }
         return;
       }
 
+      // 所有方式均无能力时，尝试 DB 缓存兜底
+      if (currentKey) {
+        const cached = await loadCachedWecomUserId(currentKey);
+        if (cached) {
+          contactFetchedRef.current = true;
+          if (!toUserId) setToUserId(cached);
+          setWecomUserId(cached);
+          setUserIdSource('db_cache');
+          setContactStatus('已从 DB 缓存恢复 wecom_userid（无 getCurExternalContact 能力）');
+          return;
+        }
+      }
       setContactStatus('当前环境无 getCurExternalContact 能力');
     } catch {
+      // 异常时也尝试 DB 缓存
+      if (currentKey) {
+        try {
+          const cached = await loadCachedWecomUserId(currentKey);
+          if (cached) {
+            contactFetchedRef.current = true;
+            if (!toUserId) setToUserId(cached);
+            setWecomUserId(cached);
+            setUserIdSource('db_cache');
+            setContactStatus('已从 DB 缓存恢复 wecom_userid（调用异常兜底）');
+            return;
+          }
+        } catch {}
+      }
       setContactStatus('getCurExternalContact 调用异常');
     }
   };
@@ -405,6 +469,9 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     );
     const accessKey = pickFirstNonEmpty(search.get('key'), search.get('access_key'));
 
+    if (resolvedWecomUserId) {
+      setUserIdSource('url');
+    }
     setWecomUserId(resolvedWecomUserId);
     setToUserId(target);
     setKey(accessKey);
@@ -544,6 +611,7 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
     wecomClientReady,
     sdkInitialized,
     canSendMessage,
+    userIdSource,
     setWecomUserId,
     setToUserId,
     buildApiParams,
