@@ -35,21 +35,55 @@ type MemberDetail = {
   updated_at?: string;
 };
 
+// ---- 枚举翻译 ----
+const GENDER_MAP: Record<string, string> = {
+  MALE: '男', male: '男', 男: '男',
+  FEMALE: '女', female: '女', 女: '女'
+};
+const EDUCATION_MAP: Record<string, string> = {
+  DOCTOR: '博士', MASTER: '硕士', BACHELOR: '本科',
+  COLLEGE: '大专', HIGH_SCHOOL: '高中', JUNIOR_HIGH: '初中', OTHER: '其他'
+};
+const HOUSE_CAR_MAP: Record<string, string> = {
+  BOTH: '有房有车', HOUSE: '有房无车', CAR: '有车无房', NONE: '无房无车', NO: '无'
+};
+const MARRIAGE_HISTORY_MAP: Record<string, string> = {
+  NO: '无婚史', NONE: '无婚史', YES: '有婚史'
+};
+const CHILDREN_PLAN_MAP: Record<string, string> = {
+  BOTH: '一起要', YES: '要孩子', NO: '不要孩子',
+  NEED: '需要', DONT_NEED: '不需要', NEGOTIATE: '互相协商'
+};
+const MARRIAGE_CERT_MAP: Record<string, string> = {
+  YES: '领证', NO: '不领证', NEGOTIATE: '互相协商'
+};
+
+const tr = (map: Record<string, string>, value?: string | null) =>
+  (value && map[value]) ? map[value] : (value || '-');
+
+// ---- 名片格式 ----
 const formatMemberCard = (m: MemberDetail): string => {
-  const age = m.birth_year ? `${new Date().getFullYear() - m.birth_year}岁` : '';
+  const hukou = [m.hukou_province, m.hukou_city].filter(Boolean).join(' ') || '-';
   const location = [m.province, m.city, m.district].filter(Boolean).join(' ') || '-';
-  const lines = [
-    `👤 会员编号：${m.member_no}`,
-    `性别：${m.gender || '-'}  ${age}`,
-    `状态：${m.status || '-'}  类型：${m.type || '-'}`,
-    `昵称：${m.nickname || '-'}`,
+
+  const lines: string[] = [
+    `会员编号：${m.member_no}`,
+    `性别：${tr(GENDER_MAP, m.gender)}`,
+    m.birth_year ? `出生年份：${m.birth_year}年` : '',
+    m.height ? `身高：${m.height}cm` : '',
+    m.weight ? `体重：${m.weight}kg` : '',
+    m.education ? `学历：${tr(EDUCATION_MAP, m.education)}` : '',
+    m.occupation ? `职业：${m.occupation}` : '',
     `所在地：${location}`,
-    `学历：${m.education || '-'}  职业：${m.occupation || '-'}`,
-    `身高：${m.height ? `${m.height}cm` : '-'}  体重：${m.weight ? `${m.weight}kg` : '-'}`,
-    `婚史：${m.marriage_history || '-'}`,
-    `剩余匹配：${m.remaining_matches ?? '-'}次`,
-    m.self_description ? `\n自我介绍：${m.self_description}` : '',
-    m.partner_requirement ? `\n择偶要求：${m.partner_requirement}` : ''
+    `户口所在地：${hukou}`,
+    m.target_area ? `目标区域：${m.target_area}` : '',
+    m.house_car ? `房车情况：${tr(HOUSE_CAR_MAP, m.house_car)}` : '',
+    m.marriage_history ? `婚史：${tr(MARRIAGE_HISTORY_MAP, m.marriage_history)}` : '',
+    m.sexual_orientation ? `性取向：${m.sexual_orientation}` : '',
+    m.children_plan ? `孩子需求：${tr(CHILDREN_PLAN_MAP, m.children_plan)}` : '',
+    m.marriage_cert ? `领证需求：${tr(MARRIAGE_CERT_MAP, m.marriage_cert)}` : '',
+    m.self_description ? `个人说明：${m.self_description}` : '',
+    m.partner_requirement ? `择偶要求：${m.partner_requirement}` : ''
   ];
   return lines.filter(Boolean).join('\n');
 };
@@ -67,6 +101,7 @@ export default function MemberQueryPage() {
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [sendLoading, setSendLoading] = useState(false);
+  const [wechatLoading, setWechatLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [msgType, setMsgType] = useState<'info' | 'success' | 'error'>('info');
 
@@ -100,26 +135,23 @@ export default function MemberQueryPage() {
     }
   };
 
+  // 发送完整名片
   const handleSendCard = async () => {
     if (!member) return;
     setSendLoading(true);
-
     try {
       const channel = runtime.refreshSendChannel();
       const latestEntry = await runtime.refreshContext().catch(() => runtime.contextEntry);
       const content = formatMemberCard(member);
-
-      // WeixinJSBridge 通道下 entry 可能是 unknown，但通道可用就允许发送
       const allowSend = runtime.canSendMessage || (!!channel && channel.includes('WeixinJSBridge'));
 
       if (!channel || !allowSend) {
         await navigator.clipboard.writeText(content);
-        showMsg(`当前入口(${latestEntry})不支持直接发送，已复制会员名片，请粘贴到聊天框`, 'info');
+        showMsg(`当前入口(${latestEntry})不支持直接发送，已复制名片，请粘贴到聊天框`, 'info');
         return;
       }
-
       await runtime.sendChatMessage({ msgtype: 'text', text: { content } });
-      showMsg('会员名片已写入聊天框', 'success');
+      showMsg('会员名片已发送', 'success');
     } catch (error) {
       const content = member ? formatMemberCard(member) : '';
       if (content) await navigator.clipboard.writeText(content).catch(() => {});
@@ -129,13 +161,27 @@ export default function MemberQueryPage() {
     }
   };
 
-  const handleOpenProfile = async () => {
+  // 发送微信号（格式：M17542微信号：-18105360231）
+  const handleSendWechat = async () => {
     if (!member) return;
+    setWechatLoading(true);
+    const content = `${member.member_no}微信号：${member.wechat || '未填写'}`;
     try {
-      // type=2 表示外部联系人，type=1 表示企业成员
-      await runtime.openUserProfile(member.member_no, 2);
-    } catch {
-      showMsg('打开资料页失败，该功能需要在企业微信聊天工具栏中使用', 'error');
+      const channel = runtime.refreshSendChannel();
+      const allowSend = runtime.canSendMessage || (!!channel && channel.includes('WeixinJSBridge'));
+
+      if (!channel || !allowSend) {
+        await navigator.clipboard.writeText(content);
+        showMsg('已复制微信号信息，请粘贴到聊天框', 'info');
+        return;
+      }
+      await runtime.sendChatMessage({ msgtype: 'text', text: { content } });
+      showMsg('微信号已发送', 'success');
+    } catch (error) {
+      await navigator.clipboard.writeText(content).catch(() => {});
+      showMsg(`${error instanceof Error ? error.message : '发送失败'}，已复制到剪贴板`, 'error');
+    } finally {
+      setWechatLoading(false);
     }
   };
 
@@ -175,7 +221,7 @@ export default function MemberQueryPage() {
               <div>
                 <div className="font-semibold text-base">{member.member_no}</div>
                 <div className="text-xs text-blue-200 mt-0.5">
-                  {member.nickname || '未填写昵称'} · {member.gender || '-'}
+                  {member.nickname || '未填写昵称'} · {tr(GENDER_MAP, member.gender)}
                   {member.birth_year ? ` · ${new Date().getFullYear() - member.birth_year}岁` : ''}
                 </div>
               </div>
@@ -202,10 +248,11 @@ export default function MemberQueryPage() {
               {sendLoading ? '发送中…' : '📤 发送名片'}
             </button>
             <button
-              onClick={handleOpenProfile}
-              className="flex-1 rounded-md border border-gray-200 bg-gray-50 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100"
+              onClick={handleSendWechat}
+              disabled={wechatLoading}
+              className="flex-1 rounded-md border border-green-200 bg-green-50 py-2 text-xs font-medium text-green-600 hover:bg-green-100 disabled:opacity-50"
             >
-              👤 打开资料页
+              {wechatLoading ? '发送中…' : '💬 发送微信号'}
             </button>
           </div>
 
@@ -219,21 +266,21 @@ export default function MemberQueryPage() {
                 value={[member.hukou_province, member.hukou_city].filter(Boolean).join(' ') || '-'}
               />
               <InfoRow label="目标区域" value={member.target_area || '-'} />
-              <InfoRow label="学历" value={member.education || '-'} />
+              <InfoRow label="学历" value={tr(EDUCATION_MAP, member.education)} />
               <InfoRow label="职业" value={member.occupation || '-'} />
               <InfoRow
                 label="身高/体重"
                 value={`${member.height ? `${member.height}cm` : '-'} / ${member.weight ? `${member.weight}kg` : '-'}`}
               />
-              <InfoRow label="房车情况" value={member.house_car || '-'} />
-              <InfoRow label="婚史" value={member.marriage_history || '-'} />
+              <InfoRow label="房车情况" value={tr(HOUSE_CAR_MAP, member.house_car)} />
+              <InfoRow label="婚史" value={tr(MARRIAGE_HISTORY_MAP, member.marriage_history)} />
               <InfoRow label="性取向" value={member.sexual_orientation || '-'} />
-              <InfoRow label="孩子需求" value={member.children_plan || '-'} />
-              <InfoRow label="领证需求" value={member.marriage_cert || '-'} />
+              <InfoRow label="孩子需求" value={tr(CHILDREN_PLAN_MAP, member.children_plan)} />
+              <InfoRow label="领证需求" value={tr(MARRIAGE_CERT_MAP, member.marriage_cert)} />
               <InfoRow label="剩余匹配" value={`${member.remaining_matches ?? '-'} 次`} />
               {member.self_description && (
                 <tr className="border-b border-gray-100">
-                  <td className="w-24 bg-gray-50 px-2 py-1.5 text-gray-500 text-xs align-top">自我介绍</td>
+                  <td className="w-24 bg-gray-50 px-2 py-1.5 text-gray-500 text-xs align-top">个人说明</td>
                   <td className="px-2 py-1.5 text-xs whitespace-pre-wrap">{member.self_description}</td>
                 </tr>
               )}
