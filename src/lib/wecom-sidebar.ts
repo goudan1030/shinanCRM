@@ -93,6 +93,20 @@ export async function ensureWecomSidebarTables(): Promise<void> {
     }
   }
 
+  await executeQuery(`
+    CREATE TABLE IF NOT EXISTS wecom_match_logs (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      wecom_userid VARCHAR(128) NOT NULL COMMENT '客户企微 external_userid',
+      member_no VARCHAR(64) NOT NULL COMMENT '绑定的会员编号',
+      matched_member_no VARCHAR(64) NOT NULL COMMENT '今日匹配的目标会员编号',
+      match_date DATE NOT NULL COMMENT '匹配日期（YYYY-MM-DD，用于当天唯一校验）',
+      notes TEXT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_member_match_date (member_no, match_date),
+      KEY idx_wecom_userid_date (wecom_userid, match_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
   tablesEnsured = true;
 }
 

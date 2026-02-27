@@ -45,6 +45,11 @@ export default function BindPage() {
   const [msgType, setMsgType] = useState<MsgType>('info');
   // 当自动获取 wecom_userid 失败时，允许手动输入
   const [manualUserId, setManualUserId] = useState('');
+  // 今日匹配
+  const [todayMatch, setTodayMatch] = useState<string | null>(null);
+  const [checkingTodayMatch, setCheckingTodayMatch] = useState(false);
+  const [matchInput, setMatchInput] = useState('');
+  const [matchLoading, setMatchLoading] = useState(false);
 
   const bindUserId = runtime.wecomUserId || runtime.toUserId || manualUserId.trim();
 
@@ -66,7 +71,9 @@ export default function BindPage() {
       const response = await fetch(`/api/wecom-sidebar/member?${params.toString()}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '获取绑定信息失败');
-      setBoundMember(data.member || null);
+      const m = data.member || null;
+      setBoundMember(m);
+      if (m) fetchTodayMatch(m.member_no);
     } catch (error) {
       showMsg(error instanceof Error ? error.message : '检查绑定失败', 'error');
     } finally {
@@ -74,9 +81,58 @@ export default function BindPage() {
     }
   };
 
+  const fetchTodayMatch = async (boundMemberNo: string) => {
+    setCheckingTodayMatch(true);
+    try {
+      const params = runtime.buildApiParams();
+      params.set('member_no', boundMemberNo);
+      const res = await fetch(`/api/wecom-sidebar/daily-match?${params.toString()}`);
+      const data = await res.json();
+      setTodayMatch(data.matched ? data.log?.matched_member_no : null);
+    } catch {
+      setTodayMatch(null);
+    } finally {
+      setCheckingTodayMatch(false);
+    }
+  };
+
+  const handleRecordMatch = async () => {
+    if (!boundMember || !matchInput.trim()) return;
+    setMatchLoading(true);
+    try {
+      const res = await fetch(
+        `/api/wecom-sidebar/daily-match?${runtime.buildApiParams().toString()}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wecom_userid: bindUserId,
+            member_no: boundMember.member_no,
+            matched_member_no: matchInput.trim().toUpperCase()
+          })
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '记录失败');
+      if (data.alreadyMatched) {
+        setTodayMatch(data.matched_member_no);
+        showMsg(data.message, 'info');
+      } else {
+        setTodayMatch(data.matched_member_no);
+        setMatchInput('');
+        showMsg(data.message || '今日匹配已记录', 'success');
+      }
+    } catch (error) {
+      showMsg(error instanceof Error ? error.message : '记录失败', 'error');
+    } finally {
+      setMatchLoading(false);
+    }
+  };
+
   useEffect(() => {
     setCheckingBinding(true);
     setBoundMember(null);
+    setTodayMatch(null);
     fetchBoundMember();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runtime.wecomUserId, runtime.key]);
@@ -289,9 +345,51 @@ export default function BindPage() {
           检查绑定状态中…
         </div>
       ) : boundMember ? (
-        <div>
-          <div className="mb-2 text-xs font-medium text-green-600">✓ 当前客户已绑定</div>
+        <div className="space-y-3">
+          <div className="text-xs font-medium text-green-600">✓ 当前客户已绑定</div>
           <MemberCard m={boundMember} showUnbind />
+
+          {/* 今日匹配记录区块 */}
+          <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+            <div className="bg-gray-50 px-3 py-2 border-b border-gray-100">
+              <span className="text-xs font-medium text-gray-700">今日匹配记录</span>
+            </div>
+            {checkingTodayMatch ? (
+              <div className="px-3 py-4 text-center text-xs text-gray-400">查询中…</div>
+            ) : todayMatch ? (
+              /* 今天已匹配 */
+              <div className="px-3 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                    ✓ 今天已匹配
+                  </span>
+                  <span className="text-sm font-semibold text-gray-800">{todayMatch}</span>
+                </div>
+                <p className="mt-1.5 text-xs text-gray-400">今日匹配已完成，不可重复记录</p>
+              </div>
+            ) : (
+              /* 今天未匹配，显示输入框 */
+              <div className="p-3 space-y-2">
+                <p className="text-xs text-gray-500">输入今日匹配的会员编号（如 M17542）：</p>
+                <div className="flex gap-2">
+                  <input
+                    value={matchInput}
+                    onChange={(e) => setMatchInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRecordMatch()}
+                    placeholder="例如 M17542"
+                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleRecordMatch}
+                    disabled={matchLoading || !matchInput.trim()}
+                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {matchLoading ? '记录中…' : '记录'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div>
