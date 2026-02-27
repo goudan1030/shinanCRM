@@ -72,11 +72,18 @@ export default function QuickReplyPage() {
       setSendState(item.id, 'success');
       setTimeout(() => setSendState(item.id, 'idle'), 2000);
     } catch (error) {
-      const text = error instanceof Error ? error.message : '发送失败';
+      const rawMsg = error instanceof Error ? error.message : '发送失败';
       await navigator.clipboard.writeText(item.reply_content).catch(() => {});
-      setSendState(item.id, 'error');
-      setGlobalMsg(`${text}，内容已复制到剪贴板`);
-      setTimeout(() => setSendState(item.id, 'idle'), 3000);
+      setSendState(item.id, 'copied');
+
+      // permission denied 给出具体原因
+      const isPermDenied = rawMsg.toLowerCase().includes('permission denied');
+      setGlobalMsg(
+        isPermDenied
+          ? '应用缺少「客户联系」权限，无法直接发送。内容已复制到剪贴板，请粘贴到聊天框手动发送。（需在企业微信后台为该应用开启客户联系权限）'
+          : `${rawMsg}。内容已复制到剪贴板，请粘贴到聊天框手动发送`
+      );
+      setTimeout(() => setSendState(item.id, 'idle'), 4000);
     }
   };
 

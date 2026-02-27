@@ -26,8 +26,10 @@ export default function BindPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [msgType, setMsgType] = useState<MsgType>('info');
+  // 当自动获取 wecom_userid 失败时，允许手动输入
+  const [manualUserId, setManualUserId] = useState('');
 
-  const bindUserId = runtime.wecomUserId || runtime.toUserId;
+  const bindUserId = runtime.wecomUserId || runtime.toUserId || manualUserId.trim();
 
   const showMsg = (text: string, type: MsgType = 'info') => {
     setMessage(text);
@@ -185,13 +187,35 @@ export default function BindPage() {
       <div className="rounded-lg border border-gray-200 bg-white p-3 text-xs">
         <div className="mb-2 font-medium text-gray-700">当前客户信息</div>
         <div className="space-y-1 text-gray-500">
-          <div>wecom_userid：<span className={runtime.wecomUserId ? 'text-green-600' : 'text-orange-500'}>{runtime.wecomUserId || '未识别'}</span></div>
+          <div>
+            wecom_userid：
+            <span className={runtime.wecomUserId ? 'text-green-600' : 'text-orange-500'}>
+              {runtime.wecomUserId || '未自动识别'}
+            </span>
+          </div>
           <div>上下文入口：<span>{runtime.contextEntry || 'unknown'}</span></div>
-          <div>客户ID状态：<span>{runtime.contactStatus}</span></div>
+          <div className="leading-relaxed">客户ID状态：{runtime.contactStatus}</div>
         </div>
-        {!bindUserId && (
-          <div className="mt-2 rounded-md bg-orange-50 p-2 text-orange-600 text-xs">
-            无法获取客户 wecom_userid，绑定功能受限。请确认从企业微信聊天工具栏进入。
+
+        {/* 自动识别失败时提供手动输入兜底 */}
+        {!runtime.wecomUserId && (
+          <div className="mt-2 space-y-1.5">
+            <div className="rounded-md bg-orange-50 p-2 text-orange-600">
+              自动获取客户ID失败（需要应用配置「客户联系」权限）。<br />
+              可手动填入客户企微 external_userid 继续绑定：
+            </div>
+            <input
+              value={manualUserId}
+              onChange={(e) => setManualUserId(e.target.value.trim())}
+              placeholder="粘贴客户 external_userid，如 wmXXXXXX"
+              className="w-full rounded-md border border-orange-200 bg-orange-50 px-2 py-1.5 text-xs focus:border-orange-400 focus:outline-none"
+            />
+          </div>
+        )}
+
+        {bindUserId && bindUserId === manualUserId && (
+          <div className="mt-1.5 text-xs text-blue-600">
+            将使用手动输入的 ID：{manualUserId}
           </div>
         )}
       </div>

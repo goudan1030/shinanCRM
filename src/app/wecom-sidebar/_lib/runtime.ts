@@ -235,15 +235,23 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
       }
 
       if (typeof bridge?.invoke === 'function') {
+        const wx = (window as any)?.wx;
+        // 优先用 wx.invoke（agentConfig 上下文），降级到 bridge.invoke
+        const invoker: (method: string, data: any, cb: (res: any) => void) => void =
+          typeof wx?.invoke === 'function'
+            ? (m, d, cb) => wx.invoke(m, d, cb)
+            : (m, d, cb) => bridge.invoke(m, d, cb);
+
         await new Promise<void>((resolve) => {
-          bridge.invoke('getCurExternalContact', {}, (res: any) => {
+          invoker('getCurExternalContact', {}, (res: any) => {
             const userId = (res?.userId || '').trim();
             if (userId) {
               if (!toUserId) setToUserId(userId);
               if (!wecomUserId) setWecomUserId(userId);
-              setContactStatus('已获取（WeixinJSBridge.getCurExternalContact）');
+              setContactStatus('已获取（wx.invoke/getCurExternalContact）');
             } else {
-              setContactStatus(`失败（WeixinJSBridge.getCurExternalContact）：${res?.err_msg || 'unknown'}`);
+              const errMsg = res?.err_msg || res?.errMsg || 'unknown';
+              setContactStatus(`失败（getCurExternalContact）：${errMsg}`);
             }
             resolve();
           });
@@ -434,11 +442,18 @@ export function useWecomSidebarRuntime(): SidebarRuntime {
         });
       });
     } else if (channel === 'WeixinJSBridge.invoke(sendChatMessage)') {
+      const wx = (window as any)?.wx;
+      // wx.invoke 在 agentConfig 完成后可用，权限上下文比 bridge.invoke 更完整
+      const invoker: (method: string, data: any, cb: (res: any) => void) => void =
+        typeof wx?.invoke === 'function'
+          ? (m, d, cb) => wx.invoke(m, d, cb)
+          : (m, d, cb) => bridge.invoke(m, d, cb);
+
       await new Promise<void>((resolve, reject) => {
-        bridge.invoke('sendChatMessage', params, (res: any) => {
-          const errMsg = (res?.err_msg || '').toLowerCase();
-          if (errMsg.includes('ok')) resolve();
-          else reject(new Error(res?.err_msg || '发送失败'));
+        invoker('sendChatMessage', params, (res: any) => {
+          const errMsg = res?.err_msg || res?.errMsg || '';
+          if (errMsg.toLowerCase().includes('ok')) resolve();
+          else reject(new Error(errMsg || '发送失败'));
         });
       });
     } else {
