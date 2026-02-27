@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SEND_ALLOWED_ENTRIES, useWecomSidebarRuntime } from '../_lib/runtime';
+import { SEND_ALLOWED_ENTRIES } from '../_lib/runtime';
+import { useWecomRuntime } from '../_lib/RuntimeContext';
 
 type QuickReply = {
   id: number;
@@ -14,7 +15,7 @@ type QuickReply = {
 type SendState = 'idle' | 'sending' | 'success' | 'error' | 'copied';
 
 export default function QuickReplyPage() {
-  const runtime = useWecomSidebarRuntime();
+  const runtime = useWecomRuntime();
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendStates, setSendStates] = useState<Record<number, SendState>>({});
@@ -49,15 +50,6 @@ export default function QuickReplyPage() {
   };
 
   const handleSend = async (item: QuickReply) => {
-    // SDK 未就绪时，仅做复制兜底
-    if (!runtime.sdkInitialized) {
-      await navigator.clipboard.writeText(item.reply_content).catch(() => {});
-      setSendState(item.id, 'copied');
-      setGlobalMsg('SDK 初始化中，内容已复制，稍后重试发送');
-      setTimeout(() => setSendState(item.id, 'idle'), 3000);
-      return;
-    }
-
     setSendState(item.id, 'sending');
     setGlobalMsg('');
 
@@ -140,8 +132,7 @@ export default function QuickReplyPage() {
     return acc;
   }, {});
 
-  const getSendBtnLabel = (state: SendState, sdkReady: boolean) => {
-    if (!sdkReady) return '复制';
+  const getSendBtnLabel = (state: SendState) => {
     switch (state) {
       case 'sending': return '发送中…';
       case 'success': return '✓ 已发送';
@@ -166,14 +157,6 @@ export default function QuickReplyPage() {
 
   return (
     <div className="space-y-3">
-      {/* SDK 初始化中提示条 */}
-      {!runtime.sdkInitialized && (
-        <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-600">
-          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
-          企业微信 SDK 初始化中，请稍候…
-        </div>
-      )}
-
       {/* 状态栏 */}
       <div className="rounded-lg border border-gray-200 bg-white p-3 text-xs space-y-1.5">
         <div className="flex items-center justify-between">
@@ -204,7 +187,7 @@ export default function QuickReplyPage() {
           <div>
             发送：
             <span className={canSend ? 'text-green-600 font-medium' : 'text-orange-500'}>
-              {!runtime.sdkInitialized ? '初始化中' : canSend ? '可用' : '不可用'}
+              {canSend ? '可用' : '不可用'}
             </span>
           </div>
           <div className="col-span-2 truncate">通道：{runtime.sendChannel || '未检测'}</div>
@@ -255,7 +238,7 @@ export default function QuickReplyPage() {
                         disabled={state === 'sending'}
                         className={getSendBtnClass(state)}
                       >
-                        {getSendBtnLabel(state, runtime.sdkInitialized)}
+                        {getSendBtnLabel(state)}
                       </button>
                     </div>
                   </div>

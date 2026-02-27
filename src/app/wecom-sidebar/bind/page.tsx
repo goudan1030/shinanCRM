@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useWecomSidebarRuntime } from '../_lib/runtime';
+import { useWecomRuntime } from '../_lib/RuntimeContext';
 
 type MemberInfo = {
   id: number;
@@ -35,7 +35,7 @@ const getMemberTypeLabel = (type: string | null, remaining: number | null | unde
 type MsgType = 'info' | 'success' | 'error';
 
 export default function BindPage() {
-  const runtime = useWecomSidebarRuntime();
+  const runtime = useWecomRuntime();
   const [memberNo, setMemberNo] = useState('');
   const [searchedMember, setSearchedMember] = useState<MemberInfo | null>(null);
   const [boundMember, setBoundMember] = useState<MemberInfo | null>(null);

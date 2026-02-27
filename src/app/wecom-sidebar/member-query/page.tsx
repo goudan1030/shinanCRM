@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useWecomSidebarRuntime } from '../_lib/runtime';
+import { useWecomRuntime } from '../_lib/RuntimeContext';
 
 type MemberDetail = {
   id?: number;
@@ -96,7 +96,7 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
 );
 
 export default function MemberQueryPage() {
-  const runtime = useWecomSidebarRuntime();
+  const runtime = useWecomRuntime();
   const [memberNo, setMemberNo] = useState('');
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [loading, setLoading] = useState(false);
