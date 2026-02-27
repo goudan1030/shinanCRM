@@ -12,7 +12,25 @@ export interface SidebarMember {
   gender: string | null;
   type: string | null;
   status: string | null;
+  province?: string | null;
   city: string | null;
+  district?: string | null;
+  target_area?: string | null;
+  birth_year?: number | null;
+  height?: number | null;
+  weight?: number | null;
+  education?: string | null;
+  occupation?: string | null;
+  house_car?: string | null;
+  hukou_province?: string | null;
+  hukou_city?: string | null;
+  children_plan?: string | null;
+  marriage_cert?: string | null;
+  marriage_history?: string | null;
+  sexual_orientation?: string | null;
+  self_description?: string | null;
+  partner_requirement?: string | null;
+  remaining_matches?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -88,12 +106,23 @@ export function verifySidebarAccess(request: NextRequest): { ok: boolean; messag
   return { ok: false, message: '访问密钥无效' };
 }
 
-export async function findMemberByNumber(memberNo: string): Promise<SidebarMember | null> {
+export async function findMemberByNumber(
+  memberNo: string,
+  options?: { detail?: boolean }
+): Promise<SidebarMember | null> {
   const normalized = memberNo.trim();
   if (!normalized) return null;
 
+  const selectFields = options?.detail
+    ? `id, member_no, nickname, phone, wechat, gender, type, status,
+       province, city, district, target_area, birth_year, height, weight,
+       education, occupation, house_car, hukou_province, hukou_city,
+       children_plan, marriage_cert, marriage_history, sexual_orientation,
+       self_description, partner_requirement, remaining_matches, created_at, updated_at`
+    : 'id, member_no, nickname, phone, wechat, gender, type, status, city, created_at, updated_at';
+
   const [rows] = await executeQuery(
-    `SELECT id, member_no, nickname, phone, wechat, gender, type, status, city, created_at, updated_at
+    `SELECT ${selectFields}
      FROM members
      WHERE deleted = 0
        AND (member_no = ? OR UPPER(member_no) = ? OR member_no LIKE ?)

@@ -26,10 +26,13 @@ export async function GET(request: NextRequest) {
     await ensureWecomSidebarTables();
 
     const memberNo = (request.nextUrl.searchParams.get('member_no') || '').trim();
+    const detail =
+      request.nextUrl.searchParams.get('detail') === '1' ||
+      request.nextUrl.searchParams.get('detail') === 'true';
     const wecomUserId = (request.nextUrl.searchParams.get('wecom_userid') || '').trim();
 
     if (memberNo) {
-      const member = await findMemberByNumber(memberNo);
+      const member = await findMemberByNumber(memberNo, { detail });
       return NextResponse.json({ success: true, member, source: 'member_no' });
     }
 
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const member = await findMemberByNumber(binding.member_no);
+    const member = await findMemberByNumber(binding.member_no, { detail });
     return NextResponse.json({
       success: true,
       member: member as SidebarMember | null,
