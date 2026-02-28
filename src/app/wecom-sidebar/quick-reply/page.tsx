@@ -107,23 +107,6 @@ export default function QuickReplyPage() {
     }
   };
 
-  const handleCopyDebugInfo = async () => {
-    const debugText = [
-      `raw_query: ${runtime.rawQuery || '(empty)'}`,
-      `wecomUserId: ${runtime.wecomUserId || '(empty)'}`,
-      `toUserId: ${runtime.toUserId || '(empty)'}`,
-      `key: ${runtime.key ? '(exists)' : '(empty)'}`,
-      `sdkInitialized: ${runtime.sdkInitialized}`,
-      `sendChannel: ${runtime.sendChannel}`,
-      `sdkStatus: ${runtime.sdkStatus}`,
-      `contextEntry: ${runtime.contextEntry}`,
-      `contextSource: ${runtime.contextSource}`,
-      `contactStatus: ${runtime.contactStatus}`
-    ].join('\n');
-    await navigator.clipboard.writeText(debugText);
-    setGlobalMsg('诊断信息已复制');
-  };
-
   // 按分类分组
   const grouped = quickReplies.reduce<Record<string, QuickReply[]>>((acc, item) => {
     const key = item.category || '默认';
@@ -157,50 +140,6 @@ export default function QuickReplyPage() {
 
   return (
     <div className="space-y-3">
-      {/* 状态栏 */}
-      <div className="rounded-lg border border-gray-200 bg-white p-3 text-xs space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-700">会话状态</span>
-          <div className="flex gap-1.5">
-            <button
-              onClick={handleInitDefaults}
-              disabled={initing}
-              className="rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
-            >
-              {initing ? '初始化中…' : '初始化默认内容'}
-            </button>
-            <button
-              onClick={handleCopyDebugInfo}
-              className="rounded border border-gray-200 px-2 py-0.5 text-gray-500 hover:bg-gray-50"
-            >
-              复制诊断
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-500">
-          <div>
-            入口：
-            <span className={canSend ? 'text-green-600 font-medium' : 'text-orange-500'}>
-              {runtime.contextEntry}
-            </span>
-          </div>
-          <div>
-            发送：
-            <span className={canSend ? 'text-green-600 font-medium' : 'text-orange-500'}>
-              {canSend ? '可用' : '不可用'}
-            </span>
-          </div>
-          <div className="col-span-2 truncate">通道：{runtime.sendChannel || '未检测'}</div>
-        </div>
-        {runtime.sdkInitialized && !canSend && (
-          <div className="rounded-md bg-orange-50 p-2 text-orange-600 text-xs">
-            当前入口（{runtime.contextEntry}）不支持直接发送，点击发送按钮将自动复制内容。
-            <br />
-            请从企业微信聊天界面工具栏打开此应用以启用直接发送。
-          </div>
-        )}
-      </div>
-
       {/* 快捷回复列表 */}
       {loading ? (
         <div className="text-center text-gray-400 py-8">加载中…</div>

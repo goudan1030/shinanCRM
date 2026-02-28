@@ -6,8 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 const TABS = [
   { label: '快捷回复', href: '/wecom-sidebar/quick-reply', icon: '💬' },
   { label: '会员查询', href: '/wecom-sidebar/member-query', icon: '🔍' },
-  { label: '客户绑定', href: '/wecom-sidebar/bind', icon: '🔗' },
-  { label: '调试', href: '/wecom-sidebar/debug', icon: '🛠' }
+  { label: '客户绑定', href: '/wecom-sidebar/bind', icon: '🔗' }
 ];
 
 export default function NavTabs() {
