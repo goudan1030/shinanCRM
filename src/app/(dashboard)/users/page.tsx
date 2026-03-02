@@ -32,6 +32,7 @@ interface User {
   registered: number;
   refresh_count: number;
   view_count: number;
+  profile_edit_remaining?: number; // 剩余编辑次数
   member_id?: string | null; // 关联的会员ID
   [key: string]: string | number | null | undefined;
 }
@@ -49,7 +50,7 @@ interface Session {
 }
 
 // 定义可用的列
-type ColumnKey = 'phone' | 'nickname' | 'status' | 'created_at' | 'registered' | 'refresh_count' | 'view_count' | 'actions';
+type ColumnKey = 'phone' | 'nickname' | 'status' | 'created_at' | 'registered' | 'edit_count' | 'refresh_count' | 'view_count' | 'actions';
 
 // 可用列定义
 const availableColumns: { key: ColumnKey; label: string }[] = [
@@ -58,6 +59,7 @@ const availableColumns: { key: ColumnKey; label: string }[] = [
   { key: 'status', label: '状态' },
   { key: 'registered', label: '资料完善' },
   { key: 'created_at', label: '创建时间' },
+  { key: 'edit_count', label: '编辑次数' },
   { key: 'refresh_count', label: '刷新次数' },
   { key: 'view_count', label: '查看次数' },
   { key: 'actions', label: '操作' }
@@ -101,7 +103,7 @@ function ColumnSelector({
   
   // 重置为默认设置
   const resetToDefault = () => {
-    const defaultColumns: ColumnKey[] = ['phone', 'nickname', 'status', 'registered', 'created_at', 'refresh_count', 'view_count', 'actions'];
+    const defaultColumns: ColumnKey[] = ['phone', 'nickname', 'status', 'registered', 'created_at', 'edit_count', 'refresh_count', 'view_count', 'actions'];
     setSelectedColumns(defaultColumns);
     setVisibleColumns(defaultColumns);
     localStorage.setItem('userTableVisibleColumns', JSON.stringify(defaultColumns));
@@ -166,7 +168,7 @@ function UsersPageContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>([
-    'phone', 'nickname', 'status', 'registered', 'created_at', 'refresh_count', 'view_count', 'actions'
+    'phone', 'nickname', 'status', 'registered', 'created_at', 'edit_count', 'refresh_count', 'view_count', 'actions'
   ]);
   
   // 分页相关状态
@@ -186,6 +188,12 @@ function UsersPageContent() {
   const [viewCount, setViewCount] = useState<number>(1);
   const [viewUserId, setViewUserId] = useState<number | null>(null);
   const [viewUserName, setViewUserName] = useState<string>('');
+
+  // 增加编辑次数对话框状态
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editCount, setEditCount] = useState<number>(1);
+  const [editUserId, setEditUserId] = useState<number | null>(null);
+  const [editUserName, setEditUserName] = useState<string>('');
 
   // 获取用户数据 - 将函数定义移到useEffect之前，以解决ReferenceError问题
   const fetchUsers = useCallback(async (page = 1, size = 25) => {
@@ -454,6 +462,49 @@ function UsersPageContent() {
     }
   };
 
+  // 打开增加编辑次数对话框
+  const openEditDialog = (userId: number, userName: string) => {
+    setEditUserId(userId);
+    setEditUserName(userName || '该用户');
+    setEditCount(1);
+    setEditDialogOpen(true);
+  };
+
+  // 提交增加编辑次数（更新 profile_edit_remaining）
+  const submitEditCount = async () => {
+    if (!editUserId) return;
+    try {
+      setLoading(true);
+      const response = await fetch('/api/users/edit-count', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: editUserId, addCount: editCount }),
+      });
+      if (!response.ok) throw new Error('增加编辑次数失败');
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || '增加编辑次数失败');
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === editUserId ? { ...user, profile_edit_remaining: result.newCount } : user
+        )
+      );
+      toast({
+        title: '更新成功',
+        description: `已为${editUserName}增加${editCount}次编辑次数，当前剩余${result.newCount}次`,
+      });
+      setEditDialogOpen(false);
+    } catch (error) {
+      console.error('增加编辑次数失败:', error);
+      toast({
+        variant: 'destructive',
+        title: '更新失败',
+        description: error instanceof Error ? error.message : '增加编辑次数失败，请重试',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 确认删除
   const confirmDelete = async () => {
     if (!selectedUserId) return;
@@ -634,6 +685,7 @@ function UsersPageContent() {
                       {visibleColumns.includes('status') && <th className="px-4 py-3 text-left font-medium">状态</th>}
                       {visibleColumns.includes('registered') && <th className="px-4 py-3 text-left font-medium">资料完善</th>}
                       {visibleColumns.includes('created_at') && <th className="px-4 py-3 text-left font-medium">创建时间</th>}
+                      {visibleColumns.includes('edit_count') && <th className="px-4 py-3 text-left font-medium">编辑次数</th>}
                       {visibleColumns.includes('refresh_count') && <th className="px-4 py-3 text-left font-medium">刷新次数</th>}
                       {visibleColumns.includes('view_count') && <th className="px-4 py-3 text-left font-medium">查看次数</th>}
                       {visibleColumns.includes('actions') && <th className="px-4 py-3 text-left font-medium">操作</th>}
@@ -666,6 +718,11 @@ function UsersPageContent() {
                         {visibleColumns.includes('created_at') && (
                           <td className="px-4 py-3">
                             <Skeleton className="h-4 w-[140px]" />
+                          </td>
+                        )}
+                        {visibleColumns.includes('edit_count') && (
+                          <td className="px-4 py-3">
+                            <Skeleton className="h-4 w-[40px]" />
                           </td>
                         )}
                         {visibleColumns.includes('refresh_count') && (
@@ -737,6 +794,10 @@ function UsersPageContent() {
                     <span>{getRegisteredText(user.registered)}</span>
                   </div>
                   <div>
+                    <span className="text-gray-500">编辑次数：</span>
+                    <span>{user.profile_edit_remaining ?? 0}</span>
+                  </div>
+                  <div>
                     <span className="text-gray-500">刷新次数：</span>
                     <span>{user.refresh_count}</span>
                   </div>
@@ -779,6 +840,17 @@ function UsersPageContent() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => openEditDialog(
+                      user.id as number,
+                      user.nickname || user.phone
+                    )}
+                  >
+                    增加编辑次数
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="h-8 px-3 text-xs text-green-600"
                     onClick={() => openRefreshDialog(
                       user.id as number,
@@ -816,32 +888,31 @@ function UsersPageContent() {
             <div className="rounded-md border overflow-hidden mb-[80px]">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                {visibleColumns.includes('phone') && <th className="px-4 py-3 text-left font-medium">手机号</th>}
-                {visibleColumns.includes('nickname') && <th className="px-4 py-3 text-left font-medium">昵称</th>}
-                {visibleColumns.includes('status') && <th className="px-4 py-3 text-left font-medium">状态</th>}
-                {visibleColumns.includes('registered') && <th className="px-4 py-3 text-left font-medium">资料完善</th>}
-                {visibleColumns.includes('created_at') && <th className="px-4 py-3 text-left font-medium">创建时间</th>}
-                {visibleColumns.includes('refresh_count') && <th className="px-4 py-3 text-left font-medium">刷新次数</th>}
-                {visibleColumns.includes('view_count') && <th className="px-4 py-3 text-left font-medium">查看次数</th>}
-                {visibleColumns.includes('actions') && <th className="px-4 py-3 text-left font-medium">操作</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.length === 0 ? (
-                // 无数据状态
-                <tr className="border-t">
-                  <td 
-                    colSpan={visibleColumns.length} 
-                    className="px-4 py-8 text-center text-muted-foreground"
-                  >
-                    没有找到匹配的用户
-                  </td>
-                </tr>
-              ) : (
-                // 数据列表
-                filteredUsers.map((user) => (
+                  <thead className="bg-muted/50">
+                    <tr>
+                      {visibleColumns.includes('phone') && <th className="px-4 py-3 text-left font-medium">手机号</th>}
+                      {visibleColumns.includes('nickname') && <th className="px-4 py-3 text-left font-medium">昵称</th>}
+                      {visibleColumns.includes('status') && <th className="px-4 py-3 text-left font-medium">状态</th>}
+                      {visibleColumns.includes('registered') && <th className="px-4 py-3 text-left font-medium">资料完善</th>}
+                      {visibleColumns.includes('created_at') && <th className="px-4 py-3 text-left font-medium">创建时间</th>}
+                      {visibleColumns.includes('edit_count') && <th className="px-4 py-3 text-left font-medium">编辑次数</th>}
+                      {visibleColumns.includes('refresh_count') && <th className="px-4 py-3 text-left font-medium">刷新次数</th>}
+                      {visibleColumns.includes('view_count') && <th className="px-4 py-3 text-left font-medium">查看次数</th>}
+                      {visibleColumns.includes('actions') && <th className="px-4 py-3 text-left font-medium">操作</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.length === 0 ? (
+                      <tr className="border-t">
+                        <td
+                          colSpan={visibleColumns.length}
+                          className="px-4 py-8 text-center text-muted-foreground"
+                        >
+                          没有找到匹配的用户
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((user) => (
                   <tr key={user.id} className="border-t hover:bg-muted/30">
                     {visibleColumns.includes('phone') && (
                       <td className="px-4 py-2">{user.phone}</td>
@@ -890,6 +961,9 @@ function UsersPageContent() {
                         minute: '2-digit'
                       })}</td>
                     )}
+                    {visibleColumns.includes('edit_count') && (
+                      <td className="px-4 py-2">{user.profile_edit_remaining ?? 0}</td>
+                    )}
                     {visibleColumns.includes('refresh_count') && (
                       <td className="px-4 py-2">{user.refresh_count}</td>
                     )}
@@ -905,6 +979,17 @@ function UsersPageContent() {
                             onClick={() => router.push(`/users/${user.id}/edit`)}
                           >
                             编辑
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(
+                              user.id as number,
+                              user.nickname || user.phone
+                            )}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            增加编辑次数
                           </Button>
                           <Button
                             variant="outline"
@@ -1111,6 +1196,39 @@ function UsersPageContent() {
               onClick={submitRefreshCount}
               disabled={loading}
             >
+              {loading ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 增加编辑次数对话框 */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>增加编辑次数</DialogTitle>
+            <DialogDescription>
+              为 {editUserName} 增加剩余编辑次数。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex items-center space-x-4">
+              <Label htmlFor="edit-count" className="flex-shrink-0">增加次数：</Label>
+              <Input
+                id="edit-count"
+                type="number"
+                value={editCount}
+                onChange={(e) => setEditCount(Math.max(1, parseInt(e.target.value) || 1))}
+                min="1"
+                className="flex-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={submitEditCount} disabled={loading}>
               {loading ? '保存中...' : '保存'}
             </Button>
           </DialogFooter>

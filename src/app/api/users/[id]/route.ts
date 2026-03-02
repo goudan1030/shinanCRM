@@ -97,11 +97,11 @@ export async function PUT(
     const updateFields: string[] = [];
     const values: any[] = [];
     
-    // 可更新的字段
+    // 可更新的字段（含剩余编辑次数 profile_edit_remaining）
     const allowedFields = [
       'phone', 'username', 'nickname', 'password', 'avatar', 
       'notification_enabled', 'status', 'registered',
-      'refresh_count', 'member_type'
+      'refresh_count', 'member_type', 'profile_edit_remaining'
     ];
     
     // 动态构建更新语句
