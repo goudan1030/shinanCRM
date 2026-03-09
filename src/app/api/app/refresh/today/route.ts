@@ -22,21 +22,22 @@ export async function POST(request: NextRequest) {
     }
 
     const memberIds = allMembers.map((member: any) => member.id);
-    
-    // 为每个用户生成4小时内随机的刷新时间
+
+    // 为每个用户生成【最近 4 小时】内随机的刷新时间，避免全部显示“X小时前”相同而显得假
+    const HOURS_SPAN = 4;
     const now = new Date();
-    const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000); // 4小时前
-    const totalDuration = now.getTime() - fourHoursAgo.getTime();
+    const windowStart = new Date(now.getTime() - HOURS_SPAN * 60 * 60 * 1000);
+    const totalDuration = now.getTime() - windowStart.getTime();
 
     const generateRandomTimes = (count: number) => {
       if (count <= 0 || totalDuration <= 0) {
         return [];
       }
 
-      // 将区间划分为均匀的小段，再在每个小段内随机取值，保证分布均匀且不扎堆
+      // 将 4 小时区间划分为均匀小段，每段内随机取一点，再打乱，保证分布均匀且不扎堆
       const segmentSize = totalDuration / count;
       const times = Array.from({ length: count }, (_, index) => {
-        const segmentStart = Math.floor(fourHoursAgo.getTime() + segmentSize * index);
+        const segmentStart = Math.floor(windowStart.getTime() + segmentSize * index);
         const segmentEnd = index === count - 1
           ? now.getTime()
           : Math.floor(segmentStart + segmentSize);
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
         return new Date(timestamp);
       });
 
-      // 打乱顺序，避免会员ID顺序和时间顺序相关联
+      // 打乱顺序，避免会员ID与时间顺序一一对应
       for (let i = times.length - 1; i > 0; i--) {
         const j = randomInt(i + 1);
         [times[i], times[j]] = [times[j], times[i]];
@@ -84,10 +85,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       count: updatedCount,
-      message: `成功刷新 ${updatedCount} 位会员的更新时间（4小时内随机分布）`,
+      message: `成功刷新 ${updatedCount} 位会员的更新时间（最近4小时内随机分布）`,
       data: {
         updateTimeRange: {
-          start: fourHoursAgo.toISOString().slice(0, 19).replace('T', ' '),
+          start: windowStart.toISOString().slice(0, 19).replace('T', ' '),
           end: now.toISOString().slice(0, 19).replace('T', ' ')
         },
         memberCount: updatedCount

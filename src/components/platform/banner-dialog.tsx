@@ -149,6 +149,7 @@ export function BannerDialog({
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange', // 使 formState.isValid 随输入更新，避免编辑时确定按钮一直禁用
     defaultValues: {
       category_id: initialData?.category_id ? CATEGORY_ID_MAP[initialData.category_id as keyof typeof CATEGORY_ID_MAP] : 'home',
       title: initialData?.title || '',
@@ -165,18 +166,19 @@ export function BannerDialog({
   // 当 initialData 变化时重置表单
   useEffect(() => {
     if (initialData) {
+      const categoryKey = CATEGORY_ID_MAP[initialData.category_id as keyof typeof CATEGORY_ID_MAP] ?? 'home';
       form.reset({
-        category_id: CATEGORY_ID_MAP[initialData.category_id as keyof typeof CATEGORY_ID_MAP],
-        title: initialData.title,
-        image_url: initialData.image_url,
+        category_id: categoryKey,
+        title: initialData.title ?? '',
+        image_url: initialData.image_url ?? '',
         link_url: initialData.link_url || '',
-        sort_order: initialData.sort_order,
-        status: String(initialData.status),  // 确保转换为字符串
-        start_time: formatDate(initialData.start_time),  // 格式化为 yyyy-MM-dd
-        end_time: formatDate(initialData.end_time),      // 格式化为 yyyy-MM-dd
+        sort_order: initialData.sort_order ?? 0,
+        status: String(initialData.status ?? 1),
+        start_time: formatDate(initialData.start_time) || '',
+        end_time: formatDate(initialData.end_time) || '',
         remark: initialData.remark || ''
       });
-      setImagePreview(initialData.image_url);
+      setImagePreview(initialData.image_url || '');
     }
   }, [initialData, form]);
 
@@ -355,7 +357,10 @@ export function BannerDialog({
                         type="number" 
                         placeholder="数字越大越靠前" 
                         {...field}
-                        onChange={e => field.onChange(parseInt(e.target.value))}
+                        onChange={e => {
+                          const v = e.target.value;
+                          field.onChange(v === '' ? 0 : parseInt(v, 10));
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -450,7 +455,7 @@ export function BannerDialog({
               </Button>
               <Button 
                 type="submit" 
-                disabled={loading || !form.formState.isValid || !imagePreview}
+                disabled={loading || !form.formState.isValid || (!imagePreview && !initialData?.image_url)}
               >
                 {loading ? '提交中...' : '确定'}
               </Button>

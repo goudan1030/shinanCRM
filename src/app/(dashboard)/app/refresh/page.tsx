@@ -77,7 +77,7 @@ export default function AppRefreshPage() {
       if (data.success) {
         toast({
           title: '刷新成功',
-          description: data.message || `已成功刷新 ${data.count} 位会员的更新时间（4小时内随机分布）`
+          description: data.message || `已成功刷新 ${data.count} 位会员的更新时间（最近4小时内随机分布）`
         });
         
         // 保存时间范围信息

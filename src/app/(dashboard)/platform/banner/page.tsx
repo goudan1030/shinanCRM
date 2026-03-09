@@ -188,26 +188,36 @@ export default function BannerPage() {
 
   const handleSubmit = async (data: any) => {
     try {
+      // 编辑时走 PUT 更新，新增时走 POST 创建（有 id 为编辑，无 id 为新增）
+      const isEdit = data.id != null && data.id !== '';
+      const apiStatus = data.status === '1' ? 'active' : 'inactive'; // 接口要求 'active' / 'inactive'
+      const body = {
+        ...data,
+        status: apiStatus,
+      };
+
       const response = await fetch('/api/platform/banner', {
-        method: 'POST',
+        method: isEdit ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(body),
       });
 
       const result = await response.json();
 
-      if (result.status !== 'success') {
+      const isSuccess = response.ok && (result.success === true || result.status === 'success');
+      if (!isSuccess) {
         throw new Error(result.error || '提交失败');
       }
 
       toast({
         title: "保存成功",
-        description: result.message || "Banner信息已保存",
+        description: result.message || (isEdit ? "Banner已更新" : "Banner已创建"),
       });
 
       setOpenDialog(false);
+      setEditingBanner(null); // 关闭后清空，避免下次点「新增」仍带旧 id
       fetchBanners(); // 刷新列表
 
     } catch (error) {
@@ -239,7 +249,7 @@ export default function BannerPage() {
       {/* 标题和操作按钮 - 移动端垂直排列 */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 sm:mb-6">
         <h2 className="text-lg sm:text-xl font-semibold">Banner管理</h2>
-        <Button onClick={() => setOpenDialog(true)} className="w-full sm:w-auto">
+        <Button onClick={() => { setEditingBanner(null); setOpenDialog(true); }} className="w-full sm:w-auto">
           <PlusCircle className="h-4 w-4 mr-2" />
           新增Banner
         </Button>
